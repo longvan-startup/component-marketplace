@@ -10,15 +10,20 @@
   "scripts": {
     "dev:web": "bun run --cwd apps/web dev",
     "dev:api": "bun run --cwd apps/api dev",
-    "build": "bun run build:shared && bun run build:api && bun run build:web",
+    "build": "bun run build:shared && bun run build:db && bun run build:api && bun run build:web",
     "build:shared": "bun run --cwd packages/shared build",
+    "build:db": "bun run --cwd packages/db build",
     "build:api": "bun run --cwd apps/api build",
     "build:web": "bun run --cwd apps/web build",
     "start:api": "bun run --cwd apps/api start",
     "start:web": "bun run --cwd apps/web start",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd apps/api typecheck"
+    "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd packages/db typecheck && bun run --cwd apps/api typecheck",
+    "db:generate": "bun run --cwd packages/db db:generate",
+    "db:migrate": "bun run --cwd packages/db db:migrate",
+    "db:push": "bun run --cwd packages/db db:push",
+    "db:studio": "bun run --cwd packages/db db:studio"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.2",

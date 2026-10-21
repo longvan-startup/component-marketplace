@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@marketplace/db": "workspace:*",
     "@marketplace/shared": "workspace:*",
+    "drizzle-orm": "^0.44.7",
     "express": "^5.1.0"
   },
   "devDependencies": {
