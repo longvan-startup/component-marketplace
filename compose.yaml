@@ -35,7 +35,10 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/component_marketplace}
+      # URL dùng TRONG container — luôn trỏ tới service postgres qua mạng compose.
+      # KHÔNG interpolate DATABASE_URL từ .env host (host dùng localhost:5433,
+      # sai nếu đưa vào container). Secrets như POSTGRES_PASSWORD vẫn qua .env.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-component_marketplace}
     env_file:
       - path: .env
         required: false
