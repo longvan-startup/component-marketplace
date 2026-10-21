@@ -1,41 +1,49 @@
 /**
  * API entrypoint — skeleton tối thiểu để boot.
  * KHÔNG chứa business logic (auth, payment, marketplace... tích hợp sau).
+ *
+ * Export `createServer()` để smoke test (bun test) dùng được;
+ * chỉ listen khi chạy trực tiếp (bun run / container CMD).
  */
 
 import { getAppInfo } from '@marketplace/shared'
 import express from 'express'
 
-const app = express()
-const port = Number(process.env.PORT ?? 4000)
+export function createServer() {
+  const app = express()
 
-app.use(express.json())
+  app.use(express.json())
 
-// Health check — dùng bởi Docker healthcheck & CI smoke test
-app.get('/health', (_req, res) => {
-  const info = getAppInfo()
-  res.status(200).json({
-    status: 'ok',
-    service: 'api',
-    app: info.name,
-    version: info.version,
-    uptime: process.uptime(),
+  // Health check — dùng bởi Docker healthcheck & CI smoke test
+  app.get('/health', (_req, res) => {
+    const info = getAppInfo()
+    res.status(200).json({
+      status: 'ok',
+      service: 'api',
+      app: info.name,
+      version: info.version,
+      uptime: process.uptime(),
+    })
   })
-})
 
-// Root — xác nhận skeleton đã boot
-app.get('/', (_req, res) => {
-  res.status(200).json({ message: 'Component Marketplace API — skeleton OK' })
-})
+  // Root — xác nhận skeleton đã boot
+  app.get('/', (_req, res) => {
+    res.status(200).json({ message: 'Component Marketplace API — skeleton OK' })
+  })
 
-const server = app.listen(port, () => {
-  console.log(`[api] listening on http://0.0.0.0:${port}`)
-})
+  return { app, listen: () => app.listen(Number(process.env.PORT ?? 4000)) }
+}
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  server.close(() => process.exit(0))
-})
-process.on('SIGINT', () => {
-  server.close(() => process.exit(0))
-})
+if (import.meta.main) {
+  const { listen } = createServer()
+  const server = listen()
+  console.log(`[api] listening on http://0.0.0.0:${process.env.PORT ?? 4000}`)
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    server.close(() => process.exit(0))
+  })
+  process.on('SIGINT', () => {
+    server.close(() => process.exit(0))
+  })
+}

@@ -1,0 +1,7 @@
+# Default owner cho toàn bộ repo
+*           @NguyenTuMinhLong
+
+# CI / Docker / infra — cả hai owner phải được yêu cầu review khi sửa
+/.github/workflows/ @NguyenTuMinhLong @DaoDungVan
+/compose.yaml       @NguyenTuMinhLong @DaoDungVan
+/docker/            @NguyenTuMinhLong @DaoDungVan
