@@ -1,0 +1,35 @@
+# VCS
+.git
+.github
+.gitignore
+
+# Dependencies (installed inside image)
+node_modules
+**/node_modules
+
+# Build outputs
+.next
+**/.next
+dist
+**/dist
+out
+*.tsbuildinfo
+
+# Environment — KHÔNG đưa secrets vào image
+.env
+.env.*
+!.env.example
+
+# Docs / tooling
+README.md
+.dockerignore
+compose.yaml
+docker
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+
+# Testing
+coverage
