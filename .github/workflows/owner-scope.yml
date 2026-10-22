@@ -44,8 +44,20 @@ jobs:
             const BACK = (p) =>
               p.startsWith('apps/api/') || p.startsWith('packages/db/');
             const SHARED = (p) => p.startsWith('packages/shared/');
+            const DOC = (p) =>
+              p.endsWith('.md') ||
+              p.includes('/mocks/') ||
+              p.includes('/fixtures/');
             const kindOf = (p) =>
-              FRONT(p) ? 'frontend' : BACK(p) ? 'backend' : SHARED(p) ? 'shared' : 'infra';
+              DOC(p)
+                ? 'docs'
+                : FRONT(p)
+                  ? 'frontend'
+                  : BACK(p)
+                    ? 'backend'
+                    : SHARED(p)
+                      ? 'shared'
+                      : 'infra';
 
             const kinds = new Map();
             for (const f of files) {
@@ -66,13 +78,14 @@ jobs:
             if (front.length > 0 && back.length > 0 && !labeled) {
               core.setFailed(
                 [
-                  'This PR changes BOTH frontend (apps/web/**) and backend (apps/api/**, packages/db/**) files.',
+                  'This PR changes BOTH frontend (apps/web/**) and backend (apps/api/**, packages/db/**) code files.',
+                  'Markdown and mock/fixture files are documentation — they do not count.',
                   'One PR must not span two ownership domains. Options:',
                   '  1. Split the PR so each domain is separate, or',
                   '  2. Apply the `cross-domain` label — both owners must have agreed in the task (see AGENTS.md).',
                   '',
-                  'Frontend files changed: ' + front.join(', '),
-                  'Backend files changed: ' + back.join(', '),
+                  'Frontend code files changed: ' + front.join(', '),
+                  'Backend code files changed: ' + back.join(', '),
                 ].join('\n'),
               );
             }
