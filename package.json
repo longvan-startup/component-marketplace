@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "prepare": "lefthook install",
+    "prepare": "if [ -d .git ]; then lefthook install; fi",
     "dev:web": "bun run --cwd apps/web dev",
     "dev:api": "bun run --cwd apps/api dev",
     "build": "bun run build:shared && bun run build:api && bun run build:web",
