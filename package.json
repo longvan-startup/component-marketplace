@@ -18,6 +18,7 @@
     "start:web": "bun run --cwd apps/web start",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
+    "verify": "bash scripts/verify.sh",
     "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck",
     "test": "bun test"
   },
