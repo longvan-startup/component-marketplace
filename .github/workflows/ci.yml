@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Pin đúng .bun-version (1.4.3) — cùng phiên bản với Docker image (oven/bun:1.4.3)
       - name: Setup Bun
@@ -49,7 +49,7 @@ jobs:
     needs: quality
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate Compose file
         run: docker compose config -q
