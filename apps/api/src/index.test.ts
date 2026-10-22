@@ -34,6 +34,24 @@ describe('API smoke', () => {
     expect(body.version).toBe('0.1.0')
   })
 
+  test('GET /health/db: 503 khi chưa cấu hình DATABASE_URL (không lộ chi tiết lỗi)', async () => {
+    // Backup/restore env — handler đọc DATABASE_URL lúc request, nên xoá env tạm là đủ
+    const original = process.env.DATABASE_URL
+    delete process.env.DATABASE_URL
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/health/db`)
+
+      expect(res.status).toBe(503)
+      const body = (await res.json()) as { status: string; database: string; error?: string }
+      expect(body.status).toBe('degraded')
+      expect(body.database).toBe('unconfigured')
+      // Không được trả chi tiết lỗi database về client
+      expect(body.error).toBeUndefined()
+    } finally {
+      if (original !== undefined) process.env.DATABASE_URL = original
+    }
+  })
+
   test('GET / trả 200 — API đã boot', async () => {
     const res = await fetch(`http://127.0.0.1:${port}/`)
 

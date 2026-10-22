@@ -14,6 +14,11 @@ export const users = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     email: text('email').notNull(),
     name: text('name').notNull(),
+    // 2 field lõi của Better Auth "user" model (ghép sau bằng drizzleAdapter,
+    // modelName 'users' / usePlural). emailVerified mặc định false.
+    emailVerified: boolean('email_verified').notNull().default(false),
+    image: text('image'),
+    // App-owned field: thêm vào auth config qua user.additionalFields (input: false)
     role: userRole('role').notNull().default('user'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
