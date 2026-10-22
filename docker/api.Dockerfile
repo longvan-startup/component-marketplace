@@ -5,7 +5,8 @@
 # ============================================================
 
 # --- Stage 1: deps (cài dependencies cho cả monorepo) ---
-FROM oven/bun:1.4 AS deps
+# Pin đúng .bun-version (1.4.3) — CI (setup-bun) và Docker phải dùng cùng một phiên bản
+FROM oven/bun:1.4.3 AS deps
 WORKDIR /app
 COPY tsconfig.base.json tsconfig.base.json
 COPY package.json bun.lock ./
@@ -23,7 +24,7 @@ ENV NODE_ENV=production
 RUN bun run --cwd apps/api build
 
 # --- Stage 3: runner (production deps + dist, không source, không secrets) ---
-FROM oven/bun:1.4-alpine AS runner
+FROM oven/bun:1.4.3-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=4000

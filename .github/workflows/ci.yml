@@ -12,16 +12,17 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint / Typecheck / Build
+    name: Lint / Typecheck / Test / Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
+      # Pin đúng .bun-version (1.4.3) — cùng phiên bản với Docker image (oven/bun:1.4.3)
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: .bun-version
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -29,8 +30,12 @@ jobs:
       - name: Lint (Biome)
         run: bun run lint
 
+      # Typecheck bao phủ packages/shared + apps/api + apps/web
       - name: Typecheck
         run: bun run typecheck
+
+      - name: Test (smoke)
+        run: bun test
 
       - name: Build API + Shared
         run: bun run build:shared && bun run build:api
@@ -38,30 +43,58 @@ jobs:
       - name: Build Web (Next.js)
         run: bun run build:web
 
-  docker:
-    name: Docker build & Compose validate
+  docker-runtime:
+    name: Docker build & runtime smoke
     runs-on: ubuntu-latest
     needs: quality
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Validate Docker Compose
+      - name: Validate Compose file
         run: docker compose config -q
 
-      - name: Build web image (không push)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/web.Dockerfile
-          push: false
+      # Build cả 2 image + chạy thật sự stack (compose tự build khi up --build)
+      - name: Start stack (postgres + api + web)
+        run: docker compose up -d --build
 
-      - name: Build api image (không push)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/api.Dockerfile
-          push: false
+      - name: Wait & assert API /health
+        run: |
+          ok=0
+          for i in $(seq 1 45); do
+            if curl -fsS http://localhost:4000/health | grep -q '"status":"ok"'; then
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::API /health không đạt trong 90s"
+            docker compose logs api
+            exit 1
+          fi
+          echo "::notice::API /health OK"
+
+      - name: Assert Web /
+        run: |
+          ok=0
+          for i in $(seq 1 45); do
+            if curl -fsS http://localhost:3000/ | grep -q 'Component Marketplace'; then
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::Web / không trả nội dung mong đợi trong 90s"
+            docker compose logs web
+            exit 1
+          fi
+          echo "::notice::Web / OK"
+
+      - name: Compose status
+        run: docker compose ps
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

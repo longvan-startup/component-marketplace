@@ -38,10 +38,12 @@ component-marketplace/
 │   └── api.Dockerfile
 ├── .github/
 │   ├── workflows/ci.yml
-│   └── PULL_REQUEST_TEMPLATE.md
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   └── CODEOWNERS
 ├── compose.yaml
 ├── .dockerignore / .gitignore / .env.example
 ├── biome.json / tsconfig.base.json
+├── AGENTS.md / CONTRIBUTING.md / docs/ENGINEERING.md
 └── package.json
 ```
 
@@ -54,7 +56,8 @@ bun run dev:web      # Next.js dev server :3000
 bun run dev:api      # Bun API dev (hot reload) :4000, health DB: /health/db
 
 bun run build        # build shared → db → api → web
-bun run typecheck    # tsc --noEmit (shared + db + api; web typecheck chạy trong next build)
+bun run typecheck    # tsc --noEmit cho shared + db + api + web
+bun run test         # bun test — smoke test API (bun:test)
 bun run lint         # Biome check
 bun run lint:fix     # Biome fix tự động
 ```
@@ -71,7 +74,15 @@ bun run db:studio    # mở Drizzle Studio quản trị DB
 ```
 
 - Source of truth là `packages/db/src/schema.ts`; **migration SQL được commit**.
-- API expose `GET /health/db` — ping `select 1` qua Drizzle, trả 503 nếu DB chưa cấu hình/không kết nối được.
+- API expose `GET /health/db` — ping `select 1` qua Drizzle, trả 503 nếu DB chưa cấu hình/không kết nối được. Chi tiết lỗi DB chỉ log phía server, không trả về client.
+
+## Quy ước kỹ thuật
+
+- **Bun phiên bản**: pin 1.4.3 tại `.bun-version` (CI dùng) — **phải khớp** tag `oven/bun:1.4.3` trong `docker/*.Dockerfile`. Đổi Bun = sửa đồng thời cả 3 file.
+- Chuẩn coding, ownership, Definition of Done, quality gates: xem `docs/ENGINEERING.md`.
+- Quy trình branch/commit/PR: xem `CONTRIBUTING.md`.
+- Quy tắc cho AI agent (OpenCode/Codex/T3 Code): xem `AGENTS.md`.
+- `DATABASE_URL`: `.env` host dùng `localhost:5433` (port compose host); container API tự dựng URL nội bộ qua `POSTGRES_*` (không interpolate từ host) — xem `compose.yaml`.
 
 ## Docker
 
@@ -121,11 +132,17 @@ Quy ước:
 
 `.github/workflows/ci.yml` — chạy khi push/PR vào `main`:
 
-1. Install dependencies (Bun, frozen lockfile)
+**Job quality**
+1. Install dependencies (Bun 1.4.3 theo `.bun-version`, frozen lockfile)
 2. Lint (Biome)
-3. Typecheck
-4. Build shared + api + web
-5. Validate Docker Compose (`docker compose config -q`)
-6. Build 2 Docker images (không push)
+3. Typecheck (shared + api + web)
+4. Test (bun test — API smoke)
+5. Build shared + api + web
+
+**Job docker-runtime** (chạy sau job quality)
+6. Validate Docker Compose (`docker compose config -q`)
+7. Compose up toàn stack thật (kèm build 2 image)
+8. Assert runtime: `GET :4000/health` → `"status":"ok"`, `GET :3000/` → nội dung web
+9. `compose down -v`
 
 Chưa có CD production: chưa push images, chưa deploy Vercel.
