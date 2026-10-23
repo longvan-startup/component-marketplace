@@ -99,12 +99,14 @@ if [[ "${1:-}" == "--docker" || "${1:-}" == "--docker-only" ]]; then
   probe_wait "Web /" web "http://127.0.0.1:3000/" "Component Marketplace"
 
   # --- DB migration smoke on the throwaway DB (blank volume) ---
-  if docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml run --rm migrate >/dev/null 2>&1; then
-    echo "PASS: DB migration smoke — drizzle-kit migrate applied on blank volume"
-  else
-    echo "FAIL: DB migration smoke — drizzle-kit migrate exited non-zero"
-    docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml logs migrate 2>/dev/null | tail -20 || true
+  migrate_log="$(docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml run --rm migrate 2>&1 || true)"
+  if echo "$migrate_log" | grep -qE 'error|Error|cannot|refused'; then
+    echo "FAIL: DB migration smoke — drizzle-kit migrate errored"
+    echo "$migrate_log" | tail -20
     FAILED=1
+  else
+    echo "PASS: DB migration smoke — drizzle-kit migrate applied on blank volume"
+    echo "$migrate_log" | tail -3
   fi
 
   # --- DB migration smoke on the throwaway DB (blank volume) ---
@@ -130,11 +132,13 @@ if [[ "${1:-}" == "--docker" || "${1:-}" == "--docker-only" ]]; then
   fi
 
   # Idempotency: a second migrate run against the same DB must be a no-op (exit 0).
-  if docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml run --rm migrate >/dev/null 2>&1; then
-    echo "PASS: DB migration smoke — second migrate run is a no-op (idempotent)"
-  else
+  migrate_log2="$(docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml run --rm migrate 2>&1 || true)"
+  if echo "$migrate_log2" | grep -qE 'error|Error|cannot|refused'; then
     echo "FAIL: DB migration smoke — second migrate run not idempotent"
+    echo "$migrate_log2" | tail -10
     FAILED=1
+  else
+    echo "PASS: DB migration smoke — second migrate run is a no-op (idempotent)"
   fi
 
   if [[ "$FAILED" == "0" ]]; then

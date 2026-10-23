@@ -24,7 +24,8 @@ services:
   # Verify-only service: applies Drizzle migrations to the throwaway DB.
   # Uses the monorepo's installed drizzle-kit via bind mount (pinned version,
   # no network resolution drift). Runs with the same in-container DATABASE_URL
-  # as the api service.
+  # as the api service. The explicit command is REQUIRED — oven/bun's default
+  # CMD is a bare `bun` REPL that would exit 0 with no effect.
   migrate:
     image: oven/bun:1.4.3
     working_dir: /app/packages/db
@@ -36,3 +37,4 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    command: ["bunx", "drizzle-kit", "migrate"]
