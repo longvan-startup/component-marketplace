@@ -10,12 +10,13 @@ Monorepo skeleton (Foundation) — chỉ setup nền tảng, Docker, CI/CD. **Ch
 | Frontend | Next.js + TypeScript (strict) |
 | Backend | Bun + Express + TypeScript |
 | Database | PostgreSQL / Neon (production) |
+| ORM | Drizzle ORM (`@marketplace/db`, migrations, postgres.js) |
 | Lint | Biome |
 | Container | Docker + Docker Compose |
 | CI/CD | GitHub Actions |
 | Hosting | Vercel (web), sau này Mắt Bão VPS |
 
-**Tích hợp sau** (chưa cài dependency, chỉ ghi nhận): Drizzle ORM, Better Auth,
+**Tích hợp sau** (chưa cài dependency, chỉ ghi nhận): Better Auth,
 Motion + GSAP, Lemon Squeezy, Cloudflare R2, Expo (mobile),
 Playwright + Gemini (AI Factory).
 
@@ -27,7 +28,11 @@ component-marketplace/
 │   ├── web/        # Next.js (port 3000)
 │   └── api/        # Bun + Express (port 4000, health: /health)
 ├── packages/
-│   └── shared/     # constants/util dùng chung (@marketplace/shared)
+│   ├── shared/     # constants/util dùng chung (@marketplace/shared)
+│   └── db/         # Drizzle ORM: schema + client (@marketplace/db)
+│       ├── src/schema.ts     # bảng users, components
+│       ├── src/index.ts      # createDb client factory
+│       └── drizzle/          # migrations SQL (được commit)
 ├── docker/
 │   ├── web.Dockerfile
 │   └── api.Dockerfile
@@ -48,14 +53,28 @@ component-marketplace/
 bun install          # cài dependencies toàn monorepo
 
 bun run dev:web      # Next.js dev server :3000
-bun run dev:api      # Bun API dev (hot reload) :4000
+bun run dev:api      # Bun API dev (hot reload) :4000, health DB: /health/db
 
-bun run build        # build shared → api → web
-bun run typecheck    # tsc --noEmit cho shared + api + web
+bun run build        # build shared → db → api → web
+bun run typecheck    # tsc --noEmit cho shared + db + api + web
 bun run test         # bun test — smoke test API (bun:test)
 bun run lint         # Biome check
 bun run lint:fix     # Biome fix tự động
 ```
+
+## Database (Drizzle ORM)
+
+Workspace `packages/db` (`@marketplace/db`) — schema + client dùng chung:
+
+```bash
+bun run db:generate  # sinh migration từ schema.ts (packages/db/drizzle/*.sql)
+bun run db:migrate   # áp migration vào DB (cần DATABASE_URL / postgres compose đang chạy)
+bun run db:push      # đẩy thẳng schema vào DB (dev nhanh, bypass migration)
+bun run db:studio    # mở Drizzle Studio quản trị DB
+```
+
+- Source of truth là `packages/db/src/schema.ts`; **migration SQL được commit**.
+- API expose `GET /health/db` — ping `select 1` qua Drizzle, trả 503 nếu DB chưa cấu hình/không kết nối được. Chi tiết lỗi DB chỉ log phía server, không trả về client.
 
 ## Quy ước kỹ thuật
 
@@ -73,6 +92,7 @@ cp .env.example .env   # điền giá trị local (KHÔNG commit .env)
 docker compose up --build          # web + api + postgres
 docker compose ps                  # kiểm tra healthcheck (healthy)
 curl http://localhost:4000/health  # smoke test API
+curl http://localhost:4000/health/db  # smoke test DB (qua Drizzle)
 curl http://localhost:3000/        # smoke test Web
 docker compose down                # tắt (thêm -v để xóa volume DB)
 ```
