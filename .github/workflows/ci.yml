@@ -56,50 +56,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Validate Compose file
-        run: docker compose config -q
+      # bun + node_modules are needed because the compose migrate service
+      # bind-mounts the repo and must resolve the LOCKFILE-PINNED drizzle-kit
+      # (no network version drift).
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
 
-      # Build cả 2 image + chạy thật sự stack (compose tự build khi up --build)
-      - name: Start stack (postgres + api + web)
-        run: docker compose up -d --build
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
-      - name: Wait & assert API /health
+      - name: Validate Compose (base + isolation overlay)
         run: |
-          ok=0
-          for i in $(seq 1 45); do
-            if curl -fsS http://localhost:4000/health | grep -q '"status":"ok"'; then
-              ok=1
-              break
-            fi
-            sleep 2
-          done
-          if [ "$ok" -ne 1 ]; then
-            echo "::error::API /health không đạt trong 90s"
-            docker compose logs api
-            exit 1
-          fi
-          echo "::notice::API /health OK"
+          docker compose config -q
+          docker compose -f compose.yaml -f compose.verify.yaml config -q
 
-      - name: Assert Web /
-        run: |
-          ok=0
-          for i in $(seq 1 45); do
-            if curl -fsS http://localhost:3000/ | grep -q 'Component Marketplace'; then
-              ok=1
-              break
-            fi
-            sleep 2
-          done
-          if [ "$ok" -ne 1 ]; then
-            echo "::error::Web / không trả nội dung mong đợi trong 90s"
-            docker compose logs web
-            exit 1
-          fi
-          echo "::notice::Web / OK"
+      # Proves (positive + assertions) that verify.sh cleanup cannot touch any
+      # other compose project's volumes (see scripts/test-compose-isolation.sh).
+      - name: Compose isolation test (cleanup safety proof)
+        run: bash scripts/test-compose-isolation.sh
+
+      # Isolated project (cmp-verify-*), no host ports published, in-container
+      # probes: /health + /health/db (real DB connection) + web /, then DB
+      # migration smoke on a blank volume (tables + idempotency).
+      - name: Docker runtime smoke (isolated project + DB migration smoke)
+        run: bash scripts/verify.sh --docker-only
 
       - name: Compose status
         run: docker compose ps
 
-      - name: Tear down
-        if: always()
-        run: docker compose down -v
+      # No explicit tear-down: verify.sh's EXIT trap performs label-scoped
+      # cleanup (cmp-verify-* only), and leftovers, if any, die with the
+      # ephemeral runner. No global prune is ever run.

@@ -1,0 +1,38 @@
+# ==========================================================================
+# compose.verify.yaml — isolation overlay for verify.sh --docker smoke runs
+# ==========================================================================
+# Used ONLY as: docker compose -p <unique-project> -f compose.yaml -f compose.verify.yaml ...
+# Everything here must stay throwaway-safe:
+#  - NO host ports are published (all probes run inside the compose network),
+#    so an isolated project can never conflict with the development stack.
+#  - The unique project name (-p cmp-verify-*) scopes named volumes; cleanup is
+#    `down -v --remove-orphans` which removes ONLY volumes labeled with that
+#    project — the development "component-marketplace" stack is untouched.
+#  - The `migrate` service runs drizzle-kit inside the network against the
+#    throwaway postgres (no DB credentials leave the compose network).
+# Requires docker compose >= 2.24 for the !override merge tags.
+services:
+  web:
+    ports: !override []
+
+  api:
+    ports: !override []
+
+  postgres:
+    ports: !override []
+
+  # Verify-only service: applies Drizzle migrations to the throwaway DB.
+  # Uses the monorepo's installed drizzle-kit via bind mount (pinned version,
+  # no network resolution drift). Runs with the same in-container DATABASE_URL
+  # as the api service.
+  migrate:
+    image: oven/bun:1.4.3
+    working_dir: /app/packages/db
+    volumes:
+      - .:/app
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-component_marketplace}
+    depends_on:
+      postgres:
+        condition: service_healthy
