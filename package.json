@@ -21,6 +21,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "boundary": "bun scripts/check-boundaries.mjs",
+    "verify": "bash scripts/verify.sh",
     "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd packages/db typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck",
     "test": "bun test",
     "db:generate": "bun run --cwd packages/db db:generate",
