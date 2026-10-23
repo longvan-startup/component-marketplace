@@ -1,0 +1,34 @@
+# Port từ tan-tao-university/ttu-platform (.github/workflows/auto-assign-reviewers.yml)
+# Adapt cho component-marketplace: 2 owner (CODEOWNERS — xem .github/CODEOWNERS),
+# tự động request review người proprietor còn lại khi PR ready.
+# Liên hệ: issue #12 (bật require_code_owner_reviews) — workflow này là nửa
+# "giảm ma sát" của hai review flow; nửa còn lại (bắt buộc) nằm ở branch protection.
+name: Auto-request review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  request-review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const reviewers = ['NguyenTuMinhLong', 'DaoDungVan'];
+            const author = context.payload.pull_request.user.login;
+            const candidates = reviewers.filter((r) => r !== author);
+
+            if (candidates.length === 0) return;
+
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              reviewers: candidates,
+            });

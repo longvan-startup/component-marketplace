@@ -1,0 +1,91 @@
+name: Owner scope
+
+# Path-scope check for PRs (docs/ENGINEERING.md ownership map):
+# - `apps/web/**`               → Frontend domain (Văn)
+# - `apps/api/**`, `packages/db/**` → Backend domain (Long)
+# - anything else               → shared/infra/harness, allowed with normal review
+#
+# A PR changing BOTH frontend and backend code files in one shot must be a
+# deliberate cross-domain change: it fails here unless it carries the label
+# `cross-domain` (both owners agreed in the task, per AGENTS.md). Pure
+# shared/infra/harness changes never trigger this check, so documentation PRs
+# (like harness work) and the open DB PR (backend-domain only) are unaffected.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paths:
+    name: Cross-domain path check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Classify changed files
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const FRONT = (p) => p.startsWith('apps/web/');
+            const BACK = (p) =>
+              p.startsWith('apps/api/') || p.startsWith('packages/db/');
+            const SHARED = (p) => p.startsWith('packages/shared/');
+            const DOC = (p) =>
+              p.endsWith('.md') ||
+              p.includes('/mocks/') ||
+              p.includes('/fixtures/');
+            const kindOf = (p) =>
+              DOC(p)
+                ? 'docs'
+                : FRONT(p)
+                  ? 'frontend'
+                  : BACK(p)
+                    ? 'backend'
+                    : SHARED(p)
+                      ? 'shared'
+                      : 'infra';
+
+            const kinds = new Map();
+            for (const f of files) {
+              // Deleted files still count: removed code can also break a domain.
+              const kind = kindOf(f.filename);
+              if (!kinds.has(kind)) kinds.set(kind, []);
+              kinds.get(kind).push(f.filename);
+            }
+
+            for (const [kind, list] of kinds) {
+              console.log(`${kind}: ${list.length} file(s)`);
+            }
+
+            const front = kinds.get('frontend') ?? [];
+            const back = kinds.get('backend') ?? [];
+            const labeled = pr.labels.some((l) => l.name === 'cross-domain');
+
+            if (front.length > 0 && back.length > 0 && !labeled) {
+              core.setFailed(
+                [
+                  'This PR changes BOTH frontend (apps/web/**) and backend (apps/api/**, packages/db/**) code files.',
+                  'Markdown and mock/fixture files are documentation — they do not count.',
+                  'One PR must not span two ownership domains. Options:',
+                  '  1. Split the PR so each domain is separate, or',
+                  '  2. Apply the `cross-domain` label — both owners must have agreed in the task (see AGENTS.md).',
+                  '',
+                  'Frontend code files changed: ' + front.join(', '),
+                  'Backend code files changed: ' + back.join(', '),
+                ].join('\n'),
+              );
+            }
