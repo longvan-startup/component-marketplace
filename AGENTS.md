@@ -12,6 +12,13 @@ Toàn bộ chuẩn kỹ thuật nằm tập trung ở 2 chỗ duy nhất — **k
 2. Xác định **phạm vi task** và **giới hạn thay đổi** của mình; phạm vi không rõ thì hỏi, không đoán.
 3. Chỉ sửa đúng module được giao. Không refactor, không đổi style, không sửa file "nhân tiện" ở module khác.
 
+## Quy trình chuẩn một thay đổi (Task → Implement → Verify → PR)
+
+1. **Task**: mục tiêu + phạm vi + giới hạn phải rõ ràng trong task/issue (nên tạo qua issue template "Task" của repo). Task không rõ ràng → hỏi, không tự diễn giải.
+2. **Implement**: branch từ `main` mới nhất (`feat|fix|chore|docs/<tên>-<topic>`), chỉ đụng đúng phạm vi được giao — xem `CONTRIBUTING.md`.
+3. **Verify**: chạy `bun run verify` (toàn bộ quality gates một lệnh — xem `docs/ENGINEERING.md`; thêm `--docker` nếu đụng Docker/compose). Không PASS đủ thì không báo "xong".
+4. **PR**: tiêu đề Conventional Commits, dùng PR template, ghi bằng chứng gates vào PR body; chờ CI xanh trên commit cuối + review code owner — xem `CONTRIBUTING.md`.
+
 ## Trong khi làm việc
 
 - Không tự merge PR, không deploy, không push vào `main` trực tiếp.

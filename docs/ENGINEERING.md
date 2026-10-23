@@ -11,13 +11,11 @@ Quy trình (branch/commit/PR) ở [`CONTRIBUTING.md`](../CONTRIBUTING.md); quy t
 
 ## Ownership map
 
-| Phạm vi | Owner (GitHub) |
-|---|---|
-| Toàn bộ repo (default code owner — xem `.github/CODEOWNERS`) | `NguyenTuMinhLong` |
-| Database / `packages/db` (từ PR #1) | `DaoDungVan` |
-| CI / Docker / workflow | `NguyenTuMinhLong` + `DaoDungVan` (both required) |
-| API / auth / `apps/api` | `NguyenTuMinhLong` |
-| Frontend / `apps/web` | `NguyenTuMinhLong` |
+| Phạm vi | Owner (GitHub) | Vai |
+|---|---|---|
+| Toàn bộ repo + Backend (apps/api, auth, `packages/db`, `packages/shared`) — default code owner | `NguyenTuMinhLong` | Backend/AI |
+| Frontend (`apps/web`) | `DaoDungVan` | Frontend/AI |
+| CI / Docker / infra / `scripts/` | `NguyenTuMinhLong` + `DaoDungVan` | both required |
 
 Việc bắt buộc review ở tầng GitHub được quản bằng **branch protection + CODEOWNERS**, không chỉ bằng docs.
 
@@ -45,6 +43,9 @@ Việc bắt buộc review ở tầng GitHub được quản bằng **branch pro
 6. Ít nhất 1 approval từ code owner (khi branch protection đã bật).
 
 ## Quality gates
+
+Chạy toàn bộ gates (trừ Docker runtime) bằng **một lệnh**: `bun run verify`
+(`scripts/verify.sh` — thêm `--docker` để chạy kèm lớp Docker runtime compose).
 
 | Gate | Lệnh | PASS khi |
 |---|---|---|

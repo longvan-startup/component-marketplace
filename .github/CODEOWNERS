@@ -1,7 +1,15 @@
-# Default owner cho toàn bộ repo
+# Ownership map — source of truth là file này
+# Lưu ý: branch protection phải bật "Require review from Code Owners"
+# để các rule dưới đây thực sự enforce (trạng thái hiện tại: xem PR báo cáo).
+
+# Backend/AI (default toàn repo): apps/api, auth, packages/*, DB, docs
 *           @NguyenTuMinhLong
 
-# CI / Docker / infra — cả hai owner phải được yêu cầu review khi sửa
+# Frontend/AI: apps/web
+/apps/web/           @DaoDungVan
+
+# CI / Docker / infra / harness tooling — cả hai owner phải review
 /.github/workflows/ @NguyenTuMinhLong @DaoDungVan
 /compose.yaml       @NguyenTuMinhLong @DaoDungVan
 /docker/            @NguyenTuMinhLong @DaoDungVan
+/scripts/           @NguyenTuMinhLong @DaoDungVan
