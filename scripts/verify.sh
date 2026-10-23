@@ -107,15 +107,25 @@ if [[ "${1:-}" == "--docker" || "${1:-}" == "--docker-only" ]]; then
     FAILED=1
   fi
 
-  tables="$(
-    docker compose -p "$SMOKE_PROJECT" exec -T postgres \
-      psql -U postgres -d component_marketplace -tAc \
-      "SELECT tablename FROM pg_tables WHERE schemaname='public'" 2>/dev/null || true
-  )"
+  # --- DB migration smoke on the throwaway DB (blank volume) ---
+  tables=""; psql_dbg=""
+  # Prefer the fully-resolved -f pair (same model the stack was created with).
+  tables="$(docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml exec -T postgres \
+    psql -U postgres -d "${POSTGRES_DB:-component_marketplace}" -tAc \
+    "SELECT tablename FROM pg_tables WHERE schemaname='public'" 2>&1 || true)"
+  # Fallback: plain base compose (service running in that project either way).
+  if [[ -z "$tables" ]]; then
+    tables="$(docker compose -p "$SMOKE_PROJECT" exec -T postgres \
+      psql -U postgres -d "${POSTGRES_DB:-component_marketplace}" -tAc \
+      "SELECT tablename FROM pg_tables WHERE schemaname='public'" 2>&1 || true)"
+    psql_dbg="fallback exec used; primary exec returned empty"
+  fi
   if echo "$tables" | grep -qx users && echo "$tables" | grep -qx components; then
     echo "PASS: DB migration smoke — public.users + public.components exist"
   else
-    echo "FAIL: DB migration smoke — expected tables missing; pg_tables: [$tables]"
+    echo "FAIL: DB migration smoke — expected tables missing"
+    echo "  psql result: [${tables}] (${psql_dbg})"
+    echo "  diagnostic: $(docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml exec -T postgres psql -U postgres -d component_marketplace -tAc "SELECT current_database(), current_schema()" 2>&1 || true)"
     FAILED=1
   fi
 
