@@ -1,0 +1,27 @@
+# Port từ tan-tao-university/ttu-platform (.editorconfig).
+# Đồng bộ với biome.json: space indent, width 100.
+# editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 100
+
+[*.md]
+# Markdown cho phép prose dài — không hard-wrap (giữ tính copy-paste log/stacktrace)
+max_line_length = off
+trim_trailing_whitespace = false
+
+[*.{json,jsonc,json5}]
+indent_size = 2
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.{sh,bash}]
+indent_size = 2
