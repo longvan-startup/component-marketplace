@@ -39,7 +39,7 @@ you are working in, in addition to this one:
 - `apps/web/AGENTS.md` — Frontend (owner: @DaoDungVan)
 - `apps/api/AGENTS.md` — Backend (owner: @NguyenTuMinhLong)
 - `packages/shared/AGENTS.md` — shared API contract (opposite-owner review)
-- `packages/db/AGENTS.md` — add only after the Database PR merges onto main.
+- `packages/db/AGENTS.md` — Database layer (owner: @NguyenTuMinhLong)
 
 Tool discovery (verified 2026-10-22 against current tool docs):
 
