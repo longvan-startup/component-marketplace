@@ -37,12 +37,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
+      - name: Validate deploy/vps/compose.yaml (deploy manifest sanity)
+        env:
+          DATABASE_URL: postgres://u:p@ep-placeholder.neon.tech/db?sslmode=require
+        run: docker compose -f deploy/vps/compose.yaml -p cd-manifest-check config -q
+
       - name: Checkout (CI-validated commit)
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Docker meta (tags: sha-<short> + latest)
+      - name: Docker meta (sha + latest tags)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -73,8 +78,6 @@ jobs:
     name: Production DB migrate (Neon, gated)
     runs-on: ubuntu-latest
     needs: docker-publish
-    env:
-      CI_VALID_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Checkout (CI-validated commit)
         uses: actions/checkout@v7
@@ -123,7 +126,6 @@ jobs:
       - name: Deploy over SSH
         if: ${{ secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_KEY != '' }}
         env:
-          CI_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           GH_IMAGE: ghcr.io/${{ github.repository_owner }}/cmp-api:latest
         run: |
           printf '%s\n' "${{ secrets.SSH_KEY }}" > /tmp/deploy_key
@@ -141,7 +143,7 @@ jobs:
             grep -q '^GHCR_TOKEN=' .env || { echo ".env must contain GHCR_TOKEN (a PAT with read:packages scope for ghcr.io pulls)"; exit 1; }
             grep -q '^DATABASE_URL=' .env || { echo ".env must contain DATABASE_URL (Neon connection string)"; exit 1; }
             ghcr_pat="$(grep '^GHCR_TOKEN=' .env | cut -d= -f2-)"
-            echo "$ghcr_pat" | docker login ghcr.io -u cmp-deploy --password-stdin >/dev/null
+            printf '%s' "$ghcr_pat" | docker login ghcr.io -u cmp-deploy --password-stdin >/dev/null
             docker compose -p cmp-api pull
             docker compose -p cmp-api up -d --no-deps --force-recreate api
             for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
