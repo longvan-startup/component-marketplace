@@ -23,3 +23,29 @@ Toàn bộ chuẩn kỹ thuật nằm tập trung ở 2 chỗ duy nhất — **k
 - Chạy đủ **quality gates** (xem `docs/ENGINEERING.md`) trước khi tuyên bố "xong".
 - Kết quả mỗi gate chỉ được báo theo một trong ba nhãn: **PASS** / **FAIL** / **UNVERIFIED**. "UNVERIFIED" phải có lý do (ví dụ: thiếu tool trên máy).
 - Có FAIL hoặc UNVERIFIED còn tồn đọng thì phải nêu trong báo cáo cuối, kèm nguyên nhân và gợi ý xử lý — không được im lặng về trạng thái chưa chắc chắn.
+
+## Scoped instructions & boundary enforcement
+
+Workspaces carry their own agent instructions — read the file for the directory
+you are working in, in addition to this one:
+
+- `apps/web/AGENTS.md` — Frontend (owner: @DaoDungVan)
+- `apps/api/AGENTS.md` — Backend (owner: @NguyenTuMinhLong)
+- `packages/shared/AGENTS.md` — shared API contract (opposite-owner review)
+- `packages/db/AGENTS.md` — add only after the Database PR merges onto main.
+
+Tool discovery (verified 2026-10-22 against current tool docs):
+
+- OpenCode: loads the root `AGENTS.md`; scoped files load via the
+  `instructions` globs in `opencode.json` (nested `AGENTS.md` is NOT
+  auto-discovered by default).
+- Codex: concatenates `AGENTS.md` from the repo root down to the working
+  directory (32 KiB total cap — keep scoped files small).
+- Claude Code: reads the `CLAUDE.md` shim in each domain directory, which
+  imports the scoped `AGENTS.md`.
+- T3 Code: follow the agents.md convention; verify its discovery behavior with
+  the tool owner before relying on it.
+
+Cross-domain imports are CI-enforced: `bun run boundary`. A PR touching both
+`apps/web/**` and backend code (`apps/api/**`, `packages/db/**`) must carry the
+`cross-domain` label (see the owner-scope workflow).
