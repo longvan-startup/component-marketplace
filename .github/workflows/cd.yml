@@ -92,49 +92,49 @@ jobs:
       - name: Install dependencies (pinned drizzle-kit)
         run: bun install --frozen-lockfile
 
-      - name: Skip notice
-        if: ${{ secrets.PROD_DATABASE_URL == '' }}
-        run: echo "::notice::PROD_DATABASE_URL is not set — production migrate skipped. Add the Neon connection string as repo secret PROD_DATABASE_URL to enable."
-
-      - name: Guard — refuse non-remote URLs (protect dev DBs)
-        if: ${{ secrets.PROD_DATABASE_URL != '' }}
+      - name: Migrate production DB (Neon) — skip unless PROD_DATABASE_URL set
+        # secrets cannot be used in step `if:` (context availability), so the
+        # gating happens inside the shell with the secret mirrored to env.
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::notice::PROD_DATABASE_URL is not set — production migrate skipped. Add the Neon connection string as repo secret PROD_DATABASE_URL to enable."
+            exit 0
+          fi
           case "$DATABASE_URL" in
             *localhost*|*127.0.0.1*)
               echo "::error::PROD_DATABASE_URL points at localhost — refusing to run migrations. This secret must be the Neon connection string."
               exit 1 ;;
           esac
-
-      - name: Apply migrations (forward-only)
-        if: ${{ secrets.PROD_DATABASE_URL != '' }}
-        env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-        run: bun run --cwd packages/db db:migrate
+          bun run --cwd packages/db db:migrate
 
   deploy-vps:
     name: Deploy api to VPS (gated)
     runs-on: ubuntu-latest
     needs: [docker-publish, db-migrate]
-    if: ${{ !cancelled() && needs.docker-publish.result == 'success' && (needs.db-migrate.result == 'success' || needs.db-migrate.result == 'skipped') }}
     steps:
-      - name: Skip notice
-        if: ${{ secrets.SSH_HOST == '' || secrets.SSH_USER == '' || secrets.SSH_KEY == '' }}
-        run: echo "::notice::SSH_HOST / SSH_USER / SSH_KEY are not set — VPS auto-deploy skipped. Use the manual runbook in docs/DEPLOYMENT.md."
-
-      - name: Deploy over SSH
-        if: ${{ secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_KEY != '' }}
+      - name: Deploy over SSH (skip unless SSH secrets set)
+        # secrets cannot be used in step `if:` — gating and the graceful
+        # skip happen inside the shell; migrate failure automatically blocks
+        # this job via the default `needs` gating.
         env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
           GH_IMAGE: ghcr.io/${{ github.repository_owner }}/cmp-api:latest
         run: |
-          printf '%s\n' "${{ secrets.SSH_KEY }}" > /tmp/deploy_key
+          : "${SSH_PORT:=22}"
+          if [ -z "${SSH_HOST:-}" ] || [ -z "${SSH_USER:-}" ] || [ -z "${SSH_KEY:-}" ]; then
+            echo "::notice::SSH_HOST / SSH_USER / SSH_KEY are not set — VPS auto-deploy skipped. Use the manual runbook in docs/DEPLOYMENT.md."
+            exit 0
+          fi
+          printf '%s\n' "$SSH_KEY" > /tmp/deploy_key
           chmod 600 /tmp/deploy_key
-          SSH_PORT="${{ secrets.SSH_PORT }}"
-          SSH_PORT="${SSH_PORT:-22}"
           ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 \
               -p "$SSH_PORT" -i /tmp/deploy_key \
-              "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+              "${SSH_USER}@${SSH_HOST}" \
               "GH_IMAGE=$GH_IMAGE bash -s" <<-'REMOTE'
             set -euo pipefail
             cd /opt/cmp-api
