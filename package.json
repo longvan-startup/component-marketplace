@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "prepare": "if [ -d .git ]; then lefthook install; fi",
     "dev:web": "bun run --cwd apps/web dev",
     "dev:api": "bun run --cwd apps/api dev",
     "build": "bun run build:shared && bun run build:db && bun run build:api && bun run build:web",
@@ -19,6 +20,7 @@
     "start:web": "bun run --cwd apps/web start",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
+    "boundary": "bun scripts/check-boundaries.mjs",
     "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd packages/db typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck",
     "test": "bun test",
     "db:generate": "bun run --cwd packages/db db:generate",
@@ -28,6 +30,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "lefthook": "^2.2.2",
     "typescript": "^5.9.3"
   }
 }

@@ -1,0 +1,17 @@
+# Port từ tan-tao-university/ttu-platform (dependabot.yml).
+# Bật version updates tự động cho dependencies (Bun) + GitHub Actions.
+# Lưu ý: Dependabot cập nhật bun.lock cho ecosystem bun.
+version: 2
+updates:
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dependencies:
+        patterns: ['*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

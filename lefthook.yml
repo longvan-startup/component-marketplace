@@ -1,0 +1,14 @@
+# Port từ tan-tao-university/ttu-platform (lefthook.yml) — hook git cho agent/dev.
+# Lefthook: https://lefthook.dev — cài bằng `bun run prepare` (đã ghi trong package.json).
+# Lưu ý: `bun run lint` dùng Biome check (bao hàm format + lint) — tương đương
+# cặp format:check + lint của ttu vì repo này dùng Biome làm formatter + linter duy nhất.
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      run: bun run lint
+
+commit-msg:
+  commands:
+    commitlint:
+      run: bunx commitlint --edit {1}
