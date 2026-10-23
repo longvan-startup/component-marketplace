@@ -29,10 +29,10 @@
     "db:studio": "bun run --cwd packages/db db:studio"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
+    "@biomejs/biome": "2.5.15",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
     "lefthook": "^2.2.2",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   }
 }
