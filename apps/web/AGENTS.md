@@ -51,6 +51,8 @@ Feature-based layout (keep it this flat; no extra layers without a task):
 | `components/catalog/` | catalog presentation pieces, incl. the only `'use client'` islands (search, preview) |
 | `features/<name>/` | feature data layer — `<name>-source.ts` = the ONLY data access point of a feature |
 | `lib/api-client.ts` | typed HTTP client + per-runtime base URL (`API_URL_INTERNAL` binding on the server, `NEXT_PUBLIC_API_URL` in the browser, same-origin `/api` default per root `vercel.json` rewrites) |
+| `lib/gsap.ts` | GSAP entry `useGsapScope` — client islands only, scoped `gsap.context` auto-revert cleanup, reduced-motion enforced; onboarding guide: `apps/web/README.md` |
+| `README.md` | newcomer onboarding — stack versions, structure, data flow & envs, animation pattern, known gotchas |
 | `mocks/` | fixtures mirroring the proposed shared contract |
 
 Data rule: pages fetch ONLY through `getCatalogSource()` /
@@ -61,6 +63,9 @@ adapter is config, not a rewrite. The catalog DTO shapes mirror the contract
 proposal awaiting Long's review in `packages/shared` — the moment it lands,
 imports move there and the local copies are deleted.
 
-Dependency policy: Tailwind v4 is the styling system; do not add state
-stores, animation stacks (GSAP/framer-motion), UX/UI kits (shadcn/ui), or
-Storybook without a task that proves the use case.
+Dependency policy: Tailwind v4 is the styling system. **GSAP is the approved
+animation stack** (owner decision — installed `^3.15.0`): use it ONLY through
+`lib/gsap.ts` (`useGsapScope`) inside client islands, and the entrance guide
+`apps/web/README.md` § Animation. Do not add other animation stacks
+(framer-motion/Motion), state stores, UX/UI kits (shadcn/ui), or Storybook
+without a task that proves the use case.

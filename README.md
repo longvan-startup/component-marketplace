@@ -10,7 +10,7 @@ epic #28. Catalog hiện chạy **mock data** (chi tiết: [Web & API mode](#web
 | Lĩnh vực | Công nghệ |
 |---|---|
 | Monorepo | Bun Workspaces |
-| Frontend | Next.js + TypeScript (strict) + Tailwind v4 (design tokens trong `@theme`) |
+| Frontend | Next.js + TypeScript (strict) + Tailwind v4 (design tokens trong `@theme`) + GSAP (client islands, reduced-motion mặc định) |
 | Backend | Bun + Express + TypeScript |
 | Database | PostgreSQL / Neon (production) |
 | ORM | Drizzle ORM (`@marketplace/db`, migrations, postgres.js) |
@@ -109,6 +109,8 @@ Zod 4 schemas dùng chung FE/BE — không tự đoán shape ở hai phía:
   probe — không grep nội dung UI).
 - Trên Vercel: path công khai của API là `/api/*` cùng domain; nội bộ
   (SSR) đi qua binding, path gốc; Docker giữ nguyên `/`, `/health`.
+- Animation: GSAP (client islands) qua `useGsapScope` — hướng dẫn tiếp nhận:
+  `apps/web/README.md`.
 
 ## Database (Drizzle ORM)
 
