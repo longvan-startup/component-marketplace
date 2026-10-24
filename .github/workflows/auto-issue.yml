@@ -1,0 +1,141 @@
+name: Auto issue on failure
+
+# Auto-issue guard: when CI or CD fails on `main`, an issue is opened
+# automatically so a red main can never go unnoticed. When the same workflow
+# goes green again, the auto issue is answered and closed (full audit trail —
+# no manual bookkeeping for the 2-owner team).
+#
+# Scope is `main` only: PR failures are surfaced by required checks on the PR
+# itself; duplicating them as issues would be noise.
+#
+# Dedupe + audit strategy:
+# - Every auto issue carries an HTML-comment marker
+#   `<!-- auto-issue:<workflow> -->` in its body.
+# - A later failure of the same workflow APPENDS a run link to the existing
+#   issue instead of opening a duplicate.
+# - A later success of the same workflow comments "green again" and closes it.
+#
+# Port style follows auto-assign-reviewers.yml / owner-scope.yml
+# (single github-script@v9 job, explicit permissions, no secrets beyond the
+# built-in GITHUB_TOKEN).
+
+on:
+  workflow_run:
+    workflows: ["CI", "CD"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: read
+  issues: write
+
+concurrency:
+  group: auto-issue-${{ github.event.workflow_run.name }}
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open / update on failure, close on success
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            if (!run) {
+              core.info('No workflow_run payload — nothing to do.');
+              return;
+            }
+            const wf = run.name;                    // 'CI' or 'CD'
+            const marker = `<!-- auto-issue:${wf} -->`;
+            const shaShort = run.head_sha.slice(0, 7);
+            const runUrl = run.html_url;
+            const title = `[auto] ${wf} failed on main`;
+
+            const listOpenAutoIssues = async () => {
+              const issues = await github.paginate(github.rest.issues.listForRepo, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: 'ci,github_actions',
+                per_page: 100,
+              });
+              return issues.filter((i) => i.body && i.body.includes(marker));
+            };
+
+            if (run.conclusion === 'success') {
+              const open = await listOpenAutoIssues();
+              for (const issue of open) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `Green again — ${wf} succeeded on main at \`${shaShort}\`.\n\nRun: ${runUrl}\n\nClosing automatically; history stays in this thread.`,
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed',
+                  state_reason: 'completed',
+                });
+                core.info(`Closed auto issue #${issue.number} (${wf} green on ${shaShort}).`);
+              }
+              return;
+            }
+
+            if (run.conclusion === 'skipped') {
+              core.info(`${wf} was skipped on ${shaShort} — no issue.`);
+              return;
+            }
+
+            // failure / cancelled / startup_failure / timed_out
+            const failedJobs = await github.paginate(
+              github.rest.actions.listJobsForWorkflowRun,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id,
+                per_page: 100,
+              },
+            ).then((jobs) =>
+              jobs.filter((j) => ['failure', 'cancelled', 'timed_out'].includes(j.conclusion))
+                  .map((j) => `- [${j.name}](${j.html_url}) → \`${j.conclusion}\``),
+            );
+
+            const body = [
+              marker,
+              `**${wf} failed on \`main\`**`,
+              '',
+              `- Commit: \`${shaShort}\` (\`${run.head_sha}\`)`,
+              `- Run: ${runUrl}`,
+              `- Event: \`${run.event}\` — conclusion: \`${run.conclusion}\``,
+              '',
+              '**Failed jobs**',
+              ...(failedJobs.length > 0 ? failedJobs : ['- (none reported — check the run log)']),
+              '',
+              '_Opened automatically by the `Auto issue on failure` workflow — closed automatically when `main` goes green again._',
+            ].join('\n');
+
+            const existing = await listOpenAutoIssues();
+            if (existing.length > 0) {
+              // Append the new failure to the open thread (newest first).
+              const issue = existing[0];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `**Still red — new failure** of ${wf} on main at \`${shaShort}\`.\n\nRun: ${runUrl}\n\nFailed jobs:\n${failedJobs.length > 0 ? failedJobs.join('\n') : '- (none reported — check the run log)'}`,
+              });
+              core.info(`Appended failure to existing auto issue #${issue.number}.`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ci', 'github_actions'],
+            });
+            core.info(`Opened auto issue #${created.data.number} for ${wf} failure.`);
