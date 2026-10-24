@@ -1,0 +1,111 @@
+name: Auto close issues
+
+# Closes issues when the code that implements them reaches `main`.
+#
+# Flow: a PR is merged → the bot scans the PR title/body + every commit
+# message for closing-keyword references (`fixes/close/resolves/implement… #n`).
+# Any still-open issue matched that way is commented on with the merge link
+# and closed (`state_reason: completed`).
+#
+# Why a bot when GitHub already closes via squash-merge keywords?
+# Belt & suspenders — keyword references live in PR COMMENT threads or inside
+# individual commits that squash-rebase folds differently; those cases can
+# survive a merge with the issue still open. This guarantees the board stays
+# truthful: merged code = closed issue, or a human-visible comment explaining
+# why it stayed open.
+#
+# Deliberately conservative:
+# - plain references ("context: #n", "supersedes #n later") DON'T close —
+#   only explicit closing verbs do;
+# - references to other pull requests are skipped;
+# - cross-repo refs are out of scope (#n here always means this repo);
+# - an issue already closed (by GitHub's own resolution or a human) is left
+#   untouched.
+#
+# Companion of `auto-issue.yml` (CI/CD red → open; green → close).
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: auto-close-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  close-linked:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close issues referenced with closing keywords
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const KEYWORD_RE =
+              /\b(?:fix(?:es|ed)?|clos(?:es|ed)?|resolv(?:es|ed)?|implement(?:s|ed)?)\s*:?\s*#(\d+)/gi;
+
+            const texts = [pr.title, pr.body || ''];
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            for (const c of commits) {
+              texts.push(c.commit.message);
+            }
+
+            const issueNumbers = new Set();
+            for (const text of texts) {
+              for (const m of text.matchAll(KEYWORD_RE)) {
+                const n = Number(m[1]);
+                if (n !== pr.number) issueNumbers.add(n);
+              }
+            }
+
+            if (issueNumbers.size === 0) {
+              core.info('No closing-keyword issue references — nothing to close.');
+              return;
+            }
+
+            for (const issueNumber of issueNumbers) {
+              const { data: issue } = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+              });
+
+              // Only this repo's open, non-PR issues participate.
+              if (issue.pull_request !== undefined) {
+                core.info(`#${issueNumber} is a pull request — skip.`);
+                continue;
+              }
+              if (issue.state !== 'open') {
+                core.info(`#${issueNumber} already ${issue.state} — skip.`);
+                continue;
+              }
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: [
+                  `✅ **Auto-closed** — implemented and merged by #${pr.number} in \`${pr.merge_commit_sha.slice(0, 7)}\`.\n`,
+                  '> Closed automatically by the `Auto close issues` workflow via a closing-keyword reference',
+                  '> (`fixes/closes/resolves/implements … #this`). If closing is wrong, reopen and ping the owners.',
+                ].join('\n'),
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+              core.info(`Closed issue #${issueNumber} via PR #${pr.number}.`);
+            }

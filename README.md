@@ -231,6 +231,8 @@ Workflow phụ trợ:
 - `owner-scope.yml` — chặn PR cross-domain thiếu nhãn `cross-domain`;
 - `auto-assign-reviewers.yml` — tự request review owner còn lại;
 - `auto-issue.yml` — CI/CD đỏ trên `main` ⇒ tự mở issue ghim chi tiết;
-  xanh trở lại ⇒ tự comment + đóng.
+  xanh trở lại ⇒ tự comment + đóng;
+- `auto-close-issues.yml` — PR chứa `fixes/closes/resolves/implements… #n`
+  mà issue vẫn mở ⇒ tự comment link merge + đóng.
 
 Trạng thái CD chi tiết + runbook từng layer: `docs/DEPLOYMENT.md`.
