@@ -23,11 +23,10 @@ smoke_require_compose_support() {
   fi
   major="${version%%.*}"
   minor="$(echo "$version" | cut -d. -f2)"
-  if [[ "$major" != 2 ]]; then
-    echo "docker compose major=$major not supported (need >= $_min_compose_version)"
-    return 1
-  fi
-  if [[ $minor -lt 24 ]]; then
+  # Numeric floor: any version whose (major, minor) >= (2, 24) understands
+  # the merge/override tags used by compose.verify.yaml (Compose 2.x labels
+  # and newer v3+/v5+ stacks both satisfy this).
+  if (( major < 2 )) || { (( major == 2 )) && (( minor < 24 )); }; then
     echo "docker compose v$version too old — need >= $_min_compose_version for compose.verify.yaml merge tags"
     return 1
   fi
