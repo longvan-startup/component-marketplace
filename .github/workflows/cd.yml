@@ -37,15 +37,15 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
-      - name: Validate deploy/vps/compose.yaml (deploy manifest sanity)
-        env:
-          DATABASE_URL: postgres://u:p@ep-placeholder.neon.tech/db?sslmode=require
-        run: docker compose -f deploy/vps/compose.yaml -p cd-manifest-check config -q
-
       - name: Checkout (CI-validated commit)
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Validate deploy/vps/compose.yaml (deploy manifest sanity)
+        env:
+          DATABASE_URL: postgres://u:p@ep-placeholder.neon.tech/db?sslmode=require
+        run: docker compose -f deploy/vps/compose.yaml -p cd-manifest-check config -q
 
       - name: Docker meta (sha + latest tags)
         id: meta
