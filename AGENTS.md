@@ -57,24 +57,31 @@ Cross-domain imports are CI-enforced: `bun run boundary`. A PR touching both
 `apps/web/**` and backend code (`apps/api/**`, `packages/db/**`) must carry the
 `cross-domain` label (see the owner-scope workflow).
 
-## Agent skills — frontend craft & quality kit
+## Agent skills — the kit (ported from the `ttu-platform` reference project)
 
 `.agents/skills/<id>/SKILL.md` (discovered by OpenCode automatically; readable
-by any agent as plain docs) carries the frontend skills ported from the
-`ttu-platform` reference project plus one repo-specific skill:
+by any agent as plain docs) is the repo's skill kit. Selection rule (kept from
+the source project): consult **only the skills relevant to the task** — never
+all, never none. State which skills were consulted in the PR body when the
+change is non-trivial.
 
-**Repo conventions (web work):** `web-conventions`.
+**Repo conventions (work-domain entry points):** `web-conventions` (frontend),
+`api-conventions` (backend).
 
 **Design/motion craft (`apps/web` UI/UX tasks):** `frontend-design`,
 `emil-design-eng`, `apple-design`, `interaction-design`, `adapt`,
 `beautiful-shadows`, `reactbits`, `design-review`, `better-interface`.
 
-**Quality filters (UI, code, copy, a11y, mobile):** `antislop` (core, load
-first when running the family) + `antislop-ui`, `antislop-code`,
-`antislop-layoutmobile`, `antislop-copywriting`, `antislop-human`.
+**Quality filters:** `antislop` (core, load first when running the family) +
+`antislop-ui`, `antislop-code`, `antislop-layoutmobile`, `antislop-copywriting`,
+`antislop-human`.
 
-Selection rule (from the source project, kept to avoid blind toolchain runs):
-consult **only the skills relevant to the task** — never all, never none. For
-any task touching `apps/web` UI/UX, at minimum run `web-conventions` +
-`antislop` (core); state which skills were consulted in the PR body when the
-change is non-trivial.
+**Backend & API:** `backend-patterns`, `api-design`, `changing-the-database-schema`.
+
+**Workflow gates (any task):** `branch-and-document`, `git-commit`, `github-pr`,
+`autoreview`, `verifying-monorepo-changes`, `diagram-design`.
+
+Minimum consult per task type: any `apps/web` UI/UX change → `web-conventions`
++ `antislop` (core) + relevant craft skills; any backend/schema change →
+`api-conventions` + `changing-the-database-schema` when migrations are touched;
+every commit/PR → `git-commit` / `github-pr`.
