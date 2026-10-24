@@ -32,28 +32,43 @@ CI green on main
 Each layer activates independently the moment its secret(s) exist — no code
 changes needed.
 
-## 1. Web — Vercel Git Integration (no secrets in GitHub)
+## 1. Vercel Services — one project, api + web (no secrets in GitHub)
+
+Current layout: root `vercel.json` defines two services — `api` (`apps/api`,
+Express, internal) and `web` (`apps/web`, Next.js, public); top-level rewrites
+route `/api/(.*)` → api and `/(.*)` → web. The web service declares a binding
+to api which injects the internal base URL as `API_URL_INTERNAL` (read by
+`apps/web/lib/api-client.ts` for SSR calls). The api also stays reachable
+publicly with the same path prefix it sees (`/api/health`, …) — the Express
+routes are mounted under `/api` **in addition to** `/` when `VERCEL` is set,
+so Docker/VPS behavior is unchanged.
 
 Manual one-time setup (Vercel dashboard):
 
 1. Browse <https://vercel.com> → Add New… → Project → **Import** the
-   `longvan-startup/component-marketplace` GitHub repo (first time: install the
-   Vercel GitHub App and grant it access to the `longvan-startup` org — the
-   org owner approves this inside GitHub, on the Vercel-initiated page).
-2. Project Settings → **General → Root Directory** = `apps/web`
-   (framework auto-detects Next.js).
-3. Environment variables (Project → Settings → Environment Variables):
-   - `NEXT_PUBLIC_API_URL` = public URL of the API (e.g. `https://api.<domain>`)
-     — set for **Production** + **Preview**. NOTE: until the API is actually
-     public (VPS layer live), leave it unset — the web catalog falls back to
-     mock data by design (`API_MODE` default `mock`), so the first Vercel
-     deploy must NOT wait on this variable.
-4. Build overrides unnecessary; Vercel handles `bun`-based monorepo install if
-   Root Directory is set. Verify the first deploy log shows `next build`.
-5. Done: every PR gets a **preview** deployment comment; pushes to `main`
-   produce production deploys (rollback = Vercel Instant Rollback).
+   `longvan-startup/component-marketplace` GitHub repo (install the Vercel
+   GitHub App for the `longvan-startup` org — org owner approves).
+   The `vercel.json` committed at the repo root drives the services config;
+   leave Root Directory unset (services carry their own roots).
+2. Environment Variables for the **api** service: `DATABASE_URL` = Neon pooled
+   connection string (gated DB; unset ⇒ `/health` still OK, `/health/db` 503
+   by design). No Web variables needed: browser calls default to same-origin
+   `/api`, SSR calls use the injected binding.
+3. Local parity: `vercel dev` runs both services and injects the binding
+   (CLI ≥ 47.0.5).
+4. Done: every PR gets a **preview** deployment (both services, preview-scoped
+   binding); pushes to `main` produce production deploys with Instant Rollback.
 
-Nothing in this repo calls Vercel; no deploy secrets exist by design.
+Nothing in this repo calls the Vercel API; no deploy secrets exist by design.
+
+### VPS path (§2) — status under Services
+
+The GHCR + VPS deploy layer stays valid independently (deploy/manifest
+unchanged, job gated by SSH secrets). It can be activated as a second
+transport for the api (e.g. self-hosted fallback or WebSocket hosting for the
+chat milestone M3) while Vercel serves the public `/api/*` surface. Keeping
+both is a small-cost option; deactivating the VPS path means never setting its
+secrets.
 
 ## 2. API — GHCR + VPS auto-deploy
 

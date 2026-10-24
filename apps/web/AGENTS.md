@@ -50,7 +50,7 @@ Feature-based layout (keep it this flat; no extra layers without a task):
 | `components/layout/` | shared site shell (header/footer) |
 | `components/catalog/` | catalog presentation pieces, incl. the only `'use client'` islands (search, preview) |
 | `features/<name>/` | feature data layer — `<name>-source.ts` = the ONLY data access point of a feature |
-| `lib/api-client.ts` | typed HTTP client + per-runtime base URL (`API_URL_INTERNAL` on the server, `NEXT_PUBLIC_API_URL` in the browser) |
+| `lib/api-client.ts` | typed HTTP client + per-runtime base URL (`API_URL_INTERNAL` binding on the server, `NEXT_PUBLIC_API_URL` in the browser, same-origin `/api` default per root `vercel.json` rewrites) |
 | `mocks/` | fixtures mirroring the proposed shared contract |
 
 Data rule: pages fetch ONLY through `getCatalogSource()` /

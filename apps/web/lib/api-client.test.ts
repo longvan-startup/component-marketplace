@@ -34,10 +34,13 @@ describe('resolveApiBaseUrl — per-runtime base URL config', () => {
     expect(resolveApiBaseUrl('browser')).toBe('https://public.example.test')
   })
 
-  test('missing config yields an empty base (explicit failure, not localhost)', () => {
+  test('missing config falls back to the same-origin /api path (Vercel services rewrite)', () => {
     expect(
       resolveApiBaseUrl('browser', { publicApiUrl: undefined, internalApiUrl: undefined }),
-    ).toBe('')
+    ).toBe('/api')
+    expect(
+      resolveApiBaseUrl('server', { publicApiUrl: undefined, internalApiUrl: undefined }),
+    ).toBe('/api')
   })
 })
 
