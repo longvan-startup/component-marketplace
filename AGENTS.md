@@ -56,3 +56,25 @@ Tool discovery (verified 2026-10-22 against current tool docs):
 Cross-domain imports are CI-enforced: `bun run boundary`. A PR touching both
 `apps/web/**` and backend code (`apps/api/**`, `packages/db/**`) must carry the
 `cross-domain` label (see the owner-scope workflow).
+
+## Agent skills — frontend craft & quality kit
+
+`.agents/skills/<id>/SKILL.md` (discovered by OpenCode automatically; readable
+by any agent as plain docs) carries the frontend skills ported from the
+`ttu-platform` reference project plus one repo-specific skill:
+
+**Repo conventions (web work):** `web-conventions`.
+
+**Design/motion craft (`apps/web` UI/UX tasks):** `frontend-design`,
+`emil-design-eng`, `apple-design`, `interaction-design`, `adapt`,
+`beautiful-shadows`, `reactbits`, `design-review`, `better-interface`.
+
+**Quality filters (UI, code, copy, a11y, mobile):** `antislop` (core, load
+first when running the family) + `antislop-ui`, `antislop-code`,
+`antislop-layoutmobile`, `antislop-copywriting`, `antislop-human`.
+
+Selection rule (from the source project, kept to avoid blind toolchain runs):
+consult **only the skills relevant to the task** — never all, never none. For
+any task touching `apps/web` UI/UX, at minimum run `web-conventions` +
+`antislop` (core); state which skills were consulted in the PR body when the
+change is non-trivial.
