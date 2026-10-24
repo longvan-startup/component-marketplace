@@ -96,7 +96,7 @@ if [[ "${1:-}" == "--docker" || "${1:-}" == "--docker-only" ]]; then
   }
   probe_wait "API /health" api "http://127.0.0.1:4000/health" '"status":"ok"'
   probe_wait "API /health/db (real Postgres connection)" api "http://127.0.0.1:4000/health/db" '"database":"connected"'
-  probe_wait "Web /" web "http://127.0.0.1:3000/" "Component Marketplace"
+  probe_wait "Web /" web "http://127.0.0.1:3000/" 'data-smoke="web"'
 
   # --- DB migration smoke on the throwaway DB (blank volume) ---
   migrate_log="$(docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml run --rm migrate 2>&1 || true)"
