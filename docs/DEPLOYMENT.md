@@ -36,13 +36,18 @@ changes needed.
 
 Manual one-time setup (Vercel dashboard):
 
-1. vірáp://vercel.com → Add New… → Project → **Import** the
-   `longvan-startup/component-marketplace` GitHub repo.
+1. Browse <https://vercel.com> → Add New… → Project → **Import** the
+   `longvan-startup/component-marketplace` GitHub repo (first time: install the
+   Vercel GitHub App and grant it access to the `longvan-startup` org — the
+   org owner approves this inside GitHub, on the Vercel-initiated page).
 2. Project Settings → **General → Root Directory** = `apps/web`
    (framework auto-detects Next.js).
 3. Environment variables (Project → Settings → Environment Variables):
    - `NEXT_PUBLIC_API_URL` = public URL of the API (e.g. `https://api.<domain>`)
-     — set for **Production** + **Preview**.
+     — set for **Production** + **Preview**. NOTE: until the API is actually
+     public (VPS layer live), leave it unset — the web catalog falls back to
+     mock data by design (`API_MODE` default `mock`), so the first Vercel
+     deploy must NOT wait on this variable.
 4. Build overrides unnecessary; Vercel handles `bun`-based monorepo install if
    Root Directory is set. Verify the first deploy log shows `next build`.
 5. Done: every PR gets a **preview** deployment comment; pushes to `main`
