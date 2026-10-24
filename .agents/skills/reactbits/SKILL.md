@@ -8,7 +8,7 @@ source: https://www.reactbits.dev/get-started/introduction
 
 React Bits (`reactbits.dev`, github.com/DavidHDev/react-bits) is an open-source collection of 200+ animated, interactive, fully customizable React components and micro-interactions: text animations, backgrounds, UI components, and micro interactions. Use it when a surface needs a distinctive animated element (hero background, text reveal, scroll effect, interactive card) rather than hand-rolling one from scratch.
 
-- **4 variants per component**: JS-CSS, JS-TW, TS-CSS, TS-TW. In this repo (`apps/web`/`apps/admin` are Next.js 16 + React 19 + TypeScript + Tailwind 4), always pick the **TS-TW** variant.
+- **4 variants per component**: JS-CSS, JS-TW, TS-CSS, TS-TW. In this repo (`apps/web` is Next.js 16 + React 19 + TypeScript; Tailwind is not installed yet), prefer the **TS-TW** variant only if the task explicitly sets up Tailwind 4; otherwise use the **TS-CSS** variant.
 - **Minimal dependencies**, tree-shakeable, copy-paste or CLI-installed — components land as source in the project, not as an opaque npm dependency.
 - **License**: MIT + Commons Clause — free for personal and commercial use in a project; the Commons Clause only restricts reselling React Bits itself as a competing product/service.
 - Categories: 💬 Text Animations · 🌀 Animations · 🧩 Components · ⚡ Micro interactions · 🖼️ Backgrounds. Free creative tools also exist at reactbits.dev/tools (Background Studio, Shape Magic, Texture Lab) for exporting custom animated backgrounds/shapes/textures as code, SVG, image, or video.
