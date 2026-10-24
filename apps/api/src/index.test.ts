@@ -6,7 +6,7 @@
  */
 
 import { afterAll, describe, expect, test } from 'bun:test'
-import { createServer } from './index'
+import { createServer, resolveMountPaths } from './index'
 
 const { app } = createServer()
 
@@ -58,5 +58,33 @@ describe('API smoke', () => {
     expect(res.status).toBe(200)
     const body = (await res.json()) as { message: string }
     expect(body.message).toContain('skeleton OK')
+  })
+})
+
+describe('Vercel Services mounts (env VERCEL)', () => {
+  test('mặc định (Docker/host): chỉ mount `/`', () => {
+    expect(resolveMountPaths(undefined)).toEqual(['/'])
+  })
+
+  test('VERCEL set: mount song song `/api` + `/` — public ingress dùng prefix, binding calls không', async () => {
+    process.env.VERCEL = '1'
+    try {
+      const { app: vercelApp } = createServer()
+      const s = vercelApp.listen(0)
+      const p = (s.address() as { port: number }).port
+      try {
+        // Public surface qua rewrite: same path prefix /api (docs/services/routing)
+        const viaPrefix = await fetch(`http://127.0.0.1:${p}/api/health`)
+        expect(viaPrefix.status).toBe(200)
+
+        // Internal binding call không đi qua rewrite: path gốc vẫn hoạt động
+        const viaBinding = await fetch(`http://127.0.0.1:${p}/health`)
+        expect(viaBinding.status).toBe(200)
+      } finally {
+        s.close()
+      }
+    } finally {
+      delete process.env.VERCEL
+    }
   })
 })

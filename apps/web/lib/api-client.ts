@@ -3,16 +3,28 @@
  *
  * Rules encoded here (see apps/web/AGENTS.md + the shared contract proposal):
  * - The web app NEVER imports backend/db code; everything crosses HTTP.
- * - The API base URL differs per runtime, and it is never hardcoded:
- *     · browser (`runtime: 'browser'`)      → NEXT_PUBLIC_API_URL (public origin)
- *     · Next server runtime (`'server'`)    → API_URL_INTERNAL when present
- *       (in the compose/Docker network this is `http://api:4000`), falling
- *       back to NEXT_PUBLIC_API_URL for bare-metal dev.
+ * - The API base URL differs per runtime, and it is never hardcoded to a
+ *   host (localhost included). Resolution order:
+ *     · browser (`runtime: 'browser'`)      → NEXT_PUBLIC_API_URL, else the
+ *       same-origin `/api` path (the public rewrite into the api service in
+ *       the Vercel Services layout — see root vercel.json).
+ *     · Next server runtime (`'server'`)    → API_URL_INTERNAL (injected by
+ *       the `web` service binding in vercel.json) → NEXT_PUBLIC_API_URL →
+ *       same-origin `/api` fallback.
  * - Secrets never go through this client; it only reads non-secret config.
  */
 
 /** Runtime the request is issued from (decides which base URL applies). */
 export type ApiRuntime = 'browser' | 'server'
+
+/**
+ * Same-origin default when no explicit URL is configured. This matches the
+ * public rewrite `/api/(.*)` → api service (`vercel.json`), so a Vercel
+ * deployment with zero env config still reaches the api over the public
+ * surface. Relative on purpose (browser) — SSR callers get the internal
+ * binding URL first.
+ */
+export const DEFAULT_API_BASE = '/api'
 
 interface BaseUrlConfig {
   publicApiUrl: string | undefined
@@ -31,7 +43,7 @@ export function resolveApiBaseUrl(
   },
 ): string {
   if (runtime === 'server' && config.internalApiUrl) return config.internalApiUrl
-  return config.publicApiUrl ?? ''
+  return config.publicApiUrl ?? DEFAULT_API_BASE
 }
 
 /** Normalized error for every non-2xx response or network failure. */
