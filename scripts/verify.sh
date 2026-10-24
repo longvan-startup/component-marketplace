@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 # =============================================================
-# verify.sh — chạy toàn bộ quality gates (docs/ENGINEERING.md)
+# verify.sh — runs the full quality-gate suite (docs/ENGINEERING.md)
 #
-# Dùng cho agent + dev trước khi commit/PR:
-#   bun run verify            # lint + typecheck + test + build
-#   bun run verify --docker   # + Docker runtime smoke (compose up + probe)
+# For agents + devs, before commit/PR:
+#   bun run verify              # lint + boundary + typecheck + test + build
+#   bun run verify --docker     # + Docker runtime smoke
+#   bun run verify --docker-only# gateway to CI parity: skip host gates
 #
-# Probe trả 0/1, không in nội dung; key metrics in ra cuối để copy vào PR body.
+# Docker smoke isolation (P0): each run gets a UNIQUE compose project
+# (cmp-verify-*) with NO host ports published; the trap cleanup removes only
+# label-scoped resources of that project. Development volumes are untouched.
+# Probes run inside containers — no dependence on host localhost.
+# Probes print pass/fail only; no secret values are ever echoed.
 # =============================================================
 set -euo pipefail
 
@@ -26,40 +31,125 @@ run_gate() {
   fi
 }
 
-run_gate "Lint (Biome)" bun run lint
-run_gate "Typecheck" bun run typecheck
-run_gate "Test (bun test)" bun test
-run_gate "Build (shared→api→web)" bun run build
+# --- Host gates ---
+# --docker-only is for the CI docker job only (job already gated after quality).
+_RUN_HOST_GATES=1
+for _arg in "$@"; do
+  if [[ "$_arg" == "--docker-only" ]]; then _RUN_HOST_GATES=0; fi
+done
 
-if [[ "${1:-}" == "--docker" ]]; then
-  run_gate "Compose validate" docker compose config -q
-  echo "▶ Docker runtime smoke (up --build + probe)... "
-  docker compose up -d --build > /dev/null 2>&1 || { echo "FAIL: docker compose up"; FAILED=1; }
+if [[ "$_RUN_HOST_GATES" == "1" ]]; then
+  run_gate "Lint (Biome)" bun run lint
+  run_gate "Boundary (workspace imports)" bun run boundary
+  run_gate "Typecheck" bun run typecheck
+  run_gate "Test (bun test)" bun test
+  run_gate "Build (shared→api→web)" bun run build
+fi
 
-  probe_api=""
-  for _ in $(seq 1 45); do
-    if docker compose exec -T api wget -qO- http://127.0.0.1:4000/health 2>/dev/null | grep -q '"status":"ok"'; then
-      probe_api="ok"; break
+# --- Docker isolation smoke ---
+if [[ "${1:-}" == "--docker" || "${1:-}" == "--docker-only" ]]; then
+  # shellcheck source=./docker-smoke.lib.sh
+  source "$(dirname "$0")/docker-smoke.lib.sh"
+
+  run_gate "Compose version (>= 2.24 for isolation overlay)" smoke_require_compose_support
+  run_gate "Compose validate (base + verify overlay, no host ports)" \
+    docker compose -f compose.yaml -f compose.verify.yaml config -q
+
+  SMOKE_PROJECT="$(smoke_project_name)"
+  SMOKE_CLEANED=0
+  # EXIT trap: removes ONLY resources labeled with the verify project. If the
+  # script is interrupted (Ctrl-C, CI timeout) the same scoped cleanup runs.
+  on_smoke_exit() {
+    if [[ -n "$SMOKE_PROJECT" && "$SMOKE_CLEANED" == "0" ]]; then
+      echo "◻ cleanup: removing verify project ${SMOKE_PROJECT} (label-scoped, dev volumes untouched)"
+      smoke_cleanup "$SMOKE_PROJECT" >/dev/null 2>&1 || \
+        echo "⚠ cleanup left resources in project ${SMOKE_PROJECT} (inspect with docker compose -p ${SMOKE_PROJECT} ps)"
     fi
-    sleep 2
-  done
-  if [[ "$probe_api" == "ok" ]]; then
-    echo "PASS: Docker runtime — API /health"
+  }
+  trap on_smoke_exit EXIT
+
+  echo "▶ Docker runtime smoke: project ${SMOKE_PROJECT} (up --build + in-container probes)"
+  if docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml up -d --build >/dev/null 2>&1; then
+    echo "PASS: Docker stack up (isolated project)"
   else
-    echo "FAIL: Docker runtime — API /health không đạt trong 90s"
-    docker compose logs api | tail -20 || true
+    echo "FAIL: docker compose up"
+    docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml logs api web 2>/dev/null | tail -20 || true
     FAILED=1
   fi
 
-  if docker compose exec -T web wget -qO- http://127.0.0.1:3000/ 2>/dev/null | grep -q 'Component Marketplace'; then
-    echo "PASS: Docker runtime — Web /"
+  probe_wait() {
+    # probe_wait <name> <service> <url> <grep>
+    local name="$1" service="$2" url="$3" pattern="$4"
+    local ok=0
+    for _ in $(seq 1 45); do
+      if docker compose -p "$SMOKE_PROJECT" exec -T "$service" wget -qO- "$url" 2>/dev/null | grep -q "$pattern"; then
+        ok=1; break
+      fi
+      sleep 2
+    done
+    if [[ "$ok" == "1" ]]; then echo "PASS: Docker runtime — $name"
+    else
+      echo "FAIL: Docker runtime — $name did not match within 90s"
+      docker compose -p "$SMOKE_PROJECT" logs "$service" 2>/dev/null | tail -20 || true
+      FAILED=1
+    fi
+  }
+  probe_wait "API /health" api "http://127.0.0.1:4000/health" '"status":"ok"'
+  probe_wait "API /health/db (real Postgres connection)" api "http://127.0.0.1:4000/health/db" '"database":"connected"'
+  probe_wait "Web /" web "http://127.0.0.1:3000/" "Component Marketplace"
+
+  # --- DB migration smoke on the throwaway DB (blank volume) ---
+  migrate_log="$(docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml run --rm migrate 2>&1 || true)"
+  if echo "$migrate_log" | grep -qE 'error|Error|cannot|refused'; then
+    echo "FAIL: DB migration smoke — drizzle-kit migrate errored"
+    echo "$migrate_log" | tail -20
+    FAILED=1
   else
-    echo "FAIL: Docker runtime — Web / không trả nội dung mong đợi"
-    docker compose logs web | tail -20 || true
+    echo "PASS: DB migration smoke — drizzle-kit migrate applied on blank volume"
+    echo "$migrate_log" | tail -3
+  fi
+
+  # --- DB migration smoke on the throwaway DB (blank volume) ---
+  tables=""; psql_dbg=""
+  # Prefer the fully-resolved -f pair (same model the stack was created with).
+  tables="$(docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml exec -T postgres \
+    psql -U postgres -d "${POSTGRES_DB:-component_marketplace}" -tAc \
+    "SELECT tablename FROM pg_tables WHERE schemaname='public'" 2>&1 || true)"
+  # Fallback: plain base compose (service running in that project either way).
+  if [[ -z "$tables" ]]; then
+    tables="$(docker compose -p "$SMOKE_PROJECT" exec -T postgres \
+      psql -U postgres -d "${POSTGRES_DB:-component_marketplace}" -tAc \
+      "SELECT tablename FROM pg_tables WHERE schemaname='public'" 2>&1 || true)"
+    psql_dbg="fallback exec used; primary exec returned empty"
+  fi
+  if echo "$tables" | grep -qx users && echo "$tables" | grep -qx components; then
+    echo "PASS: DB migration smoke — public.users + public.components exist"
+  else
+    echo "FAIL: DB migration smoke — expected tables missing"
+    echo "  psql result: [${tables}] (${psql_dbg})"
+    echo "  diagnostic: $(docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml exec -T postgres psql -U postgres -d component_marketplace -tAc "SELECT current_database(), current_schema()" 2>&1 || true)"
     FAILED=1
   fi
 
-  docker compose down -v > /dev/null 2>&1 || true
+  # Idempotency: a second migrate run against the same DB must be a no-op (exit 0).
+  migrate_log2="$(docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml run --rm migrate 2>&1 || true)"
+  if echo "$migrate_log2" | grep -qE 'error|Error|cannot|refused'; then
+    echo "FAIL: DB migration smoke — second migrate run not idempotent"
+    echo "$migrate_log2" | tail -10
+    FAILED=1
+  else
+    echo "PASS: DB migration smoke — second migrate run is a no-op (idempotent)"
+  fi
+
+  if [[ "$FAILED" == "0" ]]; then
+    echo "◻ cleanup: removing verify project ${SMOKE_PROJECT} (label-scoped, dev volumes untouched)"
+    if smoke_cleanup "$SMOKE_PROJECT" >/dev/null 2>&1; then
+      SMOKE_CLEANED=1
+      echo "PASS: Docker cleanup — verify project removed; other compose projects unaffected"
+    else
+      echo "⚠ cleanup returned non-zero (leftovers may exist in ${SMOKE_PROJECT})"
+    fi
+  fi
 fi
 
 echo "══════════════════════════════════════════"

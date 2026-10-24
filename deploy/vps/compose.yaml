@@ -1,0 +1,27 @@
+# ==========================================================================
+# deploy/vps/compose.yaml — production compose for the VPS.
+# Copy this directory to /opt/cmp-api on the VPS (docs/DEPLOYMENT.md).
+# Runs the PREBUILT image from GHCR (published by the CD workflow) — no
+# builds on the VPS, no repo needed. Secrets live ONLY in local .env.
+# ==========================================================================
+name: cmp-api
+
+services:
+  api:
+    # CD workflow publishes: ghcr.io/longvan-startup/cmp-api:{sha-*,latest}
+    image: ${API_IMAGE:-ghcr.io/longvan-startup/cmp-api:latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL required — the Neon connection string}
+    ports:
+      # Bind to localhost only; TLS termination belongs to the reverse proxy
+      # (nginx/caddy) on the VPS. Override with API_PORT in .env if needed.
+      - '${API_BIND:-127.0.0.1}:${API_PORT:-4000}:4000'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

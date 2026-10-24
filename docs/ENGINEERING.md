@@ -44,16 +44,24 @@ Việc bắt buộc review ở tầng GitHub được quản bằng **branch pro
 
 ## Quality gates
 
-Chạy toàn bộ gates (trừ Docker runtime) bằng **một lệnh**: `bun run verify`
-(`scripts/verify.sh` — thêm `--docker` để chạy kèm lớp Docker runtime compose).
+Run the full set of gates (excluding Docker runtime) with a single command:
+`bun run verify` (`scripts/verify.sh` — add `--docker` to include the compose
+runtime smoke layer).
 
-| Gate | Lệnh | PASS khi |
+| Gate | Command | PASS when |
 |---|---|---|
-| Lint | `bun run lint` | 0 lỗi 0 warning từ Biome |
-| Typecheck | `bun run typecheck` | `tsc --noEmit` pass cho shared + api + web (test file không nằm trong tsc; được runtime kiểm khi `bun test`) |
-| Test | `bun test` | 0 failed; test phải có assert thật |
-| Build | `bun run build` | exit 0; artifact đúng vị trí `dist`/`.next` |
-| Docker runtime | CI job `docker-runtime` | compose up healthy + `/health` & web `/` trả đúng contract |
+| Lint | `bun run lint` | 0 errors, 0 warnings from Biome |
+| Boundary | `bun run boundary` | 0 cross-workspace imports (web→DB/api, api→web, shared→internal deps) |
+| Typecheck | `bun run typecheck` | `tsc --noEmit` passes for shared + db + api + web (test files are excluded from tsc; checked at runtime by `bun test`) |
+| Test | `bun test` | 0 failures; tests must contain real assertions |
+| Build | `bun run build` | exit 0; artifacts in the expected `dist`/`.next` paths |
+| Docker runtime | CI job `docker-runtime` — or `bun run verify --docker` locally | compose runs inside an **isolated project** `cmp-verify-*` (no host ports published) + in-container probes `/health`, `/health/db` (`= connected`), web `/` + DB migration smoke on a blank volume (`users`/`components` tables exist, a repeated migrate is a no-op) |
+
+Docker isolation (mandatory — see `scripts/docker-smoke.lib.sh`): smoke runs must
+NEVER use the development Compose project; the `down -v` cleanup only touches
+resources labeled with the verify project (proven by
+`scripts/test-compose-isolation.sh`). `bun run verify --docker-only` skips the
+host gates and is used by CI parity runs only.
 
 Kết quả mỗi gate **chỉ được báo PASS / FAIL / UNVERIFIED** — không có "gần như" hay "chắc chắn pass".
 

@@ -1,93 +1,114 @@
-# Deployment & CD — Thiết kế (chưa kích hoạt)
+# Deployment & CD — current state and activation runbook
 
-> File này là **kế hoạch**, chưa có deployment nào được cấu hình tự động.
-> Mọi phần "kích hoạt" đều phải qua mục **Checklist kích hoạt** và sự xác nhận của repo owner.
+Source of truth for CDN/CD. Status verified with real commands (latest check:
+2026-10-23). Every change after this date must update the verified-state table.
 
-## Trạng thái đã kiểm chứng (2026-10-22, bằng lệnh thật — không phải ước đoán)
+## Verified state (2026-10-23)
 
-| Hạng mục | Kết quả | Cách kiểm |
+| Item | Status | How verified |
 |---|---|---|
-| GitHub repo secrets | **0** | `gh api repos/.../actions/secrets` |
-| GitHub Environments | **[]** (không có) | `gh api repos/.../environments` |
-| CD workflow | **Không tồn tại** (CI có 1 workflow: `ci.yml`) | `ls .github/workflows/` |
-| Deploy tooling trên máy | **Không có** (vercel/railway/fly/wrangler đều vắng) | `which ...` |
-| Token GitHub đang dùng | scopes: `gist, read:org, repo, workflow` — **không đủ** auth provider nào | `gh auth status` |
-| Hosting targets | Chưa xác minh Vercel / Mắt Bão VPS | chưa có credential nào |
-| Branch protection `main` | Đã enforce (2 status checks + 1 approval + admin enforced) | `gh api .../branches/main/protection` |
+| CI (`ci.yml`) | green on main (lint+boundary+typecheck+test+build+docker isolation+DB migration smoke) | `gh run list` |
+| CD workflow (`cd.yml`) | **exists** (this PR) — publishes api image to GHCR; production steps gated by repo secrets | `ls .github/workflows/` |
+| GHCR publish | ready to run — uses built-in `GITHUB_TOKEN`, runs automatically after CI-green main push | workflow source |
+| Repo secrets | to be created by owner when activating each layer | `gh api repos/.../actions/secrets` |
+| Web deploy target | **Vercel Git Integration** (owner decision 2026-10-23) — no deploy tokens in repo | decision |
+| API deploy target | **VPS + SSH auto-deploy**, gated by secrets `SSH_HOST/SSH_USER/SSH_KEY` (owner decision) | decision |
+| Production DB | **Neon**, migrate job gated by secret `PROD_DATABASE_URL` (owner decision) | decision |
+| Branch protection `main` | `enforce_admins=false` (must be re-enabled), `require_code_owner_reviews=false`, approvals=1 | `gh api .../branches/main/protection` |
 
-**Kết luận: không cấu hình deployment trong PR này.** Chỉ tài liệu hoá quyết định cần
-mục tiêu + quyền, sau đó mới dần bật từng phần.
+## Pipeline flow (on main push, after CI green)
 
-## Mục tiêu môi trường
+```
+CI green on main
+   └─► cd.yml (workflow_run)
+        ├─ 1. docker-publish  → ghcr.io/longvan-startup/cmp-api:{sha-*,latest}
+        ├─ 2. db-migrate      → runs `drizzle-kit migrate` against Neon
+        │     (SKIPPED with notice while PROD_DATABASE_URL is absent;
+        │      refuses localhost URLs as a dev-DB safety guard)
+        └─ 3. deploy-vps      → ssh: docker compose pull + up + /health assert
+              (SKIPPED with notice while SSH secrets are absent)
+```
 
-| Môi trường | Web (Next.js) | API (Bun + Express) | PostgreSQL |
-|---|---|---|---|
-| dev (máy) | `next dev` | `bun run dev:api` | Docker compose (`postgres:17`) |
-| preview (theo PR) | **Vercel Preview** — tự sinh cho mọi PR | chưa có preview riêng | Neon branch (khi Neon được cấu hình) |
-| production | **Vercel** — manual approval | **VPS (Mắt Bão)** hoặc platform — cần xác minh trước | **Neon** (PITR) khi cấu hình |
+Each layer activates independently the moment its secret(s) exist — no code
+changes needed.
 
-## 1. Web — Next.js trên Vercel
+## 1. Web — Vercel Git Integration (no secrets in GitHub)
 
-- Preview: Vercel sẽ tự tạo deployment cho mọi PR (dùng GitHub App của Vercel, KHÔNG cần
-  tự viết workflow) — comment URL preview vào PR.
-- Production: **không auto-deploy từ `main`**. Chỉ promote/deploy production sau khi
-  owner nhấn duyệt — hoặc bật GitHub Environment `production` với `required reviewers`.
-- Điều kiện kích hoạt: (a) tài khoản/token Vercel hợp lệ, (b) connect repo,
-  (c) đặt env trong dashboard Vercel (xem Secrets bên dưới), (d) quyết định domain/DNS.
-- **Chưa làm** vì chưa verify: token/CLI Vercel không tồn tại trên máy (`which vercel` rỗng),
-  không thể kiểm quyền.
+Manual one-time setup (Vercel dashboard):
 
-## 2. API — Bun + Express
+1. vірáp://vercel.com → Add New… → Project → **Import** the
+   `longvan-startup/component-marketplace` GitHub repo.
+2. Project Settings → **General → Root Directory** = `apps/web`
+   (framework auto-detects Next.js).
+3. Environment variables (Project → Settings → Environment Variables):
+   - `NEXT_PUBLIC_API_URL` = public URL of the API (e.g. `https://api.<domain>`)
+     — set for **Production** + **Preview**.
+4. Build overrides unnecessary; Vercel handles `bun`-based monorepo install if
+   Root Directory is set. Verify the first deploy log shows `next build`.
+5. Done: every PR gets a **preview** deployment comment; pushes to `main`
+   produce production deploys (rollback = Vercel Instant Rollback).
 
-- **Chưa chốt hosting** — phải xác minh trước khi triển khai:
-  - Phương án A — VPS Mắt Bão (đã ghi hướng đi này trong org profile): cần verify
-    SSH + Docker trên server, reverse proxy (Caddy/Nginx) + TLS, firewall.
-  - Phương án B — platform (Railway/Fly/Render): cần token + lịch sử billing.
-- Image đã sẵn sàng làm deploy artifact: `docker/api.Dockerfile` multi-stage,
-  pin `oven/bun:1.4.3`, được CI job `docker-runtime` build + smoke mỗi PR.
-- Khi chốt: publish image lên **GHCR theo tag git SHA**, deploy bằng `docker compose`
-  trên server hoặc platform — **không build trên server**.
-- Contract dùng cho deployment/healthcheck: `GET /health` (và `/health/db` sau khi
-  PR #1 đã merge — trả 503 nếu DB chưa cấu hình, không crash).
+Nothing in this repo calls Vercel; no deploy secrets exist by design.
 
-## 3. PostgreSQL
+## 2. API — GHCR + VPS auto-deploy
 
-- Local/dev: Docker compose (đã có, healthcheck sẵn).
-- Cloud: **Neon** khi được cấu hình — `DATABASE_URL` sửa qua secrets; host-side
-  dùng port compose 5433 như hiện tại, production dùng connection string Neon.
-- Migration: chỉ chạy Drizzle migration **tăng dần** (`bun run db:migrate` từ
-  `packages/db` — PR #1). Migration destructive (drop/rename) phải plan rollout
-  2 pha — xem Rollback.
+One-time VPS preparation (Mắt Bão or any Docker-capable host):
 
-## 4. Secrets & quyền truy cập
+```bash
+ssh <user>@<vps>
+mkdir -p /opt/cmp-api && chmod 700 /opt/cmp-api
+# copy the manifest + env template from the repo:
+scp deploy/vps/compose.yaml deploy/vps/.env.example <user>@<vps>:/opt/cmp-api/
+# on the VPS, fill /opt/cmp-api/.env (chmod 600; never committed):
+#   DATABASE_URL=<Neon connection string>
+#   GHCR_TOKEN=<PAT with read:packages scope>
+#   # optional: API_BIND / API_PORT
+```
 
-- Không commit secrets: `.env` đã nằm trong `.gitignore`; dockerfile không COPY secrets;
-  compose tự dựng URL nội bộ cho container API qua `POSTGRES_*` (đã có enforcement
-  trong compose.yaml).
-- Nguồn sự thật cho secrets khi kích hoạt:
-  - GitHub Environments: `production` (+ `preview` nếu cần) — user `NguyenTuMinhLong`
-    (admin) tạo được; hiện 0 secrets.
-  - Vercel: env trong dashboard (không qua GitHub secrets cho provider riêng).
-- Token GitHub hiện tại của máy không đủ quyền cho deploy tự động — cần thêm scope
-  hoặc token riêng cho từng provider.
+Then create repo secrets (Settings → Secrets and variables → Actions):
 
-## 5. Rollback (khi deployment thất bại)
-
-| Layer | Cách rollback |
+| Secret | Purpose |
 |---|---|
-| Web | Vercel **Instant Rollback** — mốc deployment immutable; rollback trong 1 click |
-| API (container) | Image pin **theo git SHA** → `docker compose down` + ref image SHA cũ; giữ code cũ cùng migration nếu migration chỉ-add |
-| Migration DB | chỉ-add migration thường KHÔNG cần rollback (code cũ vẫn chạy); migration destructive → plan 2 pha + Neon **point-in-time restore**/branch về trước lỗi |
-| Compose volume local | `docker compose down -v` (xoá sạch dữ liệu dev — dùng khi volume lỗi, không rollback production) |
+| `SSH_HOST` | VPS hostname/IP |
+| `SSH_USER` | SSH user |
+| `SSH_KEY` | private key (Ed25519 recommended; add public key to VPS) |
+| `SSH_PORT` | optional; defaults to 22 |
 
-## Checklist kích hoạt (chỉ làm khi có xác nhận của owner)
+Behavior: after CI-green pushes to main, the workflow does
+`docker login ghcr.io` (PAT from VPS `.env`) → `pull` → `up -d` → asserts
+`/health` from localhost. On failure it exits non-zero with the log command.
+Rollback: `API_IMAGE=ghcr.io/longvan-startup/cmp-api:sha-<old>` in `.env`
+(compose pins image via var), then `docker compose up -d`.
 
-1. **Vercel**: tạo tài khoản/token → `vercel whoami` PASS → connect repo,
-   import env → bật Preview cho PR.
-2. **API hosting**: chọn phương án + verify credential (SSH/token) → publish GHCR tag
-   theo SHA → deploy script/manifest tách riêng (không dùng CI để deploy production).
-3. **GitHub Environments**: tạo `production` + bật `required reviewers` + đặt secrets.
-4. **Migrations trong CD**: chỉ chạy `db:migrate` trước deploy API khi code mới có
-   migration; rollback code cũ + migration mới chỉ-add là an toàn (backward-compatible).
-5. Mọi thay đổi sau điểm này phải cập nhật lại trạng thái kiểm chứng ở đầu file
-   (kèm lệnh + ngày) — giữ file này làm source of truth cho CD.
+Reverse proxy (nginx/caddy) terminates TLS and forwards to
+`127.0.0.1:${API_PORT:-4000}` — out of CD scope, one-time infra step.
+
+## 3. Production DB — Neon (gated migrate)
+
+1. Create the Neon project (fixcas — owner action in the Neon console).
+2. Copy the **pooled** connection string (`...neon.tech/dbname?sslmode=require`).
+3. Add repo secret `PROD_DATABASE_URL` with that value.
+4. The CD `db-migrate` job then runs automatically ahead of every VPS deploy:
+   `drizzle-kit migrate` (forward-only; applied migrations are never edited).
+   Migrations apply BEFORE the new container starts (`needs` ordering), then
+   deploy-vps only proceeds on `success` or `skipped` — never on migrate failure.
+
+Safety rails in the job: refuses `localhost`/`127.0.0.1` URLs; announces a
+skip notice instead of failing while the secret is absent.
+
+## Secrets & permissions summary
+
+| Where | Values | Note |
+|---|---|---|
+| GitHub repo secrets | `PROD_DATABASE_URL`, `SSH_HOST`, `SSH_USER`, `SSH_KEY`, (`SSH_PORT`) | all optional; each enables its CD layer |
+| Vercel dashboard | `NEXT_PUBLIC_API_URL` (per environment) | never stored in GitHub |
+| VPS `.env` | `DATABASE_URL`, `GHCR_TOKEN`, binds/ports | chmod 600, never committed |
+| GHCR | built-in `GITHUB_TOKEN` (publish), PAT read:packages (VPS pulls) | repo-scoped |
+
+## Rollback
+
+| Layer | Method |
+|---|---|
+| Web | Vercel Instant Rollback ( Immutable deployments) |
+| API | pin previous sha tag via `API_IMAGE` in VPS `.env`, `docker compose up -d` |
+| DB | additive migrations usually need no rollback; destructive → plan 2-phase migration + Neon PITR |

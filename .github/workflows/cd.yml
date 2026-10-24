@@ -1,0 +1,159 @@
+name: CD
+
+# Continuous Delivery — pipeline triggered ONLY after "CI" has completed
+# successfully on main (workflow_run), plus manual workflow_dispatch.
+#
+# Design (docs/DEPLOYMENT.md):
+#  1. `docker-publish` — push the api image to GHCR (no repo secrets needed;
+#     uses the built-in GITHUB_TOKEN). Runs for every CI-green main push.
+#  2. `db-migrate` — applies Drizzle migrations to the production DB (Neon)
+#     ONLY when the secret PROD_DATABASE_URL exists; otherwise skips safely.
+#     Forward-only migrations; never drops/edits applied migrations.
+#  3. `deploy-vps` — SSH-deploys the freshly pushed image to the VPS ONLY
+#     when SSH_HOST/SSH_USER/SSH_KEY secrets exist; otherwise skips safely.
+#     Runs only if db-migrate succeeded or was skipped (never on failure).
+# Web (apps/web) deploys via Vercel Git Integration — configured in the
+# Vercel dashboard, no deploy secrets live in this repo (runbook:
+# docs/DEPLOYMENT.md).
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker-publish:
+    name: Publish api image (GHCR)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Validate deploy/vps/compose.yaml (deploy manifest sanity)
+        env:
+          DATABASE_URL: postgres://u:p@ep-placeholder.neon.tech/db?sslmode=require
+        run: docker compose -f deploy/vps/compose.yaml -p cd-manifest-check config -q
+
+      - name: Checkout (CI-validated commit)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Docker meta (sha + latest tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/cmp-api
+          tags: |
+            type=sha
+            type=raw,value=latest
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push api image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/api.Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  db-migrate:
+    name: Production DB migrate (Neon, gated)
+    runs-on: ubuntu-latest
+    needs: docker-publish
+    steps:
+      - name: Checkout (CI-validated commit)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies (pinned drizzle-kit)
+        run: bun install --frozen-lockfile
+
+      - name: Migrate production DB (Neon) — skip unless PROD_DATABASE_URL set
+        # secrets cannot be used in step `if:` (context availability), so the
+        # gating happens inside the shell with the secret mirrored to env.
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::notice::PROD_DATABASE_URL is not set — production migrate skipped. Add the Neon connection string as repo secret PROD_DATABASE_URL to enable."
+            exit 0
+          fi
+          case "$DATABASE_URL" in
+            *localhost*|*127.0.0.1*)
+              echo "::error::PROD_DATABASE_URL points at localhost — refusing to run migrations. This secret must be the Neon connection string."
+              exit 1 ;;
+          esac
+          bun run --cwd packages/db db:migrate
+
+  deploy-vps:
+    name: Deploy api to VPS (gated)
+    runs-on: ubuntu-latest
+    needs: [docker-publish, db-migrate]
+    steps:
+      - name: Deploy over SSH (skip unless SSH secrets set)
+        # secrets cannot be used in step `if:` — gating and the graceful
+        # skip happen inside the shell; migrate failure automatically blocks
+        # this job via the default `needs` gating.
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          GH_IMAGE: ghcr.io/${{ github.repository_owner }}/cmp-api:latest
+        run: |
+          : "${SSH_PORT:=22}"
+          if [ -z "${SSH_HOST:-}" ] || [ -z "${SSH_USER:-}" ] || [ -z "${SSH_KEY:-}" ]; then
+            echo "::notice::SSH_HOST / SSH_USER / SSH_KEY are not set — VPS auto-deploy skipped. Use the manual runbook in docs/DEPLOYMENT.md."
+            exit 0
+          fi
+          printf '%s\n' "$SSH_KEY" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 \
+              -p "$SSH_PORT" -i /tmp/deploy_key \
+              "${SSH_USER}@${SSH_HOST}" \
+              "GH_IMAGE=$GH_IMAGE bash -s" <<-'REMOTE'
+            set -euo pipefail
+            cd /opt/cmp-api
+            test -f compose.yaml || { echo "compose.yaml missing in /opt/cmp-api — copy deploy/vps/* per docs/DEPLOYMENT.md"; exit 1; }
+            test -f .env || { echo ".env missing in /opt/cmp-api — create it from .env.example (add Neon DATABASE_URL + GHCR_TOKEN)"; exit 1; }
+            grep -q '^GHCR_TOKEN=' .env || { echo ".env must contain GHCR_TOKEN (a PAT with read:packages scope for ghcr.io pulls)"; exit 1; }
+            grep -q '^DATABASE_URL=' .env || { echo ".env must contain DATABASE_URL (Neon connection string)"; exit 1; }
+            ghcr_pat="$(grep '^GHCR_TOKEN=' .env | cut -d= -f2-)"
+            printf '%s' "$ghcr_pat" | docker login ghcr.io -u cmp-deploy --password-stdin >/dev/null
+            docker compose -p cmp-api pull
+            docker compose -p cmp-api up -d --no-deps --force-recreate api
+            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+              curl --silent --fail --max-time 5 http://127.0.0.1:4000/health >/dev/null 2>&1 && {
+                echo "DEPLOY OK — /health reachable (image ${GH_IMAGE})"
+                exit 0
+              }
+              sleep 5
+            done
+            echo "::error::api /health unreachable after deploy — inspect with: docker compose -p cmp-api logs api"
+            exit 1
+          REMOTE
+          rm -f /tmp/deploy_key
