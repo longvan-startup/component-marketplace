@@ -1,0 +1,55 @@
+/* Marketplace design tokens — minimal, single light theme (dark mode is a
+   future feature; do not add inversions ad hoc). Every token declared in the
+   @theme block below is emitted as a real CSS variable AND a utility
+   (bg-background, text-foreground, border-border, ring-ring, rounded-card, …). */
+
+@import "tailwindcss";
+
+@theme {
+  /* Typography — system stack keeps builds offline-safe; adjust deliberately
+     when a brand font decision lands. */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif;
+  --font-mono:
+    ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Radius scale — card/panel corners stay consistent. */
+  --radius-card: 0.75rem;
+  --radius-badge: 9999px;
+
+  /* Surfaces. */
+  --color-background: #fafafa;
+  --color-foreground: #18181b;
+  --color-card: #ffffff;
+  --color-card-foreground: #18181b;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #52525b;
+  --color-border: #e4e4e7;
+
+  /* Brand + states (interactive tweaks live next to components as
+     bg-primary/90 + focus-visible:ring-2 ring-ring style utilities). */
+  --color-primary: #4f46e5;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #047857;
+  --color-ring: #4f46e5;
+  --color-danger: #b91c1c;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: rgb(79 70 229 / 0.18);
+}
+
+/* Page-level guard against stray horizontal overflow on small screens — the
+   catalog grid itself stays fluid. */
+html,
+body {
+  overflow-x: clip;
+}
