@@ -1,17 +1,17 @@
 # Deployment & CD — current state and activation runbook
 
 Source of truth for CDN/CD. Status verified with real commands (latest check:
-2026-10-23). Every change after this date must update the verified-state table.
+2026-10-24). Every change after this date must update the verified-state table.
 
-## Verified state (2026-10-23)
+## Verified state (2026-10-24)
 
 | Item | Status | How verified |
 |---|---|---|
 | CI (`ci.yml`) | green on main (lint+boundary+typecheck+test+build+docker isolation+DB migration smoke) | `gh run list` |
-| CD workflow (`cd.yml`) | **exists** (this PR) — publishes api image to GHCR; production steps gated by repo secrets | `ls .github/workflows/` |
+| CD workflow (`cd.yml`) | publishes api image to GHCR; production steps gated by repo secrets | workflow source |
 | GHCR publish | ready to run — uses built-in `GITHUB_TOKEN`, runs automatically after CI-green main push | workflow source |
 | Repo secrets | to be created by owner when activating each layer | `gh api repos/.../actions/secrets` |
-| Web deploy target | **Vercel Git Integration** (owner decision 2026-10-23) — no deploy tokens in repo | decision |
+| Web deploy target | **Vercel Services project** (`vercel.json` merged in #46: api internal + web public, binding `API_URL_INTERNAL`, same-origin `/api` fallback) — **activation is one dashboard import** (owner-manual, tracked on the issue board) | merged PR #46 |
 | API deploy target | **VPS + SSH auto-deploy**, gated by secrets `SSH_HOST/SSH_USER/SSH_KEY` (owner decision) | decision |
 | Production DB | **Neon**, migrate job gated by secret `PROD_DATABASE_URL` (owner decision) | decision |
 | Branch protection `main` | `enforce_admins=false` (must be re-enabled), `require_code_owner_reviews=false`, approvals=1 | `gh api .../branches/main/protection` |
