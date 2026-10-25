@@ -33,6 +33,8 @@ Component → Discussion → Feedback → Improvement → New Component
 
 Nguyên tắc bản sắc: **không clone Discord/Reddit**. Forum có cấu trúc chặt (categories, thread type, accepted answer, idea lifecycle gắn component); Chat là phòng trao đổi trực tuyến phục vụ forum chứ không thay thế forum. Cả hai chia sẻ identity, permission model và khả năng link nội dung chéo (thread ↔ component, message → thread).
 
+Ghi chú tham khảo: ý tưởng marketplace lấy cảm hứng từ các thư viện UI component dạng catalog (ví dụ Aceternity UI, https://ui.aceternity.com/components); ý tưởng có lớp chat realtime lấy cảm hứng khái niệm từ Discord — nhưng không dựa vào cấu trúc/UX của Discord, đúng theo nguyên tắc bản sắc ở trên.
+
 ## 2. Forum vs Chat — phân dòng trách nhiệm
 
 | Khía cạnh | Forum | Chat |
