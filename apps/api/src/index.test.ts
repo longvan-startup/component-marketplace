@@ -6,9 +6,14 @@
  */
 
 import { afterAll, describe, expect, test } from 'bun:test'
+import { parseApiEnv } from './env'
 import { createServer, resolveMountPaths } from './index'
 
-const { app } = createServer()
+// Env cố định (không phụ thuộc .env thật/process env của CI):	tests contract
+// phải tự vạch — DATABASE_URL luôn vắng để /health/db khẳng định 503 unconfig.
+const fixedEnv = parseApiEnv({})
+
+const { app } = createServer({ env: fixedEnv })
 
 const server = app.listen(0)
 const port = (server.address() as { port: number }).port
@@ -69,7 +74,7 @@ describe('Vercel Services mounts (env VERCEL)', () => {
   test('VERCEL set: mount song song `/api` + `/` — public ingress dùng prefix, binding calls không', async () => {
     process.env.VERCEL = '1'
     try {
-      const { app: vercelApp } = createServer()
+      const { app: vercelApp } = createServer({ env: fixedEnv })
       const s = vercelApp.listen(0)
       const p = (s.address() as { port: number }).port
       try {
