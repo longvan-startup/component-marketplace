@@ -1,54 +1,125 @@
 /**
- * API entrypoint — skeleton tối thiểu để boot.
- * KHÔNG chứa business logic (auth, payment, marketplace... tích hợp sau).
+ * API entrypoint — HTTP móng thẳng thắn (issue #29), giữ nguyên hợp đồng cũ.
  *
- * Hai môi trường chạy cùng một code:
- * - Docker/host (mặc định): routes mount ở `/` — healthcheck & smoke probes
+ * Thứ tự middleware (đọc từ trên xuống trong createServer):
+ *   1. json body parse      → express.json()
+ *   2. CORS allowlist       → match từ CORS_ORIGINS; OPTIONS preflight
+ *   3. request log          → 1 dòng JSON, KHÔNG body/cookie/auth;
+ *                             bỏ qua /health* (smoke spam)
+ *   4. apiRoutes            → mount theo resolveMountPaths()
+ *   5. 404 envelope         → notFoundHandler
+ *   6. error envelope       → errorHandler (bắt mọi nhầm lẫn cuối)
+ *
+ * Hai môi trường chạy cùng code (giữ từ #46, KHÔNG đổi):
+ * - Docker/host (mặc định): router mount ở `/` — healthcheck & smoke probes
  *   gọi `/health`, `/health/db` như compose đã ghi.
- * - Vercel Services: public rewrite `/{api_path}` route tới service (
- *   docs/services/routing — service NHẬN path gốc, không bị strip prefix),
- *   nên router phải mount thêm ở `/api` (env VERCEL, framework express).
- *   Internal service-binding calls (Next.js SSR → api) không đi qua public
- *   rewrite và vẫn dùng path gốc, nên cả hai mount song song khi VERCEL set.
+ * - Vercel Services: public rewrite `/{api_path}` route tới service — service
+ *   NHẬN path gốc (không strip), nên khi VERCEL set, router mount thêm ở
+ *   `/api` song song (internal binding calls (SSR → api) không qua public
+ *   rewrite, vẫn dùng path gốc).
  *
- * Export `createServer()` để smoke test (bun test) dùng được; framework
- * Express của Vercel dò file `src/index.ts` và cần **default export app**,
- * nên module này cũng export default `app` (chỉ listen khi chạy trực tiếp
- * qua `import.meta.main`).
+ * Không đăng ký signal handlers ở module-được-import: chỉ block
+ * `import.meta.main` ký handler, tránh double-register trong bun tests
+ * (issue #29 §D).
  */
 
-import { createDb, type Database } from '@marketplace/db'
+import { createDbHandle, type DatabaseHandle } from '@marketplace/db'
 import { getAppInfo } from '@marketplace/shared'
 import { sql } from 'drizzle-orm'
 import express from 'express'
 
-/** Mount paths are decided at construction time so tests can vary the VERCEL env. */
+import { type ApiEnv, parseApiEnv } from './env'
+import { errorHandler, notFoundHandler, sendError } from './errors'
+
+/** Mount paths computed per call so tests can vary the VERCEL env. */
 export function resolveMountPaths(env = process.env.VERCEL): string[] {
-  // `/api`: public rewrite ingress (docs/services/routing — the service sees the
-  // original path, prefix NOT stripped). `/`: internal calls (service binding /
-  // docker healthcheck) keep using plain root paths. Outside Vercel (Docker),
-  // only `/` mounts — compose healthchecks call `/health`, unchanged.
+  // `/api`: public rewrite ingress (docs/services/routing — the service sees
+  // the original path, prefix NOT stripped). `/`: internal calls (service
+  // binding / docker healthcheck) keep plain root paths. Outside Vercel
+  // (Docker) chỉ `/` — compose healthchecks gọi `/health`, unchanged.
   return env ? ['/api', '/'] : ['/']
 }
 
-export function createServer() {
+export interface ServerOptions {
+  /** Inject env đã-parse (tests) — mặc định parse từ process.env. */
+  env?: ApiEnv
+  /**
+   * Inject db handle (tests). Có key `db` trong options ⇒ dùng đúng giá trị đó
+   * (kể cả undefined = ép "không có DB" ⇒ /health/db 503). Không có key ⇒
+   * sinh từ DATABASE_URL trong env (nếu có).
+   */
+  db?: DatabaseHandle | undefined
+}
+
+export function createServer(options: ServerOptions = {}) {
+  const env = options.env ?? parseApiEnv()
+
+  // postgres.js lazy-connect: tạo handle KHÔNG mở socket — socket mở ở truy
+  // vấn đầu tiên (/health/db, endpoint #31...).
+  const dbHandle =
+    'db' in options ? options.db : env.DATABASE_URL ? createDbHandle(env.DATABASE_URL) : undefined
+
   const app = express()
 
+  // Giảm bề mặt: không quảng cáo stack (x-powered-by).
+  app.disable('x-powered-by')
   app.use(express.json())
 
-  // Drizzle DB — tạo lazy một lần duy nhất khi DATABASE_URL được cấu hình.
-  // Không cấu hình = DB health trả 503 (degraded), không làm sập /health.
-  let dbInstance: Database | undefined
-  function getDb(): Database | undefined {
-    const url = process.env.DATABASE_URL
-    if (!url) return undefined
-    dbInstance ??= createDb(url)
-    return dbInstance
-  }
+  /* --- CORS: allowlist exact-match; preflight; prod không bao giờ `*` --- */
+  const allowedOrigins = env.CORS_ORIGINS ?? []
+  app.use((req, res, next) => {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : ''
+    const allowed = origin !== '' && allowedOrigins.includes(origin)
 
+    // Vary: Origin luôn set — middleware cache biết mỗi response có ACAO tùy
+    // origin (tránh cache nhầm ACAO của origin khác).
+    res.setHeader('Vary', 'Origin')
+
+    if (allowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin)
+    }
+
+    if (req.method === 'OPTIONS') {
+      if (!allowed) {
+        // Origin lạ: không mở `*` — chặn bằng envelope chuẩn.
+        sendError(res, {
+          code: 'CORS_ORIGIN_NOT_ALLOWED',
+          message: 'Origin not allowed',
+          status: 403,
+        })
+        return
+      }
+      res.status(204)
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      res.setHeader('Access-Control-Max-Age', '600')
+      res.end()
+      return
+    }
+
+    next()
+  })
+
+  /* --- Request log: 1 dòng JSON; KHÔNG body/cookie/authorization --- */
+  app.use((req, res, next) => {
+    const pathname = req.path
+    if (!pathname.startsWith('/health')) {
+      const started = performance.now()
+      res.on('finish', () => {
+        console.log(
+          `[api] ${req.method} ${pathname} ${res.statusCode} ${Math.round(performance.now() - started)}ms`,
+        )
+      })
+    }
+    next()
+  })
+
+  /* --- Routes --- */
   const apiRouter = express.Router()
 
-  // Health check — dùng bởi Docker healthcheck & CI smoke test
+  // Health — dùng bởi Docker healthcheck & CI smoke test.
+  // ADDITIVE so với contract cũ: thêm `db` boolean (orchestrator biết DB đã
+  // cấu hình chưa) — các field cũ giữ nguyên loại/giá trị.
   apiRouter.get('/health', (_req, res) => {
     const info = getAppInfo()
     res.status(200).json({
@@ -56,28 +127,28 @@ export function createServer() {
       service: 'api',
       app: info.name,
       version: info.version,
+      db: dbHandle !== undefined,
       uptime: process.uptime(),
     })
   })
 
-  // Health check DB — ping PostgreSQL qua Drizzle (503 nếu chưa cấu hình/không kết nối được).
-  // Chi tiết lỗi DB chỉ in ra log server, KHÔNG trả về client (tránh lộ thông tin nhạy cảm).
+  // Health DB — ping PostgreSQL qua Drizzle. Chi tiết lỗi (host, credentials)
+  // chỉ in VÀO LOG CHUNG 1 câu, không trả về client.
   apiRouter.get('/health/db', async (_req, res) => {
-    const db = getDb()
-    if (!db) {
+    if (!dbHandle) {
       res.status(503).json({ status: 'degraded', database: 'unconfigured' })
       return
     }
     try {
-      await db.execute(sql`select 1`)
+      await dbHandle.db.execute(sql`select 1`)
       res.status(200).json({ status: 'ok', database: 'connected' })
-    } catch (error) {
-      console.error('[api] /health/db ping failed:', error)
+    } catch {
+      console.error('[api] /health/db ping failed (details suppressed)')
       res.status(503).json({ status: 'degraded', database: 'unreachable' })
     }
   })
 
-  // Root — xác nhận skeleton đã boot
+  // Root — xác nhận skeleton đã boot (giữ nguyên contract cũ, trả message cũ).
   apiRouter.get('/', (_req, res) => {
     res.status(200).json({ message: 'Component Marketplace API — skeleton OK' })
   })
@@ -86,25 +157,67 @@ export function createServer() {
     app.use(mountPath, apiRouter)
   }
 
-  return { app, listen: () => app.listen(Number(process.env.PORT ?? 4000)) }
+  /* --- 404 + error envelope: mọi path chưa match kết thúc tại hai hàm này --- */
+  app.use(notFoundHandler)
+  app.use(errorHandler)
+
+  return {
+    app,
+    /** Dùng bởi import.meta.main + tests; trả http.Server để shutdown(). */
+    listen: () => app.listen(env.PORT),
+    dbHandle,
+    env,
+  }
 }
 
-// Cả Vercel (default export app) và bun run (import.meta.main listen) dùng
-// chung một lần construct duy nhất.
-const { app, listen } = createServer()
+/**
+ * Graceful shutdown (issue #29 §D): server.close() = ngừng nhận request mới +
+ * drain request đang chạy; SAU ĐÓ mới `pool.end()` — không rớt connection khi
+ * request chưa hoàn tất. Tests gọi trực tiếp; entrypoint nối vào signal.
+ */
+export async function shutdown(options: {
+  server: { close: (callback?: () => void) => void }
+  db?: DatabaseHandle | undefined
+}): Promise<void> {
+  await new Promise<void>((resolve) => {
+    options.server.close(() => resolve())
+  })
+  if (options.db) {
+    await options.db.close()
+  }
+}
 
-/** Vercel Express runtime entry — chỉ chạy app, không tự listen. */
+/* ------------------------------------------------------------------ */
+/* Entrypoint thực thi thật (bun run src/index.ts, container CMD)        */
+/* ------------------------------------------------------------------ */
+
+const { app, listen, dbHandle, env } = createServer()
+
+/** Vercel Express runtime entry — chỉ cung cấp app, không listen. */
 export default app
 
 if (import.meta.main) {
+  let shuttingDown = false
+  // Listen ĐÚNG MỘT lần ở đây — server dùng cho shutdown phải là server thật.
   const server = listen()
-  console.log(`[api] listening on http://0.0.0.0:${process.env.PORT ?? 4000}`)
+  console.log(`[api] listening on http://0.0.0.0:${env.PORT}`)
 
-  // Graceful shutdown
-  process.on('SIGTERM', () => {
-    server.close(() => process.exit(0))
-  })
-  process.on('SIGINT', () => {
-    server.close(() => process.exit(0))
-  })
+  const handleSignal = (signal: string) => {
+    // Tín hiệu lần 2 trong lúc drain ⇒ thoát luôn (tránh chờ quá thời hạn
+    // kill timeout của infra). SIGTERM/SIGINT chỉ ký MỘT handler, tại đây.
+    if (shuttingDown) {
+      process.exit(1)
+    }
+    shuttingDown = true
+    console.log(`[api] ${signal} received — draining connections`)
+    void shutdown({ server, db: dbHandle }).then(() => {
+      console.log('[api] shutdown complete (http + db pool closed)')
+      process.exit(0)
+    })
+  }
+
+  // Handlers chỉ đăng ký ĐÚNG 1 lần, chỉ khi file được thực thi trực tiếp —
+  // tests import module không chạm vào process handlers (#29 §D).
+  process.on('SIGTERM', () => handleSignal('SIGTERM'))
+  process.on('SIGINT', () => handleSignal('SIGINT'))
 }
