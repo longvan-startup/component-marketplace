@@ -237,5 +237,8 @@ Workflow phụ trợ:
 - `auto-add-to-project.yml` — issue mở/mở lại ⇒ tự thêm vào **Marketplace
   Board** (org Kanban — runbook: `docs/KANBAN.md`; fail-soft khi chưa set
   token/variable).
+- **CodeRabbit** (GitHub app, không phải workflow) — AI code review trên
+  mỗi PR; config mặc định ở `.coderabbit.yaml`. Chạy trên plan **free OSS**
+  (repo public, **không cần credit card** — xem `docs/CODERABBIT.md`).
 
 Trạng thái CD chi tiết + runbook từng layer: `docs/DEPLOYMENT.md`.
