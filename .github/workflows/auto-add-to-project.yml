@@ -1,0 +1,82 @@
+name: Auto add to project
+
+# Kanban wiring (issue #4): every ISSUE opened/reopened on this repo is added
+# to the org Marketplace Board project automatically.
+#
+# Token reality (verified 2026-10-26 — GraphQL INSUFFICIENT_SCOPES probe):
+# the automation identity needs org-level project write. This workflow tries,
+# in order:
+#   1. secret `PROJECT_BOARD_TOKEN` (owner PAT/classic with `project` scope)
+#   2. built-in GITHUB_TOKEN (works ONLY if the org allows repo tokens to
+#      touch organization projects)
+# When both are unavailable the job SKIPS silently — the issue stays visible
+# for a one-click manual add (docs/KANBAN.md § Manual fallback). We never
+# spam issue comments about this.
+#
+# PRs are intentionally NOT auto-added (issue-and-PR tracking noise); owners
+# can enable GitHub's built-in "Automatically add pull requests" workflow on
+# the project UI if they want PR rows too.
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: read
+
+concurrency:
+  group: auto-add-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  add-item:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add issue to Marketplace Board
+        uses: actions/github-script@v9
+        env:
+          PROJECT_NODE_ID: ${{ vars.KANBAN_PROJECT_NODE_ID }}
+          BOARD_TOKEN: ${{ secrets.PROJECT_BOARD_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          script: |
+            const projectId = process.env.PROJECT_NODE_ID || '';
+            if (!projectId) {
+              core.info('KANBAN_PROJECT_NODE_ID (repo variable) not set yet — skip. See docs/KANBAN.md.');
+              return;
+            }
+            const contentId = context.payload.issue.node_id;
+            const boardToken = process.env.BOARD_TOKEN || '';
+            const query = `mutation($input: AddProjectV2ItemByIdInput!) {
+              addProjectV2ItemById(input: $input) { item { id } }
+            }`;
+            const variables = { input: { projectId, contentId } };
+
+            // Nhánh A: token riêng có scope `project` (runbook §1) → fetch GraphQL trực tiếp.
+            if (boardToken) {
+              const res = await fetch('https://api.github.com/graphql', {
+                method: 'POST',
+                headers: {
+                  authorization: `token ${boardToken}`,
+                  'user-agent': 'auto-add-to-project',
+                  'content-type': 'application/json',
+                },
+                body: JSON.stringify({ query, variables }),
+              });
+              const body = await res.json();
+              if (body.errors) {
+                core.warning(`Auto-add skipped (custom token): ${body.errors[0].message} — docs/KANBAN.md manual fallback`);
+                return;
+              }
+              core.info(`Added issue ${context.payload.issue.number} (custom token): ${body.data.addProjectV2ItemById.item.id}`);
+              return;
+            }
+
+            // Nhánh B (fallback): GITHUB_TOKEN gốc — chỉ hoạt động nếu org cho
+            // phép repo token đụng org projects; không thì fail-soft.
+            try {
+              const result = await github.graphql(query, variables);
+              core.info(`Added issue ${context.payload.issue.number}: ${result.addProjectV2ItemById.item.id}`);
+            } catch (error) {
+              core.warning(`Auto-add skipped (GITHUB_TOKEN): ${error instanceof Error ? error.message.split('\n')[0] : String(error)} — docs/KANBAN.md manual fallback`);
+            }
