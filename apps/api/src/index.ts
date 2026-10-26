@@ -27,9 +27,11 @@ import { createDbHandle, type DatabaseHandle } from '@marketplace/db'
 import { getAppInfo } from '@marketplace/shared'
 import { sql } from 'drizzle-orm'
 import express from 'express'
-
+import { toCatalogComponent } from './catalog/mapper'
+import { getComponentBySlug, listComponents } from './catalog/queries'
+import { parseListRequest, parseSlugParam } from './catalog/requests'
 import { type ApiEnv, parseApiEnv } from './env'
-import { errorHandler, notFoundHandler, sendError } from './errors'
+import { ApiHttpError, errorHandler, notFoundHandler, sendError } from './errors'
 
 /** Mount paths computed per call so tests can vary the VERCEL env. */
 export function resolveMountPaths(env = process.env.VERCEL): string[] {
@@ -151,6 +153,40 @@ export function createServer(options: ServerOptions = {}) {
   // Root — xác nhận skeleton đã boot (giữ nguyên contract cũ, trả message cũ).
   apiRouter.get('/', (_req, res) => {
     res.status(200).json({ message: 'Component Marketplace API — skeleton OK' })
+  })
+
+  /* --- Catalog read endpoints (issue #31) ------------------------------- */
+  // Guard: dataset nằm trong Postgres — khi chưa cấu hình DATABASE_URL trả
+  // 503 DATABASE_UNCONFIGURED (tính "degraded" của #29, bao giờ /health/db).
+  const requireDb = () => {
+    if (!dbHandle) {
+      throw new ApiHttpError(503, 'DATABASE_UNCONFIGURED', 'Database is not configured')
+    }
+    return dbHandle
+  }
+
+  // GET /components — list công khai; query: q, category, sort, page, pageSize
+  // (định dạng + biên nằm trong `listRequestSchema` của shared, sai = 422).
+  apiRouter.get('/components', async (req, res) => {
+    const request = parseListRequest(req.query as unknown as Record<string, unknown>)
+    const { rows, total } = await listComponents(requireDb(), request)
+    res.status(200).json({
+      items: rows.map(toCatalogComponent),
+      page: request.page,
+      pageSize: request.pageSize,
+      total,
+    })
+  })
+
+  // GET /components/:slug — chi tiết 1 component PUBLISHED; sai slug / không
+  // tìm thấy / chưa publish đều 404 NOT_FOUND (không phân biệt để lộ state).
+  apiRouter.get('/components/:slug', async (req, res) => {
+    const slug = parseSlugParam(req.params.slug)
+    const row = await getComponentBySlug(requireDb(), slug)
+    if (!row) {
+      throw new ApiHttpError(404, 'NOT_FOUND', 'Component not found')
+    }
+    res.status(200).json({ item: toCatalogComponent(row) })
   })
 
   for (const mountPath of resolveMountPaths()) {
