@@ -1,0 +1,87 @@
+# .coderabbit.yaml — CodeRabbit configuration (issue: CodeRabbit OSS install).
+#
+# Principe: this repo is PUBLIC and rides the FREE OSS plan (docs
+# coderabbit.ai/management/plans.md — "Unlimited public repositories, no
+# credit card required", Team features free). NOTHING in this file can start
+# billing: charges only ever come from a payment method on
+# app.coderabbit.ai — the automation here never touches billing, and the
+# owner keeps the card off-file (that IS the auto-charge kill-switch).
+#
+# Kept deliberately minimal — paid-trial behavior (14-day Advanced trial on
+# new orgs) reverts to Free/Free-OSS automatically without a card.
+
+language: en-US
+early_access: false
+enable_free_tier: true
+
+reviews:
+  # Balanced default; quiet = fewer inline comments (more in summary).
+  profile: chill
+  # Keep CodeRabbit out of PR descriptions (we author our own PR bodies).
+  # Summary + walkthrough both live in the walkthrough comment.
+  high_level_summary: false
+
+  auto_review:
+    # Free OSS on <10-star repos reviews MANUALLY anyway (rate policy);
+    # keep auto-review ON for when the repo grows past 10 stars.
+    enabled: true
+    drafts: false
+    ignore_title_keywords: ["wip", "no-review"]
+
+  # Reduce noise / keep focus on real code:
+  path_filters:
+    - "!bun.lock"
+    - "!packages/db/drizzle/meta/**"
+  path_instructions:
+    - path: "apps/api/**"
+      instructions: |
+        - Long's domain. Enforce: error envelope via sendError/ApiHttpError
+          for every 4xx/5xx, no raw SQL bypassing Drizzle, never log secret
+          values (env.ts policy), public DTOs only from @marketplace/shared
+          zod schemas, never import apps/web.
+    - path: "apps/web/**"
+      instructions: |
+        - Van's domain. Enforce: client islands via apps/web/lib/gsap.ts
+          (useGsapScope) only for GSAP, FE types only from
+          @marketplace/shared contracts (no local copies), never import
+          packages/db, no next build tsconfig rewrites committed (#40).
+    - path: "packages/**"
+      instructions: |
+        - Shared code. package.json "exports" of @marketplace/shared is
+          PUBLIC API (additive-only). packages/db/migrations are
+          forward-only — flag any edit of an existing migration file.
+    - path: ".github/workflows/**"
+      instructions: |
+        - GHA infra. Flag: unpinned action versions, added secret usage
+          without docs, changes to required check names (Lint / Typecheck /
+          Test / Build, Docker build & runtime smoke, Cross-domain path
+          check, request-review, close-linked).
+
+  tools:
+    # Biome is OUR pinned linter (2.5.15) — CodeRabbit running it is a nice
+    # second pair of eyes; the repo pins it in-app, this only enables
+    # CodeRabbit's tool run.
+    biome:
+      enabled: true
+    shellcheck:
+      enabled: true
+    yamllint:
+      enabled: true
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    gitleaks:
+      enabled: true
+    markdownlint: # our docs churn a lot — keep light
+      enabled: false
+    languagetool:
+      enabled: false
+    squawk:
+      enabled: true
+
+  in_progress_fortune: false
+
+  pre_merge_checks:
+    docstrings:
+      mode: "off" # not a repo requirement
