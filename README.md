@@ -233,6 +233,9 @@ Workflow phụ trợ:
 - `auto-issue.yml` — CI/CD đỏ trên `main` ⇒ tự mở issue ghim chi tiết;
   xanh trở lại ⇒ tự comment + đóng;
 - `auto-close-issues.yml` — PR chứa `fixes/closes/resolves/implements… #n`
-  mà issue vẫn mở ⇒ tự comment link merge + đóng.
+  mà issue vẫn mở ⇒ tự comment link merge + đóng;
+- `auto-add-to-project.yml` — issue mở/mở lại ⇒ tự thêm vào **Marketplace
+  Board** (org Kanban — runbook: `docs/KANBAN.md`; fail-soft khi chưa set
+  token/variable).
 
 Trạng thái CD chi tiết + runbook từng layer: `docs/DEPLOYMENT.md`.
