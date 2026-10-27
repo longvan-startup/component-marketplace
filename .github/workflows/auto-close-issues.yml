@@ -47,7 +47,12 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
             const KEYWORD_RE =
-              /\b(?:fix(?:es|ed)?|clos(?:es|ed)?|resolv(?:es|ed)?|implement(?:s|ed)?)\s*:?\s*#(\d+)/gi;
+              // Keyword → issue ref. Between keyword and #n, also allow
+              // markdown emphasis chars (`**`, `_`, backtick) — e.g.
+              // "Closes **#33**" must match, not only plain "closes #33"
+              // (miss fixed after #33 stayed open though PR #59 had said
+              // "Closes **#33**").
+              /\b(?:fix(?:es|ed)?|clos(?:es|ed)?|resolv(?:es|ed)?|implement(?:s|ed)?)\s*:?\s*[*_`\s]*#(\d+)/gi;
 
             const texts = [pr.title, pr.body || ''];
             const commits = await github.paginate(github.rest.pulls.listCommits, {
