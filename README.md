@@ -69,6 +69,8 @@ bun install          # cài dependencies toàn monorepo
 
 bun run dev:web      # Next.js dev server :3000
 bun run dev:api      # Bun API dev (hot reload) :4000, health DB: /health/db
+                     # (tự FILL biến từ root `.env` khi dev — không cần export tay;
+                     #  fill-only: env thật luôn thắng; bỏ qua khi prod/test)
 
 bun run build        # build shared → db → api → web
 bun run typecheck    # tsc --noEmit cho shared + db + api + web

@@ -14,6 +14,9 @@
  *   schema config-only, không reject toàn env).
  */
 
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { z } from 'zod'
 
 export const nodeEnvSchema = z.enum(['development', 'test', 'production'])
@@ -68,6 +71,77 @@ export function formatConfigIssues(error: z.ZodError): string[] {
     const field = issue.path.length > 0 ? issue.path.join('.') : '(root)'
     return `${field}: ${issue.message}`
   })
+}
+
+/* ------------------------------------------------------------------ */
+/* Root .env fill (issue #70) — dev convenience                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Chỉ resolve `.env` ở repo root từ thư mục runtime của API — bền vững cho
+ * CẢ `./src` (bun dev) lẫn `./dist` (bun start compiled). Không dò `.env`
+ * gần hơn trong `apps/api` hoặc ở thư mục cha bên ngoài repo.
+ *
+ * Ví dụ: '/repo/apps/api/src' (và '/repo/apps/api/dist') → '/repo/.env'
+ * @param apiRuntimeDir Thư mục chạy API (`src` khi dev hoặc `dist` sau build).
+ * @returns Đường dẫn `.env` ở repo root, hoặc chuỗi rỗng nếu file vắng.
+ */
+export function resolveRootDotEnvPath(apiRuntimeDir: string): string {
+  const candidate = resolve(apiRuntimeDir, '../../../.env')
+  return existsSync(candidate) ? candidate : ''
+}
+
+/**
+ * Đọc một file dotenv và FILL-ONLY vào `target` (mặc định `process.env`):
+ *   - key CHƯA tồn tại (kể cả rỗng) mới được gán — env thật luôn thắng.
+ *   - bỏ qua dòng trống / comment `#` / dòng không đúng `KEY=VALUE` /
+ *     key sai định dạng identifier.
+ *   - strip cặp quote ('"…"' / "'…'") bọc đầu–cuối nếu có.
+ *   - KHÔNG trả về/log giá trị — chỉ số key đã fill.
+ *
+ * File không tồn tại ⇒ KHÔNG throw (nhẹ nhàng: CI/tests/Docker/prod không
+ * có root .env) — trả 0. File hỏng vì lý do khác (permission…) vẫn throw
+ * fail-loud.
+ *
+ * Motivation (#70): bun chỉ auto-load `.env` theo cwd; `bun run --cwd
+ * apps/api` làm root `.env` không bao giờ được nạp khi dev ngoài Docker
+ * → guards `requireDb()` trả 503 DATABASE_UNCONFIGURED dù DB đang chạy.
+ */
+export function applyDotEnvFile(
+  filePath: string,
+  target: Record<string, string | undefined> = process.env,
+): number {
+  if (filePath === '') return 0
+  let raw: string
+  try {
+    raw = readFileSync(filePath, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return 0
+    throw error
+  }
+
+  let filled = 0
+  for (const rawLine of raw.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (line === '' || line.startsWith('#')) continue
+    const eq = line.indexOf('=')
+    if (eq <= 0) continue
+    const key = line.slice(0, eq).trim()
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue
+    // Fill-ONLY: key nào target đã có (kể cả rỗng) thì giữ nguyên.
+    if (key in target) continue
+    let value = line.slice(eq + 1).trim()
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1)
+    }
+    target[key] = value
+    filled += 1
+  }
+  return filled
 }
 
 /**
