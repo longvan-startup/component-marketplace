@@ -15,7 +15,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 
 import { z } from 'zod'
 
@@ -78,23 +78,17 @@ export function formatConfigIssues(error: z.ZodError): string[] {
 /* ------------------------------------------------------------------ */
 
 /**
- * Tìm `.env` của repo root bằng cách walk-up từ thư mục chứa file caller —
- * bền vững cho CẢ ./src (bun dev) lẫn ./dist (bun start compiled):
- *   - `import.meta.url` → file → dir → đi lên từng cấp,
- *   - dừng ở cấp đầu tiên có file `.env` (vắng hoàn toàn ⇒ trả chuỗi rỗng).
+ * Chỉ resolve `.env` ở repo root từ thư mục runtime của API — bền vững cho
+ * CẢ `./src` (bun dev) lẫn `./dist` (bun start compiled). Không dò `.env`
+ * gần hơn trong `apps/api` hoặc ở thư mục cha bên ngoài repo.
  *
  * Ví dụ: '/repo/apps/api/src' (và '/repo/apps/api/dist') → '/repo/.env'
+ * @param apiRuntimeDir Thư mục chạy API (`src` khi dev hoặc `dist` sau build).
+ * @returns Đường dẫn `.env` ở repo root, hoặc chuỗi rỗng nếu file vắng.
  */
-export function resolveRootDotEnvPath(startFile: string): string {
-  let current = dirname(startFile)
-  for (let depth = 0; depth < 6; depth += 1) {
-    const candidate = resolve(current, '.env')
-    if (existsSync(candidate)) return candidate
-    const parent = dirname(current)
-    if (parent === current) break
-    current = parent
-  }
-  return ''
+export function resolveRootDotEnvPath(apiRuntimeDir: string): string {
+  const candidate = resolve(apiRuntimeDir, '../../../.env')
+  return existsSync(candidate) ? candidate : ''
 }
 
 /**

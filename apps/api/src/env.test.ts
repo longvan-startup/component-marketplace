@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, test } from 'bun:test'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -126,21 +126,45 @@ describe('applyDotEnvFile (issue #70)', () => {
     expect(applyDotEnvFile('/nonexistent-dir-1a2b3c/.env', {})).toBe(0)
   })
 
-  test('resolveRootDotEnvPath: walk-up tìm .env từ src lẫn dist (fixture thật)', () => {
-    const repoRoot = mkdtempSync(`${tmpdir()}/envwalk-`)
-    const deepSrc = join(repoRoot, 'apps', 'api', 'src')
-    const deepDist = join(repoRoot, 'apps', 'api', 'dist')
-    for (const dir of [deepSrc, deepDist]) mkdirSync(dir, { recursive: true })
-    const dotEnv = join(repoRoot, '.env')
-    writeFileSync(dotEnv, 'X=1\n', 'utf8')
-    //Đầu vào là FILE path (giống import.meta.url sau fileURLToPath):
-    expect(resolveRootDotEnvPath(join(deepSrc, 'index.ts'))).toBe(dotEnv)
-    expect(resolveRootDotEnvPath(join(deepDist, 'index.js'))).toBe(dotEnv)
-    // Không có .env trong mọi cấp gần ⇒ chuỗi rỗng (applyDotEnvFile no-op).
-    const emptyRoot = mkdtempSync(`${tmpdir()}/envwalk-none-`)
-    mkdirSync(join(emptyRoot, 'apps', 'api', 'src'), { recursive: true })
-    expect(resolveRootDotEnvPath(join(emptyRoot, 'apps', 'api', 'src', 'index.ts'))).toBe('')
-    rmSync(repoRoot, { recursive: true, force: true })
-    rmSync(emptyRoot, { recursive: true, force: true })
+  test('resolveRootDotEnvPath uses the repo root for src and dist despite a nearer .env', () => {
+    const workspace = mkdtempSync(`${tmpdir()}/env-root-`)
+    try {
+      const repoRoot = join(workspace, 'repo')
+      const apiDir = join(repoRoot, 'apps', 'api')
+      const srcDir = join(apiDir, 'src')
+      const distDir = join(apiDir, 'dist')
+      for (const dir of [srcDir, distDir]) mkdirSync(dir, { recursive: true })
+
+      const rootDotEnv = join(repoRoot, '.env')
+      writeFileSync(rootDotEnv, 'ROOT_ONLY=root-value\n', 'utf8')
+      writeFileSync(join(apiDir, '.env'), 'NEARER_ONLY=api-value\n', 'utf8')
+
+      expect(resolveRootDotEnvPath(srcDir)).toBe(rootDotEnv)
+      expect(resolveRootDotEnvPath(distDir)).toBe(rootDotEnv)
+
+      const target: Record<string, string | undefined> = {}
+      expect(applyDotEnvFile(resolveRootDotEnvPath(srcDir), target)).toBe(1)
+      expect(target.ROOT_ONLY).toBe('root-value')
+      expect(target.NEARER_ONLY).toBeUndefined()
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  test('resolveRootDotEnvPath does not use an ancestor .env when repo root has none', () => {
+    const workspace = mkdtempSync(`${tmpdir()}/env-no-root-`)
+    try {
+      const repoRoot = join(workspace, 'repo')
+      const srcDir = join(repoRoot, 'apps', 'api', 'src')
+      mkdirSync(srcDir, { recursive: true })
+      writeFileSync(join(workspace, '.env'), 'OUTSIDE_REPO=must-not-load\n', 'utf8')
+
+      expect(resolveRootDotEnvPath(srcDir)).toBe('')
+      const target: Record<string, string | undefined> = {}
+      expect(applyDotEnvFile(resolveRootDotEnvPath(srcDir), target)).toBe(0)
+      expect(target.OUTSIDE_REPO).toBeUndefined()
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
   })
 })
