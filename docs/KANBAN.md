@@ -79,3 +79,14 @@ thời gian (đánh giá lại sau #31).
 
 Bot skip ⇒ owner chỉ cần mở project → **+ Add items** → gõ số issue.
 Không có code hoặc sửa CI nào cần — board vẫn trung tâm và trung thực.
+
+Backlog import (issues tạo TRƯỚC khi board có workflows chỉ bắt item mới):
+chạy 1 lệnh duy nhất sau khi có PAT scope `project`:
+
+```bash
+PROJECT_ID=PVT_xxx BOARD_TOKEN=ghp_xxx bash scripts/board-add-issues.sh
+```
+
+Script idempotent (re-run skip item sẵn đã có), in bảng `ADD/SKIP/ERROR`
+đủ rõ, và KHÔNG đụng status/cột — việc kéo item sang `In Progress` /
+`In Review` / `Done` là thao tác tay của team theo quan điểm §2.
