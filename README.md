@@ -119,11 +119,18 @@ Workspace `packages/db` (`@marketplace/db`) — schema + client dùng chung:
 ```bash
 bun run db:generate  # sinh migration từ schema.ts (packages/db/drizzle/*.sql)
 bun run db:migrate   # áp migration vào DB (cần DATABASE_URL / postgres compose đang chạy)
+bun run db:seed      # idempotent dev seed — 8 published + 2 draft row 'seed-*' (issue #60)
 bun run db:push      # đẩy thẳng schema vào DB (dev nhanh, bypass migration)
 bun run db:studio    # mở Drizzle Studio quản trị DB
 ```
 
 - Source of truth là `packages/db/src/schema.ts`; **migration SQL được commit**.
+- `bun run db:seed` — **chỉ dành cho dev** (issue #60): upsert idempotent
+  theo unique slug với prefix cố định `seed-`; chạy lại không tạo duplicate,
+  không xóa dữ liệu. Tự SKIP khi thiếu `DATABASE_URL`; REFUSE khi
+  `NODE_ENV=production` hoặc host DB không local (chỉ khi hiểu rõ rủi ro
+  mới set `SEED_ALLOW_REMOTE=1`). KHÔNG wire vào CI/CD, Docker startup
+  hay production.
 - API expose `GET /health/db` — ping `select 1` qua Drizzle, trả 503 nếu DB
   chưa cấu hình/không kết nối được. Chi tiết lỗi DB chỉ log phía server,
   không trả về client.
