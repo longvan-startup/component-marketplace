@@ -7,8 +7,11 @@
  */
 
 import { describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
-import { ApiConfigError, parseApiEnv } from './env'
+import { ApiConfigError, applyDotEnvFile, parseApiEnv, resolveRootDotEnvPath } from './env'
 
 describe('parseApiEnv', () => {
   test('config mặc định hợp lệ khi env rỗng (PORT 4000, dev, không DB)', () => {
@@ -75,6 +78,93 @@ describe('parseApiEnv', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(ApiConfigError)
       expect((error as ApiConfigError).message).not.toContain('junk')
+    }
+  })
+})
+
+describe('applyDotEnvFile (issue #70)', () => {
+  test('fill-only: key đã có (kể cả rỗng) KHÔNG bị ghi đè', () => {
+    const dir = mkdtempSync(`${tmpdir()}/env-test-`)
+    const file = join(dir, '.env')
+    writeFileSync(file, 'FRESH_KEY=hello\nEXISTING_KEY=new-value\n', 'utf8')
+    const target: Record<string, string | undefined> = { EXISTING_KEY: '' }
+    const count = applyDotEnvFile(file, target)
+    expect(count).toBe(1) // chỉ FRESH_KEY
+    expect(target.FRESH_KEY).toBe('hello')
+    expect(target.EXISTING_KEY).toBe('') // env thật thắng, kể cả rỗng
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  test('bỏ qua comment/trống/line sai định dạng/key sai identifier; strip quotes', () => {
+    const dir = mkdtempSync(`${tmpdir()}/env-test-`)
+    const file = join(dir, '.env')
+    writeFileSync(
+      file,
+      [
+        '# comment line',
+        '',
+        '   ',
+        'NO_EQUALS_SIGN_HERE',
+        '=starts-with-equals',
+        'BAD-KEY=1',
+        'QUOTED="hello world"',
+        "SINGLE='goodbye'",
+        'GOOD=x',
+      ].join('\n'),
+      'utf8',
+    )
+    const target: Record<string, string | undefined> = {}
+    const count = applyDotEnvFile(file, target)
+    expect(count).toBe(3) // QUOTED, SINGLE, GOOD
+    expect(target.QUOTED).toBe('hello world')
+    expect(target.SINGLE).toBe('goodbye')
+    expect(target.GOOD).toBe('x')
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  test('file không tồn tại ⇒ im lặng trả 0 (không throw)', () => {
+    expect(applyDotEnvFile('/nonexistent-dir-1a2b3c/.env', {})).toBe(0)
+  })
+
+  test('resolveRootDotEnvPath uses the repo root for src and dist despite a nearer .env', () => {
+    const workspace = mkdtempSync(`${tmpdir()}/env-root-`)
+    try {
+      const repoRoot = join(workspace, 'repo')
+      const apiDir = join(repoRoot, 'apps', 'api')
+      const srcDir = join(apiDir, 'src')
+      const distDir = join(apiDir, 'dist')
+      for (const dir of [srcDir, distDir]) mkdirSync(dir, { recursive: true })
+
+      const rootDotEnv = join(repoRoot, '.env')
+      writeFileSync(rootDotEnv, 'ROOT_ONLY=root-value\n', 'utf8')
+      writeFileSync(join(apiDir, '.env'), 'NEARER_ONLY=api-value\n', 'utf8')
+
+      expect(resolveRootDotEnvPath(srcDir)).toBe(rootDotEnv)
+      expect(resolveRootDotEnvPath(distDir)).toBe(rootDotEnv)
+
+      const target: Record<string, string | undefined> = {}
+      expect(applyDotEnvFile(resolveRootDotEnvPath(srcDir), target)).toBe(1)
+      expect(target.ROOT_ONLY).toBe('root-value')
+      expect(target.NEARER_ONLY).toBeUndefined()
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  test('resolveRootDotEnvPath does not use an ancestor .env when repo root has none', () => {
+    const workspace = mkdtempSync(`${tmpdir()}/env-no-root-`)
+    try {
+      const repoRoot = join(workspace, 'repo')
+      const srcDir = join(repoRoot, 'apps', 'api', 'src')
+      mkdirSync(srcDir, { recursive: true })
+      writeFileSync(join(workspace, '.env'), 'OUTSIDE_REPO=must-not-load\n', 'utf8')
+
+      expect(resolveRootDotEnvPath(srcDir)).toBe('')
+      const target: Record<string, string | undefined> = {}
+      expect(applyDotEnvFile(resolveRootDotEnvPath(srcDir), target)).toBe(0)
+      expect(target.OUTSIDE_REPO).toBeUndefined()
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
     }
   })
 })
