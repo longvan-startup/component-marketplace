@@ -1,17 +1,23 @@
-# Nghiên cứu Wave-1 — trước khi code feature đầu tiên
+# Nghiên cứu Wave-1 — quyết định và trạng thái triển khai
 
-Nền tảng (infra / CI-CD / contract / onboarding) đã đóng xong ở #44–#52.
-Wave-1 (epic #28) là **lần code feature thực sự đầu tiên** — tài liệu này
-nghiên cứu sâu từng phần TRƯỚC khi code, theo đúng tiền lệ
-`COMMUNITY_ARCHITECTURE.md` (nghiên cứu → owner duyệt → mới code). Mỗi phần:
-hiện trạng đọc từ code thật, khoảng cách contract↔DB, quyết định cần duyệt
-(D1–D7), rủi ro, tiêu chí hoàn thành. Không có code nào được gõ trước khi các
-quyết định trong §E được duyệt.
+Nghiên cứu ban đầu được ghi ngày 2026-10-26 để rà các quyết định trước khi
+triển khai. Từ đó các phần việc #33, #29, #31 đã được merge; #41 đã chốt Option A;
+phần live wiring còn lại của #32 đã tách thành issue #56. Vì vậy nội dung bên
+dưới giữ lại baseline ban đầu nhưng đánh dấu rõ phần đã hoàn thành và phần còn
+mở, thay vì coi toàn bộ D1–D7 là câu hỏi chưa được giải quyết.
 
-Trạng thái tài liệu: **proposed — chờ owner duyệt D1–D7**
-(cập nhật cuối: 2026-10-26).
+Trạng thái cập nhật: **#33/#29/#31/#41 hoàn tất; #56 còn mở**
+(cập nhật cuối: 2026-10-28).
 
-## Thứ tự code khuyên dùng (sau khi duyệt)
+| Hạng mục | Trạng thái hiện tại | Bằng chứng |
+|---|---|---|
+| #33 — đồng bộ TypeScript | Hoàn tất; `^7.0.2` được dùng thống nhất | PR #59; issue #33 đã đóng |
+| #29 — API bootstrap | Hoàn tất qua PR #55; logging triển khai dạng text một dòng, không phải JSON như đề xuất ban đầu | `apps/api/src/index.ts`; issue #29 đã đóng |
+| #31 — catalog read endpoints | Hoàn tất qua PR #58; detail dùng `:slug` | `apps/api/src/catalog/`; issue #31 đã đóng |
+| #41 — nguồn của `summary` | Hoàn tất: Option A, derive trong API mapper; không cần migration | PR #58 và quyết định tại issue #41 |
+| #32 — web data layer | acceptance ban đầu hoàn tất qua #38/#39/#46; live wiring tách sang #56 | issue #32 đóng; issue #56 còn mở |
+
+## Thứ tự code khuyên dùng tại thời điểm nghiên cứu
 
 ```text
 #33 deps unify (khóa phần — làm TRƯỚC, tránh bun.lock xung đột liên quan)
@@ -21,12 +27,18 @@ Trạng thái tài liệu: **proposed — chờ owner duyệt D1–D7**
             → #32 live wiring web (Văn)   ← bước docs song song được với #31
 ```
 
+Đây là thứ tự ban đầu, không phải kế hoạch còn chờ bắt đầu: #33, #29, quyết
+định #41 và #31 đã hoàn tất; phần web live-wiring hiện được theo dõi ở #56.
+
 #17 (Better Auth) là wave sau — KHÔNG thuộc Wave-1, study riêng khi tới
 (§ Rủi ro cuối tài liệu).
 
 ---
 
 # A. #33 — Đồng bộ version các workspaces
+
+**Trạng thái hiện tại: hoàn tất qua PR #59; issue #33 đã đóng.** Bảng dưới là
+baseline đo ngày 2026-10-26 trước khi PR #59 đồng bộ TypeScript.
 
 ## Hiện trạng thực đo được (issue #33 viết theo lũy cũ)
 
@@ -41,36 +53,27 @@ Dữ liệu thật từ `bun.lock` + manifests (2026-10-26):
 
 ⇒ React / express / zod **không có duplicate nào thực sự trong lock** —
 cụm "react 19.3.0 vs 19.3.1" và "express 5.0.6 vs 5.3.0" trong issue #33 đã
-lỗi thời (chỉ cần comment sửa lại số liệu khi PR #33 mở). Mismatch thật còn
-lại duy nhất: **TypeScript 7.0.2 (4 workspace) vs 5.9.3 (db)**.
+lỗi thời. Mismatch khi đó còn lại duy nhất: **TypeScript 7.0.2 (4 workspace)
+vs 5.9.3 (db)**. PR #59 sau đó thống nhất TypeScript `^7.0.2` trên các
+workspaces; issue #33 ghi nhận PR đã merge, Biome vẫn pin `2.5.15`, và local
+verify cùng CI đều pass.
 
-## Quyết định cần duyệt
+## D1 — quyết định ban đầu và kết quả
 
-**D1 — TS version: đề xuất thống nhất `^7.0.2` toàn workspace** (bump
-`packages/db` lên 7, bỏ 5.9.3).
-
-- Cơ sở: 4/5 workspace đã chạy TS7 ổn qua mọi gates từ trước; TS7 chỉ dùng
-  để typecheck — `drizzle-kit` sinh migration không phụ thuộc compiler TS;
-  chưa thấy điểm nào của TS7 phá code db hiện tại.
-- Rủi ro / fallback: nếu typecheck của `packages/db` lộ mismatch với TS7
-  (types của drizzle viết cho TS5...) ⇒ giữ db ở 5.9.3 và **ghi lý do rỏ ràng
-  trong issue** — không chấp nhận giải pháp nửa vời giữa hai version.
-
-## Tiêu chí hoàn thành
-
-- [ ] Manifests cùng một major TS (hoặc fallback được giải thích rõ ràng).
-- [ ] `rm bun.lock && bun install` ⇒ diff lock **chỉ thay đổi dòng version,
-      không cài thêm lá nào khác**.
-- [ ] Biome vẫn pin chính xác `2.5.15` (regression rule — không bump nhân
-      tiện PR này).
-- [ ] `bun run verify` ALL GATES PASS; CI xanh; files `packages/db/drizzle/**`
-      không bị Biome format lại (rule #16).
+Đề xuất ban đầu là thống nhất `^7.0.2` và bỏ `5.9.3` ở `packages/db`.
+PR #59 đã triển khai quyết định đó; không cần fallback hay quyết định D1 bổ sung.
 
 ---
 
 # B. #29 — API bootstrap layer
 
-## Hiện trạng (`apps/api/src/index.ts` — đọc thật)
+**Trạng thái hiện tại: hoàn tất qua PR #55; issue #29 đã đóng.** Các nhận định
+và lựa chọn dưới đây mô tả baseline trước PR #55. Implementation hiện có env
+validation, error envelope, exact-match CORS allowlist, request logging và
+graceful shutdown (`server.close()` rồi `db.close()`). Logging thực tế là text
+một dòng có method/path/status/duration, không phải JSON như đề xuất bên dưới.
+
+## Baseline trước PR #55 (`apps/api/src/index.ts` — đọc ngày 2026-10-26)
 
 - 1 file: `express.json()` + lazy `getDb()` + 3 route (`/`, `/health`,
   `/health/db`) + dual mount `/api` cho Vercel (#46) + default export cho
@@ -85,7 +88,7 @@ lại duy nhất: **TypeScript 7.0.2 (4 workspace) vs 5.9.3 (db)**.
   trong PR #29; các import hiện tại (`createDb`, `Database`) giữ nguyên để
   boundary không thay đổi.
 
-## Đề xuất nội dung (cân với các quyết định)
+## Đề xuất tại thời điểm nghiên cứu (trước PR #55; lịch sử, không phải thiết kế hiện tại)
 
 1. **Env validation — zod, fail-fast**: `envSchema` đặt trong `apps/api`
    (env là chuyện của từng app — **không** đưa lên `packages/shared`).
@@ -114,51 +117,41 @@ lại duy nhất: **TypeScript 7.0.2 (4 workspace) vs 5.9.3 (db)**.
    lần đầu = graceful, lần thứ 2 trong 5s = force exit (Vercel có kỳ hạn
    shutdown riêng — logic này chỉ ảnh hưởng Docker/VPS).
 
-## Tiêu chí hoàn thành (mapped từ issue #29)
-
-- [ ] Env lỗi ⇒ service không boot, log chỉ ra biến nào sai.
-- [ ] Route sai / thiếu env / DB chết ⇒ đúng **một** JSON shape (theo
-      `apiErrorSchema`), không stacktrace ở prod.
-- [ ] `bun test` có case: CORS header theo trạng thái, error envelope cho
-      3 sự cố, shutdown gọi `pool.end()` (spy).
-- [ ] `bun run verify` xanh; boundary không đổi (`apps/api` chỉ vẫn
-      import `packages/db` + `packages/shared`).
-
 ---
 
-# C. #31 — Read endpoints catalog (+ quyết định #41 blocker)
+# C. #31 — Read endpoints catalog và quyết định #41
+
+**Trạng thái hiện tại: endpoints hoàn tất qua PR #58; issue #31 và #41 đã
+đóng.** #41 chọn Option A: API mapper trim `description`, dùng `name` khi
+description null/blank, rồi derive `summary` tối đa 300 ký tự. Không có
+database migration cho `summary`. Các bảng và tiêu chí bên dưới là baseline
+nghiên cứu; chúng không còn là blockers của #31.
 
 ## Khoảng cách Contract ↔ DB (bảng kiểm đọc thật từng field — rủi ro lớn nhất Wave-1)
 
 | Field hợp đồng (`componentSchema`) | DB schema thật (`components`) | Khoảng cách | Đề xuất Wave-1 |
 |---|---|---|---|
-| `summary` (required, ≤300) | **KHÔNG có cột** | #41 (blocker) | **D2 dưới đây** |
+| `summary` (required, ≤300) | **KHÔNG có cột** | #41 đã giải quyết | Derive ở mapper theo Option A; fallback sang `name` khi description rỗng |
 | `description` (required, ≥1) | `text NULL` | nullable vs required | Migrate: `NOT NULL DEFAULT ''` + mapper không fallback ngầm |
 | `category` (enum 3 giá trị) | `text DEFAULT 'general'` | `'general'` nằm ngoài hợp đồng enum | Migrate: default → `'react-component'` + check constraint; map các row `general` cũ khi migrate |
 | `author` (handle string ≥2) | `authorId` uuid FK | khác kiểu | Join `users` lấy `name` (handle v1 = name); `author_id NULL` ⇒ `'anonymous'` (ghi chú rõ trong mapper) |
 | `id / slug / name / tags / latestVersion / isPublished` | khớp | — | — |
 | `isPublished = false` | có | public list **chỉ hiện published** | SQL `WHERE is_published = true` cho list **và** detail (404 khi chưa publish) |
 
-## D2 — quyết #41 (đề xuất: **Option B — thêm cột**)
+## D2 — quyết định #41: **Option A — derive server-side**
 
-- **B (đề xuất)**: `packages/db` migrate thêm `summary varchar(300)` NOT NULL
-  DEFAULT ''. Lý do: (1) hợp đồng đã required, web đã render `summary` từ
-  #39; (2) `description` nullable ⇒ derive server dễ vỡ hợp đồng ngay khi
-  gặp row thiếu description; (3) editor sau này muốn teaser thủ công — B
-  không phải đổi hợp đồng lần nữa; (4) migrations được commit, forward-only,
-  chi phí rất thấp với team 2 người.
-- **Option A** (derive slice 280 server-side) vẫn hợp lệ nếu muốn đỡ migration,
-  đánh đổi: DB không thể không có description ⇒ chỉ có thể dùng khi đã migrate
-  `description NOT NULL`, nhưng vẫn không giải quyết tương lai teaser tay.
-- Hệ quả: nếu duyệt B ⇒ PR `packages/db` (migrate + seed) **phải đi trước**
-  PR #31.
+PR #58 triển khai Option A và issue #41 ghi nhận quyết định này: trim
+`description`, fallback sang `name` nếu null/blank, cắt `summary` theo giới
+hạn 300 ký tự của shared contract, rồi validate bằng `componentSchema.parse()`.
+Không cần migration. Chỉ mở lại Option B nếu có yêu cầu thực tế cho teaser do
+creator tự viết, khác với `description`.
 
-## Endpoints — chốt theo hợp đồng (bỏ mọi câu hỏi khác)
+## Endpoints đã triển khai trong PR #58
 
 - `GET /components` — query qua `listRequestSchema` (zod parse; sai ⇒ 422
-  theo `apiErrorSchema`). **Detail dùng `:slug`**: issue #31 cũ viết
-  `GET /components/:id` — hợp đồng #39 (đã merge) chốt **`GET /components/:slug`**
-  (id giữ internal) → sửa trong PR body + comment issue khi mở PR.
+  theo `apiErrorSchema`). **Detail dùng `:slug`**: issue #31 ban đầu ghi
+  `:id`, nhưng hợp đồng #39 và route được triển khai trong PR #58 dùng
+  `GET /components/:slug` (id giữ internal).
 - SQL: `limit/offset` (wave-1); sort `newest` = `created_at DESC`, `name` =
   `name ASC`; filter nhỏ nhất: `q` = `name ILIKE` + overlap tags,
   `category` exact — chính là "smallest useful set" issue #31 yêu cầu, ghi
@@ -167,23 +160,27 @@ lại duy nhất: **TypeScript 7.0.2 (4 workspace) vs 5.9.3 (db)**.
 - Public surface trên Vercel = `/api/components…` (dual mount đã dựng #46);
   internal binding calls vẫn dùng path gốc.
 
-## Tích hợp test
+## Tích hợp test trong PR #58
 
 - Pattern disposable Postgres: tái dùng `scripts/docker-smoke.lib.sh` + compose
   overlay (nền đã có từ #30/#34); điểm mới: **assert response qua
   `listResponseSchema`** (không tự do đoán field) + case 404 (slug miss) +
   422 (pageSize 999) + empty page.
 
-## Tiêu chí hoàn thành
-
-- [ ] D2 được quyết **trước** PR đầu của #31.
-- [ ] Migration + seed (nếu B) đi trước, cùng bước với thay đổi hợp đồng
-      (không per-workspace trễ).
-- [ ] happy / empty / 404 / 422 + envelope assert theo hợp đồng; boundary ✓.
+PR #58 đã triển khai list/detail và integration coverage cho response, empty
+page, 404, invalid query và unpublished rows. Một khoảng cách vẫn còn được
+giữ rõ trong mapper: DB default `category = 'general'` không thuộc enum của
+shared contract, nên mapper fail loud thay vì âm thầm remap. Row có category
+`general` cần được chuẩn hóa hoặc xử lý có chủ đích trước khi mapper có thể
+trả DTO công khai hợp lệ.
 
 ---
 
-# D. #32 — Web data layer **live** (wiring)
+# D. #56 — Web data layer **live** (wiring, tách từ #32)
+
+Issue #32 đóng sau khi acceptance ban đầu được giao qua #38/#39/#46. Phần
+live-wiring bên dưới được tách thành issue #56, hiện còn mở và được giao cho
+Văn.
 
 ## Phần ĐÃ xong (từ #38/#39 — đừng làm lại)
 
@@ -191,7 +188,7 @@ App shell, tokens Tailwind `@theme`, mock/live switch (`API_MODE`),
 `api-client` + quy tắc base URL theo runtime, UI primitives, render catalog
 RSC, smoke marker `data-smoke`.
 
-## Phần còn lại (scope đúng bây giờ)
+## Phần còn lại theo issue #56
 
 1. **Types chuyển sang `@marketplace/shared`**: `catalog-source.ts` hiện giữ
    **bản local type copy** (`CatalogItem`, các shape query) dù hợp đồng đã
@@ -223,19 +220,19 @@ RSC, smoke marker `data-smoke`.
 
 ---
 
-# E. Tóm tắt quyết định cần owner duyệt
+# E. Tóm tắt quyết định và trạng thái hiện tại
 
-| ID | Câu hỏi | Đề xuất |
+| ID | Câu hỏi | Kết quả / trạng thái |
 |---|---|---|
-| **D1** | TS đồng bộ: bump `packages/db` lên 7? | **Yes — tất cả `^7.0.2`** (fallback có thể giải thích rõ nếu typecheck drizzle lỗi) |
-| **D2** | #41: `summary` từ đâu? | **B — thêm cột `summary varchar(300)`** (migrate + seed đi trước #31) |
-| **D3** | Logging | **console JSON 1 dòng, 0 dep** (không pino) |
-| **D4** | CORS | **không cài `cors` pkg** — middleware tự viết, exact-match từ `CORS_ORIGINS` |
-| **D5** | `category` mismatch DB | **migrate: default `'react-component'` + check constraint + seed** (không thêm enum mới trong Wave-1) |
-| **D6** | `author` handle là gì? | **join users lấy `name`**, NULL ⇒ `'anonymous'` (#17 với auth sẽ chuẩn hoá sau) |
-| **D7** | Cache list/detail live? | **`revalidate = 60`** (no-store chờ verified realtime) |
-| — | Issue #31 body `:id` | Sửa thành `:slug` trong comment khi mở PR #31 (hợp đồng đã chốt) |
-| — | Issue #33 số liệu cũ | Comment sửa số liệu thực khi mở PR #33 (dữ liệu thật ở §A) |
+| **D1** | TS đồng bộ | Hoàn tất qua PR #59; `^7.0.2` đã thống nhất; #33 đóng |
+| **D2** | Nguồn `summary` | Option A được chốt ở #41 và triển khai ở #58; không migration |
+| **D3** | Logging | Hoàn tất qua #55; text một dòng, không phải JSON như đề xuất ban đầu |
+| **D4** | CORS | Hoàn tất qua #55; exact-match từ `CORS_ORIGINS`, không thêm package `cors` |
+| **D5** | `category` mismatch DB | Còn mở: DB default `general` ngoài enum; mapper hiện fail loud; chưa có migration chuẩn hóa |
+| **D6** | `author` hiển thị | PR #58 join `users.name`; author thiếu/rỗng thành `anonymous` |
+| **D7** | Cache list/detail live | Còn mở trong #56; issue đề xuất `revalidate = 60` và không thêm React Query |
+| — | Issue #31 body `:id` | Đã dùng `:slug` trong API của PR #58 |
+| — | Issue #33 số liệu cũ | #33 đóng qua PR #59; thống nhất TypeScript đã xong |
 
 ## Rủi ro Wave-1 (tổng hợp — giữ baseline)
 
