@@ -23,6 +23,8 @@
  * (issue #29 §D).
  */
 
+import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createDbHandle, type DatabaseHandle } from '@marketplace/db'
 import { getAppInfo } from '@marketplace/shared'
 import { sql } from 'drizzle-orm'
@@ -30,7 +32,7 @@ import express from 'express'
 import { toCatalogComponent } from './catalog/mapper'
 import { getComponentBySlug, listComponents } from './catalog/queries'
 import { parseListRequest, parseSlugParam } from './catalog/requests'
-import { type ApiEnv, parseApiEnv } from './env'
+import { type ApiEnv, applyDotEnvFile, parseApiEnv, resolveRootDotEnvPath } from './env'
 import { ApiHttpError, errorHandler, notFoundHandler, sendError } from './errors'
 
 /** Mount paths computed per call so tests can vary the VERCEL env. */
@@ -226,6 +228,21 @@ export async function shutdown(options: {
 /* ------------------------------------------------------------------ */
 /* Entrypoint thực thi thật (bun run src/index.ts, container CMD)        */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Dev-only fill từ repo root `.env` (issue #70): bun chỉ auto-load `.env`
+ * theo cwd — `bun run --cwd apps/api` không bao giờ thấy root `.env` nên
+ * dev ngoài Docker bị 503 DATABASE_UNCONFIGURED dù DB đang chạy.
+ * Fill-ONLY + skip khi production (compose/Vercel inject env thật) và khi
+ * test (bun test không đổi hành vi); file thiếu = im lặng.
+ */
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  const apiDir = dirname(fileURLToPath(import.meta.url)) // src (dev) | dist (start)
+  const filled = applyDotEnvFile(resolveRootDotEnvPath(apiDir))
+  if (filled > 0) {
+    console.log(`[api] dev env: filled ${filled} variable(s) from repo root .env (fill-only)`)
+  }
+}
 
 const { app, listen, dbHandle, env } = createServer()
 
