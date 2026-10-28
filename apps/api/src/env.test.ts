@@ -7,8 +7,11 @@
  */
 
 import { describe, expect, test } from 'bun:test'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
-import { ApiConfigError, parseApiEnv } from './env'
+import { ApiConfigError, applyDotEnvFile, parseApiEnv, resolveRootDotEnvPath } from './env'
 
 describe('parseApiEnv', () => {
   test('config mặc định hợp lệ khi env rỗng (PORT 4000, dev, không DB)', () => {
@@ -76,5 +79,68 @@ describe('parseApiEnv', () => {
       expect(error).toBeInstanceOf(ApiConfigError)
       expect((error as ApiConfigError).message).not.toContain('junk')
     }
+  })
+})
+
+describe('applyDotEnvFile (issue #70)', () => {
+  test('fill-only: key đã có (kể cả rỗng) KHÔNG bị ghi đè', () => {
+    const dir = mkdtempSync(`${tmpdir()}/env-test-`)
+    const file = join(dir, '.env')
+    writeFileSync(file, 'FRESH_KEY=hello\nEXISTING_KEY=new-value\n', 'utf8')
+    const target: Record<string, string | undefined> = { EXISTING_KEY: '' }
+    const count = applyDotEnvFile(file, target)
+    expect(count).toBe(1) // chỉ FRESH_KEY
+    expect(target.FRESH_KEY).toBe('hello')
+    expect(target.EXISTING_KEY).toBe('') // env thật thắng, kể cả rỗng
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  test('bỏ qua comment/trống/line sai định dạng/key sai identifier; strip quotes', () => {
+    const dir = mkdtempSync(`${tmpdir()}/env-test-`)
+    const file = join(dir, '.env')
+    writeFileSync(
+      file,
+      [
+        '# comment line',
+        '',
+        '   ',
+        'NO_EQUALS_SIGN_HERE',
+        '=starts-with-equals',
+        'BAD-KEY=1',
+        'QUOTED="hello world"',
+        "SINGLE='goodbye'",
+        'GOOD=x',
+      ].join('\n'),
+      'utf8',
+    )
+    const target: Record<string, string | undefined> = {}
+    const count = applyDotEnvFile(file, target)
+    expect(count).toBe(3) // QUOTED, SINGLE, GOOD
+    expect(target.QUOTED).toBe('hello world')
+    expect(target.SINGLE).toBe('goodbye')
+    expect(target.GOOD).toBe('x')
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  test('file không tồn tại ⇒ im lặng trả 0 (không throw)', () => {
+    expect(applyDotEnvFile('/nonexistent-dir-1a2b3c/.env', {})).toBe(0)
+  })
+
+  test('resolveRootDotEnvPath: walk-up tìm .env từ src lẫn dist (fixture thật)', () => {
+    const repoRoot = mkdtempSync(`${tmpdir()}/envwalk-`)
+    const deepSrc = join(repoRoot, 'apps', 'api', 'src')
+    const deepDist = join(repoRoot, 'apps', 'api', 'dist')
+    for (const dir of [deepSrc, deepDist]) mkdirSync(dir, { recursive: true })
+    const dotEnv = join(repoRoot, '.env')
+    writeFileSync(dotEnv, 'X=1\n', 'utf8')
+    //Đầu vào là FILE path (giống import.meta.url sau fileURLToPath):
+    expect(resolveRootDotEnvPath(join(deepSrc, 'index.ts'))).toBe(dotEnv)
+    expect(resolveRootDotEnvPath(join(deepDist, 'index.js'))).toBe(dotEnv)
+    // Không có .env trong mọi cấp gần ⇒ chuỗi rỗng (applyDotEnvFile no-op).
+    const emptyRoot = mkdtempSync(`${tmpdir()}/envwalk-none-`)
+    mkdirSync(join(emptyRoot, 'apps', 'api', 'src'), { recursive: true })
+    expect(resolveRootDotEnvPath(join(emptyRoot, 'apps', 'api', 'src', 'index.ts'))).toBe('')
+    rmSync(repoRoot, { recursive: true, force: true })
+    rmSync(emptyRoot, { recursive: true, force: true })
   })
 })
