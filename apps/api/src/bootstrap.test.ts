@@ -18,6 +18,8 @@ const NO_CORS_ENV: ApiEnv = {
   NODE_ENV: 'test',
   DATABASE_URL: undefined,
   CORS_ORIGINS: undefined,
+  BETTER_AUTH_SECRET: undefined,
+  BETTER_AUTH_URL: undefined,
 }
 
 /** Boot nhanh trên port ephemeral; trả helpers cho từng test. */
@@ -100,6 +102,7 @@ describe('CORS (issue #29 §B)', () => {
     })
     expect(res.status).toBe(200)
     expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:3000')
+    expect(res.headers.get('access-control-allow-credentials')).toBe('true')
   })
 
   test('origin lạ: GET KHÔNG nhận ACAO (không mở wildcard)', async () => {
@@ -117,8 +120,11 @@ describe('CORS (issue #29 §B)', () => {
     })
     expect(res.status).toBe(204)
     expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:3000')
+    expect(res.headers.get('access-control-allow-credentials')).toBe('true')
     expect(res.headers.get('access-control-allow-methods')).toContain('GET')
+    expect(res.headers.get('access-control-allow-methods')).toContain('POST')
     expect(res.headers.get('access-control-allow-headers')).toContain('Content-Type')
+    expect(res.headers.get('access-control-allow-headers')).toContain('Authorization')
   })
 
   test('preflight origin lạ: OPTIONS 403 theo envelope', async () => {
@@ -136,6 +142,15 @@ describe('CORS (issue #29 §B)', () => {
     const b = track(boot(CORS_ENV))
     const res = await fetch(`${b.url}/health`)
     expect(res.headers.get('vary')).toContain('Origin')
+  })
+
+  test('auth chưa cấu hình: trả 503 theo API envelope', async () => {
+    const b = track(boot())
+    const res = await fetch(`${b.url}/api/auth/get-session`)
+    expect(res.status).toBe(503)
+    const body = (await res.json()) as { code: string; status: number }
+    expect(body.code).toBe('AUTH_UNAVAILABLE')
+    expect(body.status).toBe(503)
   })
 })
 

@@ -28,12 +28,16 @@ describe('parseApiEnv', () => {
       NODE_ENV: 'production',
       DATABASE_URL: 'postgresql://postgres:secret@db.internal:5432/app',
       CORS_ORIGINS: 'https://a.example, https://b.example',
+      BETTER_AUTH_SECRET: 'test-secret-with-at-least-32-characters-long',
+      BETTER_AUTH_URL: 'https://api.example.com',
     })
     expect(env.PORT).toBe(8888)
     expect(env.NODE_ENV).toBe('production')
     expect(env.DATABASE_URL).toBe('postgresql://postgres:secret@db.internal:5432/app')
     // CSV + whitespace được normalize thành exact-match list.
     expect(env.CORS_ORIGINS).toEqual(['https://a.example', 'https://b.example'])
+    expect(env.BETTER_AUTH_SECRET).toBe('test-secret-with-at-least-32-characters-long')
+    expect(env.BETTER_AUTH_URL).toBe('https://api.example.com')
   })
 
   test('PORT sai loại ⇒ ApiConfigError nêu TÊN biến, KHÔNG in giá trị', () => {
@@ -64,6 +68,28 @@ describe('parseApiEnv', () => {
     // Chuỗi rỗng coi như "không cấu hình" — phải được chấp nhận (degraded).
     const env = parseApiEnv({ DATABASE_URL: '' })
     expect(env.DATABASE_URL).toBeUndefined()
+  })
+
+  test('Better Auth secret/url được validate mà không lộ giá trị', () => {
+    expect(() => parseApiEnv({ BETTER_AUTH_SECRET: 'short' })).toThrow(ApiConfigError)
+    expect(() => parseApiEnv({ BETTER_AUTH_URL: 'ftp://auth.example.com' })).toThrow(ApiConfigError)
+
+    try {
+      parseApiEnv({ BETTER_AUTH_SECRET: 'short' })
+      expect.unreachable()
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiConfigError)
+      expect((error as ApiConfigError).message).not.toContain('short')
+    }
+  })
+
+  test('production có database thì bắt buộc BETTER_AUTH_SECRET và BETTER_AUTH_URL', () => {
+    expect(() =>
+      parseApiEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://postgres:password@db.internal:5432/app',
+      }),
+    ).toThrow(ApiConfigError)
   })
 
   test('biến lạ không bị từ chối (Vercel/compose inject nhiều biến)', () => {
