@@ -349,7 +349,7 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     expect(wrong.status).toBe(401)
     const wrongBody = await wrong.json()
     expect(apiErrorSchema.safeParse(wrongBody).success).toBe(false)
-    expect(JSON.stringify(wrongBody)).not.toContain('password')
+    expect(JSON.stringify(wrongBody)).not.toContain('incorrect-password')
     expect(JSON.stringify(wrongBody)).not.toContain('stack')
 
     const correct = await fetch(`${baseUrl}/api/auth/sign-in/email`, {

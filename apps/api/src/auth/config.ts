@@ -46,7 +46,9 @@ export function createAuth(db: Database, env: AuthEnvironment) {
     },
     advanced: {
       database: {
-        generateId: 'uuid',
+        // Generate IDs in the app: auth tables use both UUID and text columns,
+        // and the text primary keys do not have database defaults.
+        generateId: () => crypto.randomUUID(),
       },
     },
   })
