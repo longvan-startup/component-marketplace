@@ -12,7 +12,7 @@
   "dependencies": {
     "@marketplace/db": "workspace:*",
     "@marketplace/shared": "workspace:*",
-    "drizzle-orm": "^0.44.7",
+    "drizzle-orm": "^0.45.4",
     "express": "^5.1.0",
     "zod": "^4"
   },
