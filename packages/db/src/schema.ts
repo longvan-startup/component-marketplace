@@ -1,10 +1,19 @@
 /**
  * @marketplace/db — schema Drizzle ORM (PostgreSQL).
- * Schema tối thiểu cho marketplace: users + components.
- * Better Auth (tích hợp sau) sẽ tái dùng bảng users hoặc thêm bảng riêng.
+ * Schema marketplace + Better Auth. Auth dùng lại users; session, account,
+ * verification là các bảng riêng do Better Auth quản lý.
  */
 
-import { boolean, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  index,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
 
 export const userRole = pgEnum('user_role', ['user', 'seller', 'admin'])
 
@@ -14,8 +23,7 @@ export const users = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     email: text('email').notNull(),
     name: text('name').notNull(),
-    // 2 field lõi của Better Auth "user" model (ghép sau bằng drizzleAdapter,
-    // modelName 'users' / usePlural). emailVerified mặc định false.
+    // Các field lõi của Better Auth user model. emailVerified mặc định false.
     emailVerified: boolean('email_verified').notNull().default(false),
     image: text('image'),
     // App-owned field: thêm vào auth config qua user.additionalFields (input: false)
@@ -24,6 +32,61 @@ export const users = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex('users_email_unique').on(table.email)],
+)
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: text('id').primaryKey(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    token: text('token').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    uniqueIndex('sessions_token_unique').on(table.token),
+    index('sessions_user_id_idx').on(table.userId),
+  ],
+)
+
+export const accounts = pgTable(
+  'accounts',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id').notNull(),
+    providerId: text('provider_id').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    idToken: text('id_token'),
+    accessTokenExpiresAt: timestamp('access_token_expires_at', { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }),
+    scope: text('scope'),
+    password: text('password'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('accounts_user_id_idx').on(table.userId)],
+)
+
+export const verifications = pgTable(
+  'verifications',
+  {
+    id: text('id').primaryKey(),
+    identifier: text('identifier').notNull(),
+    value: text('value').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('verifications_identifier_idx').on(table.identifier)],
 )
 
 export const components = pgTable(

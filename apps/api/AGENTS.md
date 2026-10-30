@@ -39,16 +39,22 @@ are ignored (Vercel/compose inject plenty). Invalid values ⇒ `ApiConfigError`
 | `NODE_ENV` | `development` / `test` / `production` | default `development`; other values ⇒ boot fails |
 | `DATABASE_URL` | postgres connection (postgres.js) | optional; empty/missing ⇒ degraded (`/health` OK, `/health/db` 503); non-postgres scheme ⇒ boot fails |
 | `CORS_ORIGINS` | CSV exact-match origin allowlist (dev cross-origin) | optional; prod same-origin `/api/*` (Vercel Services) needs none |
+| `BETTER_AUTH_SECRET` | Better Auth signing/encryption secret | required with `DATABASE_URL` in production; at least 32 characters; never log |
+| `BETTER_AUTH_URL` | Better Auth public API base URL | required with `DATABASE_URL` in production; absolute `http(s)` URL |
 
 Never log the values of these variables (secrets live inside `DATABASE_URL`).
 
 ## Error envelope (issue #29 §B)
 
-Every error response — 404 fallback, thrown `ApiHttpError`, express JSON parse
-failure, unexpected 500 — goes through `sendError()` (`src/errors.ts`) and is
-validated against `apiErrorSchema` from `@marketplace/shared`:
+Every non-auth error response — 404 fallback, thrown `ApiHttpError`, express
+JSON parse failure, unexpected 500 — goes through `sendError()`
+(`src/errors.ts`) and is validated against `apiErrorSchema` from `@marketplace/shared`:
 `{ code: UPPER_SNAKE, message, status 400–599, details? }`. Stack traces and
 db/host details never leave the server.
+
+`/api/auth/*` is owned by Better Auth and keeps its response shape, including
+auth errors. Do not wrap or translate those responses in the API; frontend code
+maps Better Auth error codes/messages to UI states.
 
 ## Quality gates (all required before declaring "done")
 
