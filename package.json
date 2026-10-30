@@ -31,7 +31,7 @@
     "db:studio": "bun run --cwd packages/db db:studio"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.3",
+    "@biomejs/biome": "2.5.15",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
     "@marketplace/db": "workspace:*",
