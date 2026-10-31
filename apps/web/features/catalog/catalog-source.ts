@@ -25,6 +25,10 @@ export interface CatalogItem {
   latestVersion: string
   author: string
   isPublished: boolean
+  /** Per-item preview asset; detail page falls back to a generic preview when absent. */
+  previewImageUrl?: string
+  /** Usage license for the downloaded component, e.g. "MIT". */
+  license?: string
 }
 
 export interface CatalogListQuery {

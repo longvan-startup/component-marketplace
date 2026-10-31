@@ -20,6 +20,7 @@ export const MOCK_COMPONENTS: CatalogItem[] = [
     latestVersion: '1.2.0',
     author: 'van',
     isPublished: true,
+    license: 'MIT',
   },
   {
     id: '5bfbe3a3-c6df-47bb-8eb5-31d0884b9ec9',
@@ -33,6 +34,7 @@ export const MOCK_COMPONENTS: CatalogItem[] = [
     latestVersion: '0.9.3',
     author: 'van',
     isPublished: true,
+    license: 'MIT',
   },
   {
     id: '88b3a2f1-2a77-4d28-a4b0-24b5f6a7ba44',
@@ -46,6 +48,7 @@ export const MOCK_COMPONENTS: CatalogItem[] = [
     latestVersion: '0.4.1',
     author: 'long',
     isPublished: false,
+    license: 'MIT',
   },
   {
     id: 'd8fdb50e-3871-4e02-a61a-18b6ec42ab9a',
@@ -59,6 +62,7 @@ export const MOCK_COMPONENTS: CatalogItem[] = [
     latestVersion: '1.0.0',
     author: 'van',
     isPublished: true,
+    license: 'MIT',
   },
   {
     id: 'c58516cb-06b7-4797-9b85-36d9adf9d64c',
@@ -72,6 +76,7 @@ export const MOCK_COMPONENTS: CatalogItem[] = [
     latestVersion: '0.2.0',
     author: 'long',
     isPublished: true,
+    license: 'MIT',
   },
   {
     id: '2a9c0b1d-ee33-45c8-87b2-9d1a1b0a72f0',
@@ -85,5 +90,6 @@ export const MOCK_COMPONENTS: CatalogItem[] = [
     latestVersion: '0.1.0',
     author: 'van',
     isPublished: false,
+    license: 'MIT',
   },
 ]
