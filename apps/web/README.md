@@ -26,11 +26,11 @@ bun install          # từ root monorepo
 bun run dev:web      # dev server :3000
 bun run dev:api      # API :4000 (cần khi API_MODE=live)
 
-bun run verify       # GATE BẮT BUỘC trước mọi commit (lint+boundary+typecheck+test+build+Docker)
+bun run verify       # lint + boundary + typecheck + test + build
+bun run verify --docker # thêm Docker runtime smoke cách ly
 ```
 
-⚠️ `next build` có thể tự ghi đè `apps/web/tsconfig.json` — chạy
-`git checkout apps/web/tsconfig.json` trước khi commit (issue #40).
+`bun run --cwd apps/web typecheck` tạo lại route types bằng `next typegen`. Typecheck và production build dùng `tsconfig.typecheck.json` để không kiểm tra các type cũ trong `.next/dev`; dev vẫn dùng `tsconfig.json`.
 
 ## Cấu trúc
 
@@ -118,7 +118,7 @@ GSAP chạy trực tiếp trong RSC. Bundle cost giảm dần theo thứ tự tr
 
 ## Cạm bẫy gotchas đã từng đánh
 
-- `tsconfig.json` bị `next build` tự ghi → restore trước commit (#40).
+- Nếu thay đổi route, chạy lại typecheck để tạo route types mới.
 - Biome pin chính xác `2.5.15` — không bump trong PR không liên quan.
 - Tailwind v4 directives (`@theme`…) cần `css.parser.tailwindDirectives: true`
   trong `biome.json` (đã set, đừng bỏ).
