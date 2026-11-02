@@ -72,6 +72,11 @@ change is non-trivial.
 `emil-design-eng`, `apple-design`, `interaction-design`, `adapt`,
 `beautiful-shadows`, `reactbits`, `design-review`, `better-interface`.
 
+**Figma design-tool work (any task reading/writing the Luva UI Figma file via
+the Plugin API):** `figma-design-verification` — mandatory audit-real-data-
+after-every-mutation discipline and known Plugin API gotchas; consult before
+any `use_figma` write, not just at the end.
+
 **Quality filters:** `antislop` (core, load first when running the family) +
 `antislop-ui`, `antislop-code`, `antislop-layoutmobile`, `antislop-copywriting`,
 `antislop-human`.
@@ -84,4 +89,5 @@ change is non-trivial.
 Minimum consult per task type: any `apps/web` UI/UX change → `web-conventions`
 + `antislop` (core) + relevant craft skills; any backend/schema change →
 `api-conventions` + `changing-the-database-schema` when migrations are touched;
-every commit/PR → `git-commit` / `github-pr`.
+any Figma Plugin API task → `figma-design-verification`; every commit/PR →
+`git-commit` / `github-pr`.
