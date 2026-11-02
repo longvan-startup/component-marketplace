@@ -1,13 +1,12 @@
 /**
  * apps/api — central error primitives (issue #29 §B).
  *
- * Mọi response lỗi đi qua ENVELOPE của `apiErrorSchema` (`@marketplace/shared`)
- * — điều này giúp frontend (#32) + tests (#31) khẳng định hợp đồng (shape) mà
- * không cần suy đoán. Code UPPER_SNAKE, status 400–599, không stack trace
- * ở prod.
+ * Mọi response lỗi ngoài `/api/auth/*` đi qua ENVELOPE của `apiErrorSchema`
+ * (`@marketplace/shared`). Better Auth giữ nguyên response/error contract của
+ * nó để frontend có thể ánh xạ lỗi auth mà không phải đoán.
  *
- * Future endpoints (#31, Better Auth #17...) NÉN lỗi bằng `ApiHttpError`.
- * Lỗi khác (không kiểm soát) trở thành 500 INTERNAL_ERROR + được log phía
+ * API endpoint khác NÉN lỗi bằng `ApiHttpError`. Lỗi khác (không kiểm soát)
+ * trở thành 500 INTERNAL_ERROR + được log phía
  * máy chủ — không bao giờ lộ chi tiết cho client.
  */
 

@@ -17,6 +17,10 @@ services:
 
   api:
     ports: !override []
+    environment:
+      # Isolated smoke-only value; never use this outside verify containers.
+      BETTER_AUTH_SECRET: verify-only-secret-do-not-use-outside-smoke-123456
+      BETTER_AUTH_URL: http://localhost:4000
 
   postgres:
     ports: !override []

@@ -141,6 +141,15 @@ if [[ "${1:-}" == "--docker" || "${1:-}" == "--docker-only" ]]; then
     echo "PASS: DB migration smoke — second migrate run is a no-op (idempotent)"
   fi
 
+  # Run the probe inside the API container after migrating the empty database.
+  if docker compose -p "$SMOKE_PROJECT" -f compose.yaml -f compose.verify.yaml \
+    exec -T api bun - < scripts/catalog-smoke.ts; then
+    :
+  else
+    echo "FAIL: Docker runtime — catalog smoke"
+    FAILED=1
+  fi
+
   if [[ "$FAILED" == "0" ]]; then
     echo "◻ cleanup: removing verify project ${SMOKE_PROJECT} (label-scoped, dev volumes untouched)"
     if smoke_cleanup "$SMOKE_PROJECT" >/dev/null 2>&1; then
