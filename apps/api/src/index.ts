@@ -2,13 +2,13 @@
  * API entrypoint — HTTP móng thẳng thắn (issue #29), giữ nguyên hợp đồng cũ.
  *
  * Thứ tự middleware (đọc từ trên xuống trong createServer):
- *   1. json body parse      → express.json()
- *   2. CORS allowlist       → match từ CORS_ORIGINS; OPTIONS preflight
- *   3. request log          → 1 dòng JSON, KHÔNG body/cookie/auth;
+ *   1. CORS allowlist       → match từ CORS_ORIGINS; OPTIONS preflight
+ *   2. request log          → 1 dòng JSON, KHÔNG body/cookie/auth;
  *                             bỏ qua /health* (smoke spam)
- *   4. apiRoutes            → mount theo resolveMountPaths()
- *   5. 404 envelope         → notFoundHandler
- *   6. error envelope       → errorHandler (bắt mọi nhầm lẫn cuối)
+ *   3. Better Auth          → raw body + response contract nguyên bản
+ *   4. json body parse      → express.json() cho các API còn lại
+ *   5. apiRoutes            → mount theo resolveMountPaths()
+ *   6. 404 + error envelope → các lỗi không thuộc `/api/auth/*`
  *
  * Hai môi trường chạy cùng code (giữ từ #46, KHÔNG đổi):
  * - Docker/host (mặc định): router mount ở `/` — healthcheck & smoke probes
@@ -27,8 +27,10 @@ import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDbHandle, type DatabaseHandle } from '@marketplace/db'
 import { getAppInfo } from '@marketplace/shared'
+import { toNodeHandler } from 'better-auth/node'
 import { sql } from 'drizzle-orm'
 import express from 'express'
+import { createAuth } from './auth/config'
 import { toCatalogComponent } from './catalog/mapper'
 import { getComponentBySlug, listComponents } from './catalog/queries'
 import { parseListRequest, parseSlugParam } from './catalog/requests'
@@ -62,12 +64,15 @@ export function createServer(options: ServerOptions = {}) {
   // vấn đầu tiên (/health/db, endpoint #31...).
   const dbHandle =
     'db' in options ? options.db : env.DATABASE_URL ? createDbHandle(env.DATABASE_URL) : undefined
+  const auth =
+    dbHandle && env.BETTER_AUTH_SECRET && env.BETTER_AUTH_URL
+      ? createAuth(dbHandle.db, env)
+      : undefined
 
   const app = express()
 
   // Giảm bề mặt: không quảng cáo stack (x-powered-by).
   app.disable('x-powered-by')
-  app.use(express.json())
 
   /* --- CORS: allowlist exact-match; preflight; prod không bao giờ `*` --- */
   const allowedOrigins = env.CORS_ORIGINS ?? []
@@ -81,6 +86,7 @@ export function createServer(options: ServerOptions = {}) {
 
     if (allowed) {
       res.setHeader('Access-Control-Allow-Origin', origin)
+      res.setHeader('Access-Control-Allow-Credentials', 'true')
     }
 
     if (req.method === 'OPTIONS') {
@@ -94,8 +100,8 @@ export function createServer(options: ServerOptions = {}) {
         return
       }
       res.status(204)
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
       res.setHeader('Access-Control-Max-Age', '600')
       res.end()
       return
@@ -117,6 +123,22 @@ export function createServer(options: ServerOptions = {}) {
     }
     next()
   })
+
+  /* --- Better Auth owns its route contract and must receive the raw body --- */
+  const unavailableAuthHandler: express.RequestHandler = (_req, res) => {
+    sendError(res, {
+      code: 'AUTH_UNAVAILABLE',
+      message: 'Authentication is not configured',
+      status: 503,
+    })
+  }
+  const authHandler = auth ? toNodeHandler(auth) : unavailableAuthHandler
+  app.all('/api/auth', authHandler)
+  app.all('/api/auth/*splat', authHandler)
+
+  // Better Auth consumes its own request stream, so the API JSON parser follows
+  // the catch-all auth handler (Express 5 ordering requirement).
+  app.use(express.json())
 
   /* --- Routes --- */
   const apiRouter = express.Router()
@@ -204,6 +226,7 @@ export function createServer(options: ServerOptions = {}) {
     /** Dùng bởi import.meta.main + tests; trả http.Server để shutdown(). */
     listen: () => app.listen(env.PORT),
     dbHandle,
+    auth,
     env,
   }
 }

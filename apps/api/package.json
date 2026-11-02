@@ -12,6 +12,7 @@
   "dependencies": {
     "@marketplace/db": "workspace:*",
     "@marketplace/shared": "workspace:*",
+    "better-auth": "1.7.14",
     "drizzle-orm": "^0.45.4",
     "express": "^5.1.0",
     "zod": "^4"

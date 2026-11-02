@@ -50,6 +50,11 @@ jobs:
       - name: Lint (Biome)
         run: bun run lint
 
+      - name: Prepare stale development route type regression
+        run: |
+          mkdir -p apps/web/.next/dev/types
+          printf 'const staleRouteType: number = "stale";\n' > apps/web/.next/dev/types/verify-stale.ts
+
       # Typecheck bao phủ packages/shared + apps/api + apps/web
       - name: Typecheck
         run: bun run typecheck
@@ -65,6 +70,9 @@ jobs:
 
       - name: Build Web (Next.js)
         run: bun run build:web
+
+      - name: Verify web tsconfig was not rewritten
+        run: git diff --exit-code -- apps/web/tsconfig.json
 
   docker-runtime:
     name: Docker build & runtime smoke
@@ -96,8 +104,8 @@ jobs:
         run: bash scripts/test-compose-isolation.sh
 
       # Isolated project (cmp-verify-*), no host ports published, in-container
-      # probes: /health + /health/db (real DB connection) + web /, then DB
-      # migration smoke on a blank volume (tables + idempotency).
+      # probes: health, web, and catalog responses after DB migration on a
+      # blank volume (tables + idempotency).
       - name: Docker runtime smoke (isolated project + DB migration smoke)
         run: bash scripts/verify.sh --docker-only
 

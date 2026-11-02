@@ -55,7 +55,7 @@ runtime smoke layer).
 | Typecheck | `bun run typecheck` | `tsc --noEmit` passes for shared + db + api + web (test files are excluded from tsc; checked at runtime by `bun test`) |
 | Test | `bun test` | 0 failures; tests must contain real assertions |
 | Build | `bun run build` | exit 0; artifacts in the expected `dist`/`.next` paths |
-| Docker runtime | CI job `docker-runtime` — or `bun run verify --docker` locally | compose runs inside an **isolated project** `cmp-verify-*` (no host ports published) + in-container probes `/health`, `/health/db` (`= connected`), web `/` + DB migration smoke on a blank volume (`users`/`components` tables exist, a repeated migrate is a no-op) |
+| Docker runtime | CI job `docker-runtime` — or `bun run verify --docker` locally | compose runs inside an **isolated project** `cmp-verify-*` (no host ports published) + in-container probes `/health`, `/health/db` (`= connected`), web `/`, and catalog list/detail responses after migration on a blank database; `users`/`components` tables exist and repeated migration is a no-op |
 
 Docker isolation (mandatory — see `scripts/docker-smoke.lib.sh`): smoke runs must
 NEVER use the development Compose project; the `down -v` cleanup only touches

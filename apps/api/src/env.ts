@@ -21,37 +21,83 @@ import { z } from 'zod'
 
 export const nodeEnvSchema = z.enum(['development', 'test', 'production'])
 
-const envConfigSchema = z.object({
-  PORT: z.coerce
-    .number()
-    .int()
-    .min(1, 'PORT must be >= 1')
-    .max(65535, 'PORT must be <= 65535')
-    .default(4000),
-  NODE_ENV: nodeEnvSchema.default('development'),
-  DATABASE_URL: z
-    .string()
-    .optional()
-    // Biến được set nhưng rỗng/trắng = "không cấu hình" — degraded như cũ.
-    .transform((raw) => (raw && raw.trim() !== '' ? raw : undefined))
-    // Chỉ kiểm định dạng cho URL THẬT (undefined = degraded hợp lệ).
-    .refine(
-      (url) => url === undefined || /^postgres(ql)?:\/\//.test(url),
-      'DATABASE_URL must be a postgres:// URL',
-    ),
-  /** CSV list of exact-match origins, e.g. `CORS_ORIGINS=http://localhost:3000`. */
-  CORS_ORIGINS: z
-    .string()
-    .optional()
-    .transform((raw) => {
-      if (raw === undefined) return undefined
-      const origins = raw
-        .split(',')
-        .map((origin) => origin.trim())
-        .filter(Boolean)
-      return origins.length > 0 ? origins : undefined
-    }),
-})
+const envConfigSchema = z
+  .object({
+    PORT: z.coerce
+      .number()
+      .int()
+      .min(1, 'PORT must be >= 1')
+      .max(65535, 'PORT must be <= 65535')
+      .default(4000),
+    NODE_ENV: nodeEnvSchema.default('development'),
+    DATABASE_URL: z
+      .string()
+      .optional()
+      // Biến được set nhưng rỗng/trắng = "không cấu hình" — degraded như cũ.
+      .transform((raw) => (raw && raw.trim() !== '' ? raw : undefined))
+      // Chỉ kiểm định dạng cho URL THẬT (undefined = degraded hợp lệ).
+      .refine(
+        (url) => url === undefined || /^postgres(ql)?:\/\//.test(url),
+        'DATABASE_URL must be a postgres:// URL',
+      ),
+    /** CSV list of exact-match origins, e.g. `CORS_ORIGINS=http://localhost:3000`. */
+    CORS_ORIGINS: z
+      .string()
+      .optional()
+      .transform((raw) => {
+        if (raw === undefined) return undefined
+        const origins = raw
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean)
+        return origins.length > 0 ? origins : undefined
+      }),
+    BETTER_AUTH_SECRET: z
+      .string()
+      .optional()
+      .transform((raw) => (raw && raw.trim() !== '' ? raw.trim() : undefined))
+      .refine((secret) => secret === undefined || secret.length >= 32, {
+        message: 'BETTER_AUTH_SECRET must be at least 32 characters',
+      }),
+    BETTER_AUTH_URL: z
+      .string()
+      .optional()
+      .transform((raw) => (raw && raw.trim() !== '' ? raw.trim() : undefined))
+      .refine(
+        (url) => {
+          if (url === undefined) return true
+          try {
+            const parsed = new URL(url)
+            return (
+              (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+              !parsed.username &&
+              !parsed.password
+            )
+          } catch {
+            return false
+          }
+        },
+        { message: 'BETTER_AUTH_URL must be an http(s) URL without credentials' },
+      ),
+  })
+  .superRefine((env, ctx) => {
+    if (env.NODE_ENV === 'production' && env.DATABASE_URL) {
+      if (!env.BETTER_AUTH_SECRET) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['BETTER_AUTH_SECRET'],
+          message: 'BETTER_AUTH_SECRET is required when DATABASE_URL is configured in production',
+        })
+      }
+      if (!env.BETTER_AUTH_URL) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['BETTER_AUTH_URL'],
+          message: 'BETTER_AUTH_URL is required when DATABASE_URL is configured in production',
+        })
+      }
+    }
+  })
 
 export type ApiEnv = z.infer<typeof envConfigSchema>
 
