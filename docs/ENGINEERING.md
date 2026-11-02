@@ -23,6 +23,7 @@ Việc bắt buộc review ở tầng GitHub được quản bằng **branch pro
 
 - **TypeScript strict toàn repo** (`tsconfig.base.json` — `strict`, `noUncheckedIndexedAccess`). Không tắt strict, không `any` trừ khi comment rõ lý do.
 - **Lint**: Biome (`biome.json`) là formatter + linter duy nhất. Không thêm Prettier/ESLint song song. Format trước khi commit: `bun run lint:fix`.
+- **Line endings**: `.gitattributes` chuẩn hóa file text thành LF khi checkout trên mọi hệ điều hành; các định dạng binary được giữ nguyên. `.editorconfig` hướng dẫn editor dùng LF.
 - **Naming**: workspace package luôn có scope `@marketplace/*`; file test đặt cạnh module (`<module>.test.ts`).
 - **Environment**: không có secrets trong code hay trong image. Container dựng env nội bộ qua compose (ví dụ `DATABASE_URL` của api container được build từ `POSTGRES_*`, không interpolate từ `.env` của host — xem `compose.yaml`).
 - **Bun phiên bản**: pin chính xác ở 3 chỗ và phải khớp nhau — `.bun-version` (CI dùng qua `setup-bun`), và tag `oven/bun:<ver>` trong `docker/api.Dockerfile` + `docker/web.Dockerfile` (hiện là **1.4.3**). Đổi version = sửa đồng thời cả 3 trong 1 PR.
