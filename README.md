@@ -42,13 +42,13 @@ component-marketplace/
 │   ├── shared/              # @marketplace/shared
 │   │   └── src/contracts/   # zod contracts: catalog.ts, common.ts (+ test colocated)
 │   └── db/                  # @marketplace/db: schema + client
-│       ├── src/schema.ts    # bảng users, components
+│       ├── src/schema.ts    # bảng users, sessions, accounts, verifications, components
 │       └── drizzle/         # migrations SQL (được commit)
 ├── scripts/                 # verify.sh (+ docker-smoke.lib.sh, check-boundaries.mjs)
 ├── docker/
 │   ├── web.Dockerfile
 │   └── api.Dockerfile
-├── docs/                    # ENGINEERING.md | DEPLOYMENT.md | COMMUNITY_ARCHITECTURE.md
+├── docs/                    # ENGINEERING.md | DEPLOYMENT.md | DATABASE_DIAGRAM.md | COMMUNITY_ARCHITECTURE.md
 ├── .github/
 │   ├── workflows/           # ci.yml | cd.yml | owner-scope.yml | auto-assign-reviewers.yml | auto-issue.yml
 │   ├── PULL_REQUEST_TEMPLATE.md
@@ -127,6 +127,7 @@ bun run db:studio    # mở Drizzle Studio quản trị DB
 ```
 
 - Source of truth là `packages/db/src/schema.ts`; **migration SQL được commit**.
+- ERD schema hiện tại và mô hình Forum/Chat đề xuất: [docs/DATABASE_DIAGRAM.md](docs/DATABASE_DIAGRAM.md).
 - `bun run db:seed` — **chỉ dành cho dev** (issue #60): upsert idempotent
   theo unique slug với prefix cố định `seed-`; chạy lại không tạo duplicate,
   không xóa dữ liệu. Tự SKIP khi thiếu `DATABASE_URL`; REFUSE khi
