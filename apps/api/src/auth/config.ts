@@ -20,6 +20,7 @@ export function createAuth(db: Database, env: AuthEnvironment) {
     trustedOrigins: [...new Set(trustedOrigins)],
     database: drizzleAdapter(db, {
       provider: 'pg',
+      transaction: true,
       schema: {
         users: schema.users,
         sessions: schema.sessions,
