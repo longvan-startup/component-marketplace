@@ -19,6 +19,10 @@ API routes use the shared `{ code, message, status, details? }` error envelope.
 If auth is not configured in development or the database is unavailable, the
 API returns the shared `AUTH_UNAVAILABLE` 503 envelope.
 
+The Better Auth Drizzle adapter uses database transactions for auth operations.
+Signup creates the user and credential account atomically: if account creation
+fails, the user insert is rolled back.
+
 ## Endpoints
 
 All routes are under `/api/auth` and are handled directly by Better Auth 1.7.14.
