@@ -28,6 +28,16 @@ API/domain contract). Backend owner: @NguyenTuMinhLong.
 - Schema changes: update `src/schema.ts` → `bun run db:generate` → review the
   generated SQL before committing → `bun run db:migrate` locally against the
   compose Postgres (host port 5433, password in `.env`).
+- Better Auth account identities are unique by `(provider_id, account_id)`;
+  keep the `accounts_provider_account_unique` index. Before applying it to a
+  database with existing data, run the count-only preflight query recorded in
+  issue #97. Stop if collisions exist; do not clean credentials automatically.
+- User emails are stored lowercase and unique under `lower(email)`. Migration
+  `0004` checks for case-insensitive collisions before normalizing existing
+  values; resolve any collision manually before retrying it.
+- The `users_integrity_before_write` trigger normalizes email on insert/update
+  and refreshes `updated_at` on every update. Keep this database-enforced rule
+  in a forward migration; Drizzle schema snapshots do not represent triggers.
 - CI runs on a blank volume and does not apply migrations automatically; the
   `/health/db` check only pings `select 1` (see issue #15).
 

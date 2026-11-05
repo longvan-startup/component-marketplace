@@ -116,6 +116,39 @@ Chọn công cụ nào?
 Không dùng: animation điều khiển bằng state store, plugin đăng ký global,
 GSAP chạy trực tiếp trong RSC. Bundle cost giảm dần theo thứ tự trên.
 
+## Responsive
+
+Quy tắc dùng chung cho mọi màn hình (issue #85), áp dụng khi tạo UI mới:
+
+- **Kiểm tra tối thiểu các viewport**: 320, 360, 375, 390, 414, 768, 1024,
+  1280, 1440 CSS px. Không tạo breakpoint riêng cho từng giá trị — dùng đúng
+  breakpoint Tailwind sẵn có (`sm:`/`md:`/`lg:`...), các giá trị trên chỉ là
+  điểm kiểm tra tràn/chồng lấn.
+- **Không bao giờ để nội dung chính tràn ngang** (320–1440px). Kiểm tra bằng
+  `document.documentElement.scrollWidth > window.innerWidth` trong devtools,
+  không chỉ nhìn ảnh chụp — một phần tử rộng hơn viewport có thể không lộ
+  rõ trên ảnh nhỏ.
+- **Vùng chạm (nút/link chính) tối thiểu 44×44 CSS px.** Pattern dùng:
+  `inline-flex min-h-11 items-center` trên link/button inline (xem
+  `components/layout/site-shell.tsx` nav link, `components/catalog/
+  component-card.tsx` title link) hoặc `min-h-11` trực tiếp trên input/button
+  block-level (xem `components/catalog/catalog-search.tsx`). Logo/link dạng
+  text thuần không bắt buộc đạt 44px nếu không phải hành động chính — ghi rõ
+  ngoại lệ khi gặp.
+- **Focus ring phải thấy rõ, không chỉ tồn tại trong CSS.** Tránh ring cùng
+  tông màu + opacity thấp đè lên nền cùng màu (ví dụ ring tím mờ trên nút
+  nền tím — gần như vô hình). Dùng `focus-visible:ring-2 focus-visible:
+  ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`
+  để ring tách khỏi nền bằng khoảng trắng, luôn kiểm bằng cách Tab thật rồi
+  chụp/zoom ảnh, không suy luận từ class name.
+- **Footer/header dùng chung đổi bố cục theo chiều rộng thay vì ép dính.**
+  Ví dụ footer: `flex-col` + căn giữa dưới `sm:`, chuyển `sm:flex-row
+  sm:justify-between` khi đủ rộng — tránh 2 khối text bị ép cạnh nhau co hẹp
+  khi màn hình hẹp.
+- Khi route/thành phần mới có nội dung dài (tên, slug, tag), test bằng cách
+  tạm thế chuỗi dài qua devtools console trước khi khẳng định không tràn —
+  dữ liệu mock hiện tại không đủ dài để tự lộ bug.
+
 ## Cạm bẫy gotchas đã từng đánh
 
 - Nếu thay đổi route, chạy lại typecheck để tạo route types mới.

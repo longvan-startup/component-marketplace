@@ -1,6 +1,7 @@
 import { type Database, schema } from '@marketplace/db'
-import { betterAuth } from 'better-auth'
+import { APIError, betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { createAuthMiddleware } from 'better-auth/api'
 
 import type { ApiEnv } from '../env'
 
@@ -20,6 +21,7 @@ export function createAuth(db: Database, env: AuthEnvironment) {
     trustedOrigins: [...new Set(trustedOrigins)],
     database: drizzleAdapter(db, {
       provider: 'pg',
+      transaction: true,
       schema: {
         users: schema.users,
         sessions: schema.sessions,
@@ -43,6 +45,27 @@ export function createAuth(db: Database, env: AuthEnvironment) {
       enabled: true,
       autoSignIn: true,
       requireEmailVerification: false,
+    },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== '/update-user') return
+
+        const { name, image } = ctx.body ?? {}
+        if (name !== undefined && (typeof name !== 'string' || !name.trim() || name.length > 100)) {
+          throw new APIError('BAD_REQUEST', { message: 'Name must be 1 to 100 characters' })
+        }
+        if (image !== undefined && image !== null) {
+          if (typeof image !== 'string' || image.length > 2048) {
+            throw new APIError('BAD_REQUEST', { message: 'Image must be an HTTPS URL or null' })
+          }
+          try {
+            const url = new URL(image)
+            if (url.protocol !== 'https:' || url.username || url.password) throw new Error()
+          } catch {
+            throw new APIError('BAD_REQUEST', { message: 'Image must be an HTTPS URL or null' })
+          }
+        }
+      }),
     },
     advanced: {
       database: {

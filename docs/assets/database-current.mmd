@@ -1,0 +1,72 @@
+%% Current database schema at main commit 7067120 (2026-11-05).
+%% Source of truth: packages/db/src/schema.ts and packages/db/drizzle/0000-0002.
+%% Index names and delete actions are also summarized in docs/DATABASE_DIAGRAM.md.
+erDiagram
+    users ||--o{ sessions : "user_id CASCADE"
+    users ||--o{ accounts : "user_id CASCADE"
+    users o|--o{ components : "author_id SET NULL"
+
+    users {
+        uuid id PK "NOT NULL DEFAULT gen_random_uuid()"
+        text email UK "NOT NULL; users_email_unique"
+        text name "NOT NULL"
+        boolean email_verified "NOT NULL DEFAULT false"
+        text image "NULL"
+        user_role role "NOT NULL DEFAULT user; user|seller|admin"
+        timestamptz created_at "NOT NULL DEFAULT now()"
+        timestamptz updated_at "NOT NULL DEFAULT now()"
+    }
+    sessions {
+        text id PK "NOT NULL"
+        timestamptz expires_at "NOT NULL"
+        text token UK "NOT NULL; sessions_token_unique"
+        timestamptz created_at "NOT NULL DEFAULT now()"
+        timestamptz updated_at "NOT NULL DEFAULT now()"
+        text ip_address "NULL"
+        text user_agent "NULL"
+        uuid user_id FK "NOT NULL; sessions_user_id_idx; ON DELETE CASCADE"
+    }
+    accounts {
+        text id PK "NOT NULL"
+        text account_id "NOT NULL"
+        text provider_id "NOT NULL"
+        uuid user_id FK "NOT NULL; accounts_user_id_idx; ON DELETE CASCADE"
+        text access_token "NULL"
+        text refresh_token "NULL"
+        text id_token "NULL"
+        timestamptz access_token_expires_at "NULL"
+        timestamptz refresh_token_expires_at "NULL"
+        text scope "NULL"
+        text password "NULL"
+        timestamptz created_at "NOT NULL DEFAULT now()"
+        timestamptz updated_at "NOT NULL DEFAULT now()"
+    }
+    verifications {
+        text id PK "NOT NULL"
+        text identifier "NOT NULL; verifications_identifier_idx"
+        text value "NOT NULL"
+        timestamptz expires_at "NOT NULL"
+        timestamptz created_at "NOT NULL DEFAULT now()"
+        timestamptz updated_at "NOT NULL DEFAULT now()"
+    }
+    components {
+        uuid id PK "NOT NULL DEFAULT gen_random_uuid()"
+        text slug UK "NOT NULL; components_slug_unique"
+        text name "NOT NULL"
+        text description "NULL"
+        text category "NOT NULL DEFAULT general"
+        text_array tags "NOT NULL DEFAULT empty array"
+        text latest_version "NOT NULL DEFAULT 0.0.0"
+        boolean is_published "NOT NULL DEFAULT false"
+        uuid author_id FK "NULL; ON DELETE SET NULL"
+        timestamptz created_at "NOT NULL DEFAULT now()"
+        timestamptz updated_at "NOT NULL DEFAULT now()"
+    }
+
+    classDef db fill:#fffbeb,stroke:#f59e0b,stroke-width:2px,color:#78350f;
+    classDef auth fill:#fff1f2,stroke:#f43f5e,stroke-width:2px,color:#881337;
+    class users auth;
+    class sessions auth;
+    class accounts auth;
+    class verifications auth;
+    class components db;

@@ -1,0 +1,164 @@
+%% PROPOSED ONLY — not present in schema.ts or any merged migration.
+%% Based on docs/COMMUNITY_ARCHITECTURE.md section 6; owner review tracked by issue #68.
+%% Existing tables are actual at main commit 7067120; gray tables are proposed.
+%% Conflicting and unresolved RFC-05/RFC-08 details are documented in docs/DATABASE_DIAGRAM.md.
+erDiagram
+    users ||--o{ sessions : "current; CASCADE"
+    users ||--o{ accounts : "current; CASCADE"
+    users o|--o{ components : "current author; SET NULL"
+
+    users ||--o{ forum_reactions : "CASCADE"
+    users ||--o{ forum_thread_follows : "CASCADE"
+    users ||--o{ chat_read_states : "CASCADE"
+    users o|--o{ forum_threads : "author; SET NULL"
+    users o|--o{ forum_replies : "author; SET NULL"
+    users o|--o{ forum_replies : "deleted_by; SET NULL"
+    users o|--o{ forum_reports : "reporter; SET NULL"
+    users o|--o{ forum_reports : "resolver; SET NULL"
+    users o|--o{ chat_messages : "author; SET NULL"
+    users o|--o{ chat_messages : "deleted_by; SET NULL"
+
+    forum_categories ||--o{ forum_threads : "category; RESTRICT"
+    components o|--o{ forum_threads : "component; SET NULL"
+    components o|--o{ forum_threads : "released component; SET NULL"
+    forum_threads ||--o{ forum_replies : "thread; CASCADE"
+    forum_replies o|--o{ forum_replies : "parent reply; nullable"
+    forum_threads o{--o| forum_replies : "accepted reply; nullable FK"
+    forum_threads ||--o{ forum_thread_follows : "CASCADE"
+    forum_threads o|--o{ forum_reactions : "target; CASCADE"
+    forum_replies o|--o{ forum_reactions : "target; CASCADE"
+    forum_threads o|--o{ forum_reports : "target; CASCADE"
+    forum_replies o|--o{ forum_reports : "target; CASCADE"
+    chat_channels ||--o{ chat_messages : "channel; CASCADE"
+    chat_channels ||--o{ chat_read_states : "CASCADE"
+
+    users {
+        uuid id PK "CURRENT"
+        text email UK "CURRENT"
+        text name "CURRENT"
+        user_role role "CURRENT user|seller|admin"
+    }
+    sessions {
+        text id PK "CURRENT"
+        text token UK "CURRENT"
+        uuid user_id FK "CURRENT; CASCADE"
+    }
+    accounts {
+        text id PK "CURRENT"
+        text account_id "CURRENT; no composite unique index"
+        text provider_id "CURRENT"
+        uuid user_id FK "CURRENT; CASCADE"
+    }
+    verifications {
+        text id PK "CURRENT"
+        text identifier "CURRENT; indexed"
+        text value "CURRENT"
+    }
+    components {
+        uuid id PK "CURRENT"
+        text slug UK "CURRENT"
+        uuid author_id FK "CURRENT; nullable; SET NULL"
+    }
+    forum_categories {
+        uuid id PK "PROPOSED"
+        varchar slug "PROPOSED"
+        varchar name "PROPOSED"
+        text description "PROPOSED; nullable"
+    }
+    forum_threads {
+        uuid id PK "PROPOSED"
+        uuid category_id FK "NOT NULL; RESTRICT"
+        uuid author_id FK "nullable; SET NULL"
+        uuid component_id FK "nullable; SET NULL"
+        varchar title "NOT NULL"
+        varchar slug UK "NOT NULL"
+        text body "markdown"
+        forum_thread_type thread_type "question|showcase|idea|feedback|announcement"
+        uuid accepted_reply_id FK "nullable; SET NULL; uniqueness not specified"
+        forum_idea_status idea_status "nullable; planned|in_progress|released|rejected"
+        uuid released_component_id FK "nullable; SET NULL"
+        boolean is_locked "moderation flag"
+        boolean is_pinned "moderation flag"
+        integer reply_cache "denormalized"
+        integer upvote_cache "denormalized"
+        timestamptz last_activity_at "feed ordering"
+        timestamptz deleted_at "nullable tombstone"
+        uuid deleted_by FK "nullable; SET NULL"
+    }
+    forum_replies {
+        uuid id PK "PROPOSED"
+        uuid thread_id FK "NOT NULL; CASCADE"
+        uuid author_id FK "nullable; SET NULL"
+        uuid parent_reply_id FK "nullable self-reference"
+        integer depth "0..4"
+        text body "NOT NULL"
+        timestamptz deleted_at "nullable tombstone"
+        uuid deleted_by FK "nullable; SET NULL"
+    }
+    forum_reactions {
+        uuid id PK "PROPOSED"
+        uuid user_id FK "NOT NULL; CASCADE"
+        forum_target_kind target_kind "thread|reply"
+        uuid thread_id FK "nullable; CASCADE"
+        uuid reply_id FK "nullable; CASCADE"
+        forum_reaction_kind kind "upvote in MVP"
+    }
+    forum_thread_follows {
+        uuid user_id PK,FK "PROPOSED; CASCADE"
+        uuid thread_id PK,FK "PROPOSED; CASCADE"
+        timestamptz created_at "PROPOSED"
+    }
+    forum_reports {
+        uuid id PK "PROPOSED"
+        uuid reporter_id FK "nullable; SET NULL"
+        forum_target_kind target_kind "thread|reply"
+        uuid thread_id FK "nullable; CASCADE"
+        uuid reply_id FK "nullable; CASCADE"
+        forum_report_reason reason "spam|offensive|off_topic|copyright|other"
+        text details "nullable"
+        forum_report_status status "open|resolved|dismissed"
+        uuid resolver_id FK "nullable; SET NULL"
+        timestamptz resolved_at "nullable"
+    }
+    chat_channels {
+        uuid id PK "PROPOSED"
+        varchar slug UK "PROPOSED"
+        varchar display_name "PROPOSED"
+        text description "nullability not specified"
+        integer sort_order "PROPOSED"
+        boolean is_active "PROPOSED"
+    }
+    chat_messages {
+        uuid id PK "PROPOSED"
+        uuid channel_id FK "NOT NULL; CASCADE"
+        bigserial seq "order design pending RFC-08 review"
+        uuid author_id FK "nullable; SET NULL"
+        uuid client_message_id "idempotency key"
+        text body "<= 2000 characters"
+        timestamptz deleted_at "nullable tombstone"
+        uuid deleted_by FK "nullable; SET NULL"
+    }
+    chat_read_states {
+        uuid user_id PK,FK "PROPOSED; CASCADE"
+        uuid channel_id PK,FK "PROPOSED; CASCADE"
+        bigint last_read_seq "unread watermark"
+        timestamptz updated_at "PROPOSED"
+    }
+
+    classDef db fill:#fffbeb,stroke:#f59e0b,stroke-width:2px,color:#78350f;
+    classDef auth fill:#fff1f2,stroke:#f43f5e,stroke-width:2px,color:#881337;
+    classDef state fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#0f172a;
+    class users auth;
+    class sessions auth;
+    class accounts auth;
+    class verifications auth;
+    class components db;
+    class forum_categories state;
+    class forum_threads state;
+    class forum_replies state;
+    class forum_reactions state;
+    class forum_thread_follows state;
+    class forum_reports state;
+    class chat_channels state;
+    class chat_messages state;
+    class chat_read_states state;

@@ -19,7 +19,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <nav className="flex items-center gap-4 text-sm">
             <Link
               href="/components"
-              className="rounded-badge px-2 py-1.5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-11 items-center rounded-badge px-3 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Components
             </Link>
@@ -30,7 +30,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
 
       <footer className="border-t border-border bg-card">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4 text-xs text-muted-foreground">
+        <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-2 px-4 py-4 text-center text-xs text-muted-foreground sm:flex-row sm:justify-between sm:text-left">
           <span>
             {APP_NAME} <code>v{APP_VERSION}</code> — marketplace for UI components & animations
           </span>
