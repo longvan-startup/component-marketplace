@@ -3,6 +3,14 @@
 Chuẩn kỹ thuật nằm ở [`docs/ENGINEERING.md`](docs/ENGINEERING.md); quy tắc cho AI agent ở [`AGENTS.md`](AGENTS.md).
 File này chỉ chứa **process** (branch, commit, PR, review).
 
+## Windows và line endings
+
+Repo dùng LF cho file text. `.gitattributes` bảo đảm các checkout mới dùng LF kể cả khi Git có `core.autocrlf=true`; `.editorconfig` hướng dẫn editor giữ LF. Hook pre-commit chạy lint trên toàn repo, nên lỗi định dạng ở file khác cũng có thể chặn commit.
+
+Với checkout cũ đã có CRLF, thay đổi `.gitattributes` không tự viết lại mọi file đang có. Trước khi làm mới checkout, kiểm tra `git status --short` và lưu an toàn toàn bộ thay đổi chưa commit. Cách ít rủi ro là tạo clone mới sau khi quy tắc đã vào nhánh cần dùng, rồi chuyển các thay đổi đã lưu sang clone mới. Không dùng lệnh ghi đè hoặc khôi phục hàng loạt trên working tree có thay đổi chưa lưu.
+
+Nếu cần chẩn đoán, chạy `git config --show-origin --get-all core.autocrlf` và `git ls-files --eol <đường-dẫn>` trong cùng môi trường chạy Git; `i/lf` là nội dung trong index và `w/crlf` là file trên ổ đĩa. Sau khi xử lý, chạy `bun run lint` để kiểm tra toàn repo.
+
 ## Branch strategy
 
 - `main` là branch duy nhất được bảo vệ. **Không bao giờ commit trực tiếp vào `main`.**

@@ -16,10 +16,10 @@ const CATEGORY_LABELS: Record<CatalogItem['category'], string> = {
 export function ComponentCard({ item }: { item: CatalogItem }) {
   return (
     <Card className="flex h-full flex-col gap-3 p-5">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <Link
           href={`/components/${item.slug}`}
-          className="font-semibold tracking-tight hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex min-h-11 items-center font-semibold tracking-tight hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {item.name}
         </Link>

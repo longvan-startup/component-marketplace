@@ -4,6 +4,7 @@
  * verification là các bảng riêng do Better Auth quản lý.
  */
 
+import { sql } from 'drizzle-orm'
 import {
   boolean,
   index,
@@ -21,6 +22,8 @@ export const users = pgTable(
   'users',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    // Keep canonical lowercase at the database boundary; the functional unique
+    // index also protects uniqueness if a writer bypasses the trigger.
     email: text('email').notNull(),
     name: text('name').notNull(),
     // Các field lõi của Better Auth user model. emailVerified mặc định false.
@@ -29,9 +32,10 @@ export const users = pgTable(
     // App-owned field: thêm vào auth config qua user.additionalFields (input: false)
     role: userRole('role').notNull().default('user'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    // The users_integrity_before_write trigger refreshes this on every update.
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex('users_email_unique').on(table.email)],
+  (table) => [uniqueIndex('users_email_lower_unique').on(sql`lower(${table.email})`)],
 )
 
 export const sessions = pgTable(
@@ -73,7 +77,10 @@ export const accounts = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('accounts_user_id_idx').on(table.userId)],
+  (table) => [
+    index('accounts_user_id_idx').on(table.userId),
+    uniqueIndex('accounts_provider_account_unique').on(table.providerId, table.accountId),
+  ],
 )
 
 export const verifications = pgTable(

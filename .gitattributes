@@ -1,0 +1,14 @@
+# Keep text files in LF on checkout, including when core.autocrlf is enabled.
+* text=auto eol=lf
+
+# Binary assets must never be normalized as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.zip binary

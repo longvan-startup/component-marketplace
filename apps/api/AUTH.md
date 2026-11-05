@@ -19,6 +19,10 @@ API routes use the shared `{ code, message, status, details? }` error envelope.
 If auth is not configured in development or the database is unavailable, the
 API returns the shared `AUTH_UNAVAILABLE` 503 envelope.
 
+The Better Auth Drizzle adapter uses database transactions for auth operations.
+Signup creates the user and credential account atomically: if account creation
+fails, the user insert is rolled back.
+
 ## Endpoints
 
 All routes are under `/api/auth` and are handled directly by Better Auth 1.7.14.
@@ -30,6 +34,14 @@ Request and error shapes are therefore Better Auth's own contract.
 | `POST /api/auth/sign-in/email` | Sign in with `email`, `password` | Sets a session cookie and returns Better Auth's signin response. |
 | `POST /api/auth/sign-out` | End the current session | Revokes the session and clears the session cookie. |
 | `GET /api/auth/get-session` | Read current session | Returns `null` when unauthenticated or expired; otherwise returns `{ session, user }`. |
+| `POST /api/auth/update-user` | Update the signed-in user's name or image | Returns Better Auth's `{ "status": true }`; fetch the session again to read the updated user. |
+
+Profile updates require a valid session cookie. Send at least one of `name` or
+`image`. A name must contain non-whitespace characters and be at most 100
+characters. An image must be an HTTPS URL without credentials, at most 2048
+characters, or `null` to remove it. This endpoint stores an image URL; it does
+not upload or inspect the image. Email changes and role changes are not profile
+updates. Auth errors retain the Better Auth response format.
 
 Signup input cannot set `role`. The server config declares the role field as
 non-input and returns it in the user object. Supported role values are `user`,
@@ -77,5 +89,5 @@ every allowed role.
 ## Out of scope
 
 Login/register UI, password reset email delivery, email verification delivery,
-seller onboarding/approval, admin dashboard, profile features, payments, and
+seller onboarding/approval, admin dashboard, image uploads, payments, and
 purchase history require separate tasks.
