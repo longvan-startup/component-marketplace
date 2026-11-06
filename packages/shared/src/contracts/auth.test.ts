@@ -3,9 +3,12 @@ import { describe, expect, test } from 'bun:test'
 import {
   requestPasswordResetRequestSchema,
   requestPasswordResetResponseSchema,
+  resendVerificationEmailRequestSchema,
+  resendVerificationEmailResponseSchema,
   resetPasswordCallbackErrorSchema,
   resetPasswordRequestSchema,
   resetPasswordResponseSchema,
+  verifyEmailCallbackErrorSchema,
 } from './auth'
 
 describe('requestPasswordResetRequestSchema', () => {
@@ -89,5 +92,51 @@ describe('resetPasswordCallbackErrorSchema', () => {
 
   test('unknown code FAILS', () => {
     expect(resetPasswordCallbackErrorSchema.safeParse('TOKEN_EXPIRED').success).toBe(false)
+  })
+})
+
+describe('resendVerificationEmailRequestSchema', () => {
+  test('valid email with callbackURL PASSES', () => {
+    expect(
+      resendVerificationEmailRequestSchema.parse({
+        email: 'user@example.com',
+        callbackURL: 'https://example.com/verify-email?verified=1',
+      }),
+    ).toEqual({
+      email: 'user@example.com',
+      callbackURL: 'https://example.com/verify-email?verified=1',
+    })
+  })
+
+  test('callbackURL is optional', () => {
+    expect(resendVerificationEmailRequestSchema.parse({ email: 'user@example.com' })).toEqual({
+      email: 'user@example.com',
+    })
+  })
+
+  test('invalid email FAILS', () => {
+    expect(resendVerificationEmailRequestSchema.safeParse({ email: 'not-an-email' }).success).toBe(
+      false,
+    )
+  })
+})
+
+describe('resendVerificationEmailResponseSchema', () => {
+  test('{status: true} PASSES (always generic, non-leaking)', () => {
+    expect(resendVerificationEmailResponseSchema.parse({ status: true })).toEqual({
+      status: true,
+    })
+  })
+})
+
+describe('verifyEmailCallbackErrorSchema', () => {
+  for (const code of ['INVALID_TOKEN', 'TOKEN_EXPIRED', 'USER_NOT_FOUND']) {
+    test(`${code} PASSES`, () => {
+      expect(verifyEmailCallbackErrorSchema.parse(code)).toBe(code)
+    })
+  }
+
+  test('unknown code FAILS', () => {
+    expect(verifyEmailCallbackErrorSchema.safeParse('SOMETHING_ELSE').success).toBe(false)
   })
 })

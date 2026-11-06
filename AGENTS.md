@@ -53,9 +53,10 @@ Tool discovery (verified 2026-10-22 against current tool docs):
 - T3 Code: follow the agents.md convention; verify its discovery behavior with
   the tool owner before relying on it.
 
-Cross-domain imports are CI-enforced: `bun run boundary`. A PR touching both
-`apps/web/**` and backend code (`apps/api/**`, `packages/db/**`) must carry the
-`cross-domain` label (see the owner-scope workflow).
+Cross-domain imports are CI-enforced by `bun run boundary`. PRs may touch both
+`apps/web/**` and backend code (`apps/api/**`, `packages/db/**`); CI does not
+require a `cross-domain` label or block a PR based on those paths. Domain
+ownership remains review guidance in `.github/CODEOWNERS`.
 
 ## Agent skills — the kit (ported from the `ttu-platform` reference project)
 

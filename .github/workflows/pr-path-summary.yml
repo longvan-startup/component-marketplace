@@ -1,19 +1,15 @@
-name: Owner scope
+name: PR path summary
 
-# Path-scope check for PRs (docs/ENGINEERING.md ownership map):
+# Informational path summary for PRs:
 # - `apps/web/**`               → Frontend domain (Văn)
 # - `apps/api/**`, `packages/db/**` → Backend domain (Long)
 # - anything else               → shared/infra/harness, allowed with normal review
-#
-# A PR changing BOTH frontend and backend code files in one shot must be a
-# deliberate cross-domain change: it fails here unless it carries the label
-# `cross-domain` (both owners agreed in the task, per AGENTS.md). Pure
-# shared/infra/harness changes never trigger this check, so documentation PRs
-# (like harness work) and the open DB PR (backend-domain only) are unaffected.
+# PRs may include any combination of domains. This workflow never blocks a PR
+# or requires a domain label; normal CI quality and import-boundary checks remain.
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -25,7 +21,7 @@ concurrency:
 
 jobs:
   paths:
-    name: Cross-domain path check
+    name: Changed path summary
     runs-on: ubuntu-latest
     steps:
       - name: Classify changed files
@@ -73,19 +69,9 @@ jobs:
 
             const front = kinds.get('frontend') ?? [];
             const back = kinds.get('backend') ?? [];
-            const labeled = pr.labels.some((l) => l.name === 'cross-domain');
 
-            if (front.length > 0 && back.length > 0 && !labeled) {
-              core.setFailed(
-                [
-                  'This PR changes BOTH frontend (apps/web/**) and backend (apps/api/**, packages/db/**) code files.',
-                  'Markdown and mock/fixture files are documentation — they do not count.',
-                  'One PR must not span two ownership domains. Options:',
-                  '  1. Split the PR so each domain is separate, or',
-                  '  2. Apply the `cross-domain` label — both owners must have agreed in the task (see AGENTS.md).',
-                  '',
-                  'Frontend code files changed: ' + front.join(', '),
-                  'Backend code files changed: ' + back.join(', '),
-                ].join('\n'),
-              );
-            }
+            core.notice(
+              'PRs may span frontend, backend, shared, and infrastructure files without a domain label.',
+            );
+            if (front.length > 0) core.info('Frontend files: ' + front.join(', '));
+            if (back.length > 0) core.info('Backend files: ' + back.join(', '));

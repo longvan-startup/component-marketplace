@@ -14,6 +14,7 @@ import { createDbHandle, type DatabaseHandle, schema } from '@marketplace/db'
 import { apiErrorSchema } from '@marketplace/shared'
 import { eq, inArray, like } from 'drizzle-orm'
 import { createServer, shutdown } from '../index'
+import { registerVerifiedUser } from './test-helpers'
 
 const TEST_DB_URL = process.env.TEST_DATABASE_URL
 const describeIntegration = TEST_DB_URL ? describe : describe.skip
@@ -72,19 +73,12 @@ describeIntegration('forgot/reset password (integration, requires TEST_DATABASE_
     await closeServer()
   })
 
+  // Signs up, follows the dev-transport verification link, then signs in —
+  // required since `requireEmailVerification: true` (issue #92 slice 2)
+  // means sign-up alone no longer returns a session.
   const register = async () => {
-    const email = `auth-reset-${crypto.randomUUID()}@test.local`
-    const password = 'correct-horse-auth-test'
-    AUTH_TEST_EMAILS.push(email)
-    const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: 'Reset Flow User', email, password }),
-    })
-    const payload = (await response.json()) as { user: { id: string } }
-    const cookie = response.headers.get('set-cookie')?.split(';', 1)[0]
-    if (!response.ok || !cookie) throw new Error(`Auth signup failed (${response.status})`)
-    return { email, password, userId: payload.user.id, cookie }
+    const created = await registerVerifiedUser(baseUrl, AUTH_TEST_EMAILS)
+    return { ...created, userId: created.payload.user.id }
   }
 
   const signIn = async (email: string, password: string) => {

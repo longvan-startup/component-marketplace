@@ -36,6 +36,13 @@ describe('mock auth source', () => {
       ResetPasswordError,
     )
   })
+
+  test('resendVerificationEmail always returns the generic non-leaking response', async () => {
+    const forKnown = await source.resendVerificationEmail('known@test.local', 'https://x/verify')
+    const forUnknown = await source.resendVerificationEmail('nobody@test.local', 'https://x/verify')
+    expect(forKnown).toEqual(forUnknown)
+    expect(forKnown.status).toBe(true)
+  })
 })
 
 describe('source selection', () => {
@@ -127,6 +134,29 @@ describe('http auth source (real Better Auth wire shape)', () => {
     })
     await expect(source.resetPassword('tok', 'short')).rejects.toMatchObject({
       code: 'PASSWORD_TOO_SHORT',
+    })
+  })
+
+  test('resendVerificationEmail POSTs to /api/auth/send-verification-email and parses {status:true}', async () => {
+    let seenUrl = ''
+    let seenBody: unknown
+    const source = createHttpAuthSource({
+      fetchImpl: async (url, init) => {
+        seenUrl = String(url)
+        seenBody = JSON.parse(String(init?.body))
+        return jsonResponse(200, { status: true })
+      },
+      publicApiUrl: 'https://api.example.test',
+    })
+    const result = await source.resendVerificationEmail(
+      'user@test.local',
+      'https://web/verify-email?verified=1',
+    )
+    expect(result).toEqual({ status: true })
+    expect(seenUrl).toBe('https://api.example.test/api/auth/send-verification-email')
+    expect(seenBody).toEqual({
+      email: 'user@test.local',
+      callbackURL: 'https://web/verify-email?verified=1',
     })
   })
 })

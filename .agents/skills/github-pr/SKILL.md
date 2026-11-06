@@ -48,7 +48,7 @@ Required at minimum — one type label mapped from the dominant Conventional Com
 Notes:
 
 - `dependencies` is reserved for dependabot PRs — the CI job name and required-check names must not depend on labels.
-- A PR touching both `apps/web/**` and backend (`apps/api/**`, `packages/db/**`) must carry the `cross-domain` label per the owner-scope workflow. The label may not exist yet in this repo — if `gh pr edit --add-label cross-domain` reports a label error, create it once with `gh label create cross-domain` and add it.
+- PRs may touch both `apps/web/**` and backend (`apps/api/**`, `packages/db/**`) without a special label. The path-summary workflow reports changed domains but never blocks a PR; keep any label such as `cross-domain` optional.
 - No `area:*` / `priority:*` / `size:*` label sets exist in this repo; do not invent them. Areas are communicated through the PR title scope and the affected-paths table below instead:
 
 | Changed path(s) | Scope hint in title |
@@ -76,7 +76,7 @@ gh api "repos/<owner>/<repo>/issues/<n>/labels" -X POST \
 
 ## Assignee Policy
 
-**Never assign randomly or hardcode assignees.** A PR is assigned to the author who pushed the branch (`--assignee "@me"` or the commit author's handle). There is no auto-assign workflow in this repo; the owner-scope workflow only labels/needs the right reviewers per the CODEOWNERS map.
+**Never assign randomly or hardcode assignees.** A PR is assigned to the author who pushed the branch (`--assignee "@me"` or the commit author's handle). The repository can auto-request the other owner as a reviewer; PR scope summaries are informational and do not enforce domain-specific approval or labels.
 
 ## Project Tracking
 

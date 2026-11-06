@@ -1,7 +1,8 @@
 /**
- * Auth data layer (issue #92 slice 1 — forgot/reset password) — the ONLY
- * module allowed to know how these two calls reach the backend. Mirrors
- * `features/catalog/catalog-source.ts`'s mock/HTTP/`API_MODE` split exactly.
+ * Auth data layer (issue #92, both slices — forgot/reset password + mandatory
+ * email verification) — the ONLY module allowed to know how these calls
+ * reach the backend. Mirrors `features/catalog/catalog-source.ts`'s
+ * mock/HTTP/`API_MODE` split exactly.
  *
  * Unlike catalog, the HTTP source is typed against `@marketplace/shared`'s
  * `contracts/auth.ts` directly — that contract already mirrors Better Auth's
@@ -11,8 +12,10 @@
 
 import {
   type RequestPasswordResetResponse,
+  type ResendVerificationEmailResponse,
   type ResetPasswordResponse,
   requestPasswordResetResponseSchema,
+  resendVerificationEmailResponseSchema,
   resetPasswordResponseSchema,
 } from '@marketplace/shared'
 import { ApiClientError, apiMutateJson } from '../../lib/api-client'
@@ -20,6 +23,10 @@ import { ApiClientError, apiMutateJson } from '../../lib/api-client'
 export interface AuthSource {
   requestPasswordReset(email: string, redirectTo: string): Promise<RequestPasswordResetResponse>
   resetPassword(token: string, newPassword: string): Promise<ResetPasswordResponse>
+  resendVerificationEmail(
+    email: string,
+    callbackURL: string,
+  ): Promise<ResendVerificationEmailResponse>
 }
 
 /** Error thrown by `resetPassword` when Better Auth rejects the token or
@@ -53,6 +60,7 @@ export function createMockAuthSource(): AuthSource {
       }
       return { status: true }
     },
+    resendVerificationEmail: async () => ({ status: true }),
   }
 }
 
@@ -116,6 +124,14 @@ export function createHttpAuthSource(deps: HttpDeps = {}): AuthSource {
         }
         throw error
       }
+    },
+    resendVerificationEmail: async (email, callbackURL) => {
+      const payload = await apiMutateJson<unknown>(
+        '/api/auth/send-verification-email',
+        { email, callbackURL },
+        authDeps,
+      )
+      return resendVerificationEmailResponseSchema.parse(payload)
     },
   }
 }

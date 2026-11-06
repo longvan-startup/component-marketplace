@@ -1,14 +1,16 @@
 /**
- * contracts/auth.ts — public API contract for the forgot/reset-password flow
- * (issue #92, slice 1). Source of truth for BOTH sides (Văn ↔ Long).
+ * contracts/auth.ts — public API contract for the forgot/reset-password and
+ * email-verification flows (issue #92, both slices). Source of truth for
+ * BOTH sides (Văn ↔ Long).
  *
  * Unlike `catalog.ts`, these schemas describe `/api/auth/*` payloads, which
  * `apps/api/AGENTS.md` says the API must NOT wrap or translate — Better Auth
  * owns the wire shape. So this file is a type DESCRIPTION of an
  * already-fixed external contract (verified directly against
- * `better-auth@1.7.14`'s source in `api/routes/password.ts`), not a new
- * envelope. Frontend code maps the `error` callback param / `APIError` to UI
- * states per `apps/api/AUTH.md`'s "Frontend state mapping".
+ * `better-auth@1.7.14`'s source in `api/routes/password.ts` and
+ * `api/routes/email-verification.ts`), not a new envelope. Frontend code
+ * maps the `error` callback param / `APIError` to UI states per
+ * `apps/api/AUTH.md`'s "Frontend state mapping".
  *
  * `newPassword` bounds (8–128) mirror Better Auth's own defaults
  * (`minPasswordLength`/`maxPasswordLength`, unset in `apps/api/src/auth/
@@ -50,3 +52,29 @@ export type RequestPasswordResetResponse = z.infer<typeof requestPasswordResetRe
 export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>
 export type ResetPasswordResponse = z.infer<typeof resetPasswordResponseSchema>
 export type ResetPasswordCallbackError = z.infer<typeof resetPasswordCallbackErrorSchema>
+
+/* ------------------------------------------------------------------ */
+/* Email verification (issue #92, slice 2) — mandatory before sign-in. */
+/* ------------------------------------------------------------------ */
+
+export const resendVerificationEmailRequestSchema = z.object({
+  email: z.email(),
+  callbackURL: z.string().optional(),
+})
+
+export const resendVerificationEmailResponseSchema = z.object({
+  status: z.boolean(),
+})
+
+/** Error codes Better Auth's `/verify-email` GET callback can append to the
+ * callback URL's query string (`?error=...`). Unlike password reset, a
+ * verification link can distinguish "expired" from "otherwise invalid". */
+export const verifyEmailCallbackErrorSchema = z.enum([
+  'INVALID_TOKEN',
+  'TOKEN_EXPIRED',
+  'USER_NOT_FOUND',
+])
+
+export type ResendVerificationEmailRequest = z.infer<typeof resendVerificationEmailRequestSchema>
+export type ResendVerificationEmailResponse = z.infer<typeof resendVerificationEmailResponseSchema>
+export type VerifyEmailCallbackError = z.infer<typeof verifyEmailCallbackErrorSchema>
