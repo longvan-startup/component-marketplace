@@ -358,7 +358,7 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     expect(correctPayload.user.role).toBe('user')
   })
 
-  test('duplicate signup preserves Better Auth error contract', async () => {
+  test('duplicate signup returns a generic synthetic response, not an error (anti email-enumeration)', async () => {
     const created = await register()
     const duplicate = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
@@ -369,10 +369,15 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
         password: created.password,
       }),
     })
-    expect(duplicate.status).toBe(422)
-    const body = await duplicate.json()
-    expect(apiErrorSchema.safeParse(body).success).toBe(false)
-    expect(body).toHaveProperty('message')
+    // With requireEmailVerification:true, Better Auth's own
+    // shouldReturnGenericDuplicateResponse logic fires: duplicate sign-up no
+    // longer 422s, it returns 200 with a synthetic unverified user so a
+    // caller can't use signup to probe which emails already exist.
+    expect(duplicate.status).toBe(200)
+    const payload = (await duplicate.json()) as SignUpPayload
+    expect(payload.token).toBeNull()
+    expect(payload.user.email).toBe(created.email)
+    expect(payload.user.emailVerified).toBe(false)
   })
 
   test('signout invalidates the prior session; expired session becomes guest', async () => {
