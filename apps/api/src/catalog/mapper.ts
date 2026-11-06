@@ -10,13 +10,12 @@
  *     của parse ⇒ bị loại tự nhiên.
  *
  * `summary` (issue #41/#31): hợp đồng yêu cầu `summary` (1..300) nhưng bảng
- * `components` chưa có cột này. Chọn PHƯƠNG ÁN A trong lúc chờ owner quyết
- * (D2/#41): derive từ `description` ở tầng mapper, KHÔNG migration:
+ * `components` chưa có cột này. Owner đã chốt PHƯƠNG ÁN A ở #41: derive từ
+ * `description` ở tầng mapper, không cần migration:
  *   - description != null → summary = 300 kí tự đầu của description.
  *   - description null    → dùng `name` cho cả `summary` lẫn `description`
  *     (đảm bảo min(1) của hợp đồng mà không chế dữ liệu).
- * Khi owner duyệt Option B (cột riêng) chỉ cần thay dòng derive này — hợp
- * đồng unchanged.
+ * Chỉ thêm cột riêng nếu sau này creator cần viết teaser khác description.
  *
  * `author` (D6/#41): join `users.name`; hàng không author hoặc name rỗng →
  * 'anonymous' (handle vẫn pass regex của hợp đồng).
@@ -41,6 +40,9 @@ export interface CatalogRow {
   tags: string[]
   latestVersion: string
   isPublished: boolean
+  priceAmountMinor: number | null
+  priceCurrency: string | null
+  requiresPaymentForUpdate: boolean
   /** Tên hiển thị từ LEFT JOIN users — null khi component không có author. */
   authorName: string | null
 }
@@ -60,13 +62,16 @@ export function toCatalogComponent(row: CatalogRow): CatalogComponent {
     name: row.name,
     summary: description.slice(0, SUMMARY_MAX_LENGTH),
     description,
-    // category có default DB 'general' KHÔNG nằm trong enum của hợp
-    // đồng: parse sẽ throw (500) thay vì silently đổi dữ liệu — fail loud là
-    // lằn ranh an toàn; migration chuẩn hoá là việc của D5 (owner-approved).
+    // Parse vẫn kiểm tra contract để dữ liệu legacy không hợp lệ fail loud.
     category: row.category,
     tags: row.tags,
     latestVersion: row.latestVersion,
     author: row.authorName && row.authorName.trim() !== '' ? row.authorName.trim() : 'anonymous',
     isPublished: row.isPublished,
+    price:
+      row.priceAmountMinor === null && row.priceCurrency === null
+        ? null
+        : { amountMinor: row.priceAmountMinor, currency: row.priceCurrency },
+    requiresPaymentForUpdate: row.requiresPaymentForUpdate,
   })
 }
