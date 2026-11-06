@@ -4,13 +4,13 @@ This document separates the tables currently defined in the database package fro
 
 ## Current schema
 
-This diagram reflects `packages/db/src/schema.ts` and the three migrations recorded in `packages/db/drizzle/meta/_journal.json`, at main commit `7067120` (2026-11-05). It contains the five tables actually present: `users`, `sessions`, `accounts`, `verifications`, and `components`.
+This diagram reflects `packages/db/src/schema.ts` and migrations `0000`–`0005` on the current feature branch. Migration `0005` is new and has not been merged or applied to a shared database. The schema contains five tables: `users`, `sessions`, `accounts`, `verifications`, and `components`.
 
-`UK` marks an existing unique index. The `accounts` table has an index on `user_id`, but no unique constraint on `(provider_id, account_id)`. `verifications` has no foreign key. These details are taken from the schema and merged migration SQL, not inferred from Better Auth behavior.
+`UK` marks an existing unique index. User email uniqueness is case-insensitive; accounts have a unique `(provider_id, account_id)` pair. `verifications` has no foreign key. These details come from the schema and migration SQL, not from assumptions about Better Auth.
 
 ```mermaid
-%% Current database schema at main commit 7067120 (2026-11-05).
-%% Source of truth: packages/db/src/schema.ts and packages/db/drizzle/0000-0002.
+%% Current feature-branch database schema; migration 0005 is not yet merged/applied.
+%% Source of truth: packages/db/src/schema.ts and packages/db/drizzle/0000-0005.
 %% Index names and delete actions are also summarized in docs/DATABASE_DIAGRAM.md.
 erDiagram
     users ||--o{ sessions : "user_id CASCADE"
@@ -19,7 +19,7 @@ erDiagram
 
     users {
         uuid id PK "NOT NULL DEFAULT gen_random_uuid()"
-        text email UK "NOT NULL; users_email_unique"
+        text email UK "NOT NULL; unique on lower(email)"
         text name "NOT NULL"
         boolean email_verified "NOT NULL DEFAULT false"
         text image "NULL"
@@ -39,8 +39,8 @@ erDiagram
     }
     accounts {
         text id PK "NOT NULL"
-        text account_id "NOT NULL"
-        text provider_id "NOT NULL"
+        text account_id "NOT NULL; unique with provider_id"
+        text provider_id "NOT NULL; unique with account_id"
         uuid user_id FK "NOT NULL; accounts_user_id_idx; ON DELETE CASCADE"
         text access_token "NULL"
         text refresh_token "NULL"
@@ -65,10 +65,13 @@ erDiagram
         text slug UK "NOT NULL; components_slug_unique"
         text name "NOT NULL"
         text description "NULL"
-        text category "NOT NULL DEFAULT general"
-        text_array tags "NOT NULL DEFAULT empty array"
+        catalog_category category "NOT NULL; animation|react-component|tool"
+        varchar_array tags "NOT NULL DEFAULT empty array; max 12, each <=40"
         text latest_version "NOT NULL DEFAULT 0.0.0"
         boolean is_published "NOT NULL DEFAULT false"
+        integer price_amount_minor "NULL; positive when set"
+        varchar price_currency "NULL; uppercase 3-letter code paired with amount"
+        boolean requires_payment_for_update "NOT NULL DEFAULT false; requires price"
         uuid author_id FK "NULL; ON DELETE SET NULL"
         timestamptz created_at "NOT NULL DEFAULT now()"
         timestamptz updated_at "NOT NULL DEFAULT now()"
@@ -87,11 +90,13 @@ Index list:
 
 | Table | Indexes from Drizzle schema/migrations |
 |---|---|
-| `users` | unique `users_email_unique(email)` |
+| `users` | unique `users_email_lower_unique(lower(email))` |
 | `sessions` | unique `sessions_token_unique(token)`; `sessions_user_id_idx(user_id)` |
-| `accounts` | `accounts_user_id_idx(user_id)` |
+| `accounts` | `accounts_user_id_idx(user_id)`; unique `accounts_provider_account_unique(provider_id, account_id)` |
 | `verifications` | `verifications_identifier_idx(identifier)` |
-| `components` | unique `components_slug_unique(slug)` |
+| `components` | unique `components_slug_unique(slug)`; GIN `components_tags_gin_idx(tags)` |
+
+Catalog checks enforce the shared slug, name, description, category, tag, version, and price rules. `price_amount_minor` and `price_currency` describe catalog pricing only; they do not create a payment, purchase, or entitlement record. `latest_version` remains a pointer, not release history.
 
 ## Forum and Chat model — proposed
 
@@ -102,7 +107,7 @@ The ERD intentionally excludes `chat_memberships` (the RFC says it is not in the
 ```mermaid
 %% PROPOSED ONLY — not present in schema.ts or any merged migration.
 %% Based on docs/COMMUNITY_ARCHITECTURE.md section 6; owner review tracked by issue #68.
-%% Existing tables are actual at main commit 7067120; gray tables are proposed.
+%% Existing tables reflect the current feature branch (migration 0005 is pending); gray tables are proposed.
 %% Conflicting and unresolved RFC-05/RFC-08 details are documented in docs/DATABASE_DIAGRAM.md.
 erDiagram
     users ||--o{ sessions : "current; CASCADE"
@@ -136,7 +141,7 @@ erDiagram
 
     users {
         uuid id PK "CURRENT"
-        text email UK "CURRENT"
+        text email UK "CURRENT; case-insensitive unique"
         text name "CURRENT"
         user_role role "CURRENT user|seller|admin"
     }
@@ -147,8 +152,8 @@ erDiagram
     }
     accounts {
         text id PK "CURRENT"
-        text account_id "CURRENT; no composite unique index"
-        text provider_id "CURRENT"
+        text account_id "CURRENT; unique with provider_id"
+        text provider_id "CURRENT; unique with account_id"
         uuid user_id FK "CURRENT; CASCADE"
     }
     verifications {
@@ -159,6 +164,11 @@ erDiagram
     components {
         uuid id PK "CURRENT"
         text slug UK "CURRENT"
+        catalog_category category "CURRENT"
+        varchar_array tags "CURRENT; max 12, each <=40"
+        integer price_amount_minor "CURRENT; catalog metadata"
+        varchar price_currency "CURRENT; paired with amount"
+        boolean requires_payment_for_update "CURRENT; requires price"
         uuid author_id FK "CURRENT; nullable; SET NULL"
     }
     forum_categories {

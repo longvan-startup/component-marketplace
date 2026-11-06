@@ -2,10 +2,10 @@
  * apps/api/src/catalog/queries.ts — truy vấn đọc catalog (issue #31).
  *
  * Danh sách lựa chọn scope nhỏ-nhất-có-dùng (ghi rõ để review):
- *   - `q`      : ILIKE trên name / slug / description (substring, không
- *                tags — tags search là việc không yêu cầu ở #31).
+ *   - `q`      : ILIKE trên name / slug / description (substring).
  *   - category : exact match trên enum hợp đồng (`animation`,
  *                `react-component`, `tool`).
+ *   - tag      : exact match một tag trong mảng tags.
  *   - sort     : 'newest' (mặc định, createdAt DESC) / 'name' (ASC).
  *   - Pagination SQL thật (LIMIT/OFFSET) + đếm tổng riêng — không load all.
  *
@@ -17,7 +17,7 @@
 
 import { type DatabaseHandle, schema } from '@marketplace/db'
 import type { CatalogListQuery } from '@marketplace/shared'
-import { and, asc, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm'
+import { and, arrayContains, asc, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm'
 
 import type { CatalogRow } from './mapper'
 
@@ -36,6 +36,9 @@ const rowShape = {
   tags: components.tags,
   latestVersion: components.latestVersion,
   isPublished: components.isPublished,
+  priceAmountMinor: components.priceAmountMinor,
+  priceCurrency: components.priceCurrency,
+  requiresPaymentForUpdate: components.requiresPaymentForUpdate,
   authorName: users.name,
 }
 
@@ -53,6 +56,9 @@ function publishedFilters(request?: CatalogListQuery): SQL[] {
     }
     if (request.category !== undefined) {
       filters.push(eq(components.category, request.category))
+    }
+    if (request.tag !== undefined) {
+      filters.push(arrayContains(components.tags, [request.tag]))
     }
   }
   return filters
