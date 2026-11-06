@@ -24,6 +24,7 @@ import { eq, inArray } from 'drizzle-orm'
 import express from 'express'
 import type { MarketplaceAuth } from '../auth/config'
 import { requireAuth, requireRole } from '../auth/guards'
+import { type AuthUserPayload, registerVerifiedUser } from '../auth/test-helpers'
 import { createServer, shutdown } from '../index'
 
 const TEST_DB_URL = process.env.TEST_DATABASE_URL
@@ -32,16 +33,6 @@ const describeIntegration = TEST_DB_URL ? describe : describe.skip
 const SEED_SLUGS = ['hero-section', 'giant-tooltip', 'hidden-draft', 'anonymous-row']
 const AUTH_TEST_SECRET = 'auth-integration-test-secret-long-enough-32'
 const AUTH_TEST_EMAILS: string[] = []
-
-type AuthUserPayload = {
-  id: string
-  name: string
-  email: string
-  image: string | null
-  emailVerified: boolean
-  role: 'user' | 'seller' | 'admin'
-  [key: string]: unknown
-}
 
 type SignUpPayload = { token: string | null; user: AuthUserPayload }
 
@@ -156,27 +147,10 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     return { status: res.status, body: await res.json() }
   }
 
-  const register = async (requestedRole?: string) => {
-    const email = `auth-${crypto.randomUUID()}@test.local`
-    const password = 'correct-horse-auth-test'
-    AUTH_TEST_EMAILS.push(email)
-    const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        name: 'Auth Integration User',
-        email,
-        password,
-        ...(requestedRole ? { role: requestedRole } : {}),
-      }),
-    })
-    const payload = (await response.json()) as SignUpPayload
-    const cookie = response.headers.get('set-cookie')?.split(';', 1)[0]
-    if (!response.ok || !cookie) {
-      throw new Error(`Auth signup failed (${response.status})`)
-    }
-    return { email, password, response, payload, cookie }
-  }
+  // Signs up, follows the dev-transport verification link, then signs in —
+  // required since `requireEmailVerification: true` means sign-up alone no
+  // longer returns a session (see ../auth/test-helpers.ts).
+  const register = () => registerVerifiedUser(baseUrl, AUTH_TEST_EMAILS)
 
   test('GET /components → 200 list envelope, published-only, contract-valid items', async () => {
     const { status, body } = await get('/components')
@@ -285,21 +259,33 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     expect(apiErrorSchema.parse(body).code).toBe('NOT_FOUND')
   })
 
-  test('signup auto-login trả user contract đủ field và bỏ role client gửi lên', async () => {
-    const created = await register('admin')
-    expect(created.response.status).toBe(200)
-    expect(created.payload.user.id).toMatch(/^[0-9a-f-]{36}$/i)
-    expect(created.payload.user.name).toBe('Auth Integration User')
-    expect(created.payload.user.email).toBe(created.email)
-    expect(Object.hasOwn(created.payload.user, 'image')).toBe(true)
-    expect(
-      created.payload.user.image === null || typeof created.payload.user.image === 'string',
-    ).toBe(true)
-    expect(created.payload.user.emailVerified).toBe(false)
-    expect(created.payload.user.role).toBe('user')
-    expect(typeof created.payload.token).toBe('string')
+  test('signup returns full user contract (role dropped, no session) while unverified; session arrives after verify+signin', async () => {
+    const email = `auth-${crypto.randomUUID()}@test.local`
+    const password = 'correct-horse-auth-test'
+    AUTH_TEST_EMAILS.push(email)
 
-    const userKeys = Object.keys(created.payload.user)
+    // Sign-up itself: requireEmailVerification:true means no session yet
+    // (Better Auth's own shouldSkipAutoSignIn — see auth/config.ts).
+    const signUpResponse = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Auth Integration User', email, password, role: 'admin' }),
+    })
+    expect(signUpResponse.status).toBe(200)
+    const signUpPayload = (await signUpResponse.json()) as SignUpPayload
+    expect(signUpPayload.token).toBeNull()
+    expect(signUpPayload.user.id).toMatch(/^[0-9a-f-]{36}$/i)
+    expect(signUpPayload.user.name).toBe('Auth Integration User')
+    expect(signUpPayload.user.email).toBe(email)
+    expect(Object.hasOwn(signUpPayload.user, 'image')).toBe(true)
+    expect(signUpPayload.user.image === null || typeof signUpPayload.user.image === 'string').toBe(
+      true,
+    )
+    expect(signUpPayload.user.emailVerified).toBe(false)
+    expect(signUpPayload.user.role).toBe('user') // client-sent 'admin' dropped
+    expect(signUpResponse.headers.get('set-cookie')).toBeNull()
+
+    const userKeys = Object.keys(signUpPayload.user)
     for (const sensitiveKey of [
       'password',
       'passwordHash',
@@ -309,8 +295,17 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     ]) {
       expect(userKeys).not.toContain(sensitiveKey)
     }
-    expect(JSON.stringify(created.payload.user)).not.toContain(created.password)
+    expect(JSON.stringify(signUpPayload.user)).not.toContain(password)
 
+    const unverifiedSignIn = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    expect(unverifiedSignIn.status).toBe(403) // EMAIL_NOT_VERIFIED
+
+    // Verify (via the dev-transport log helper) + sign in — now it works.
+    const created = await registerVerifiedUser(baseUrl, AUTH_TEST_EMAILS)
     const sessionResponse = await fetch(`${baseUrl}/api/auth/get-session`, {
       headers: { cookie: created.cookie },
     })
@@ -318,9 +313,8 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     const sessionPayload = (await sessionResponse.json()) as { user: AuthUserPayload }
     expect(sessionPayload.user).toMatchObject({
       id: created.payload.user.id,
-      name: created.payload.user.name,
       email: created.email,
-      emailVerified: false,
+      emailVerified: true,
       role: 'user',
     })
   })
