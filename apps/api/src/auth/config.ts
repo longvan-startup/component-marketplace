@@ -44,7 +44,40 @@ export function createAuth(db: Database, env: AuthEnvironment) {
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
-      requireEmailVerification: false,
+      // Issue #92 slice 2 decision: verification is mandatory. Sign-up no
+      // longer returns a session (Better Auth's own `shouldSkipAutoSignIn`
+      // logic skips it automatically once this is true) and sign-in 403s
+      // with EMAIL_NOT_VERIFIED until the user verifies — both enforced by
+      // Better Auth itself, nothing custom needed on our side.
+      requireEmailVerification: true,
+      // 15 min (issue #92 decision) — Better Auth's own default is 1h.
+      resetPasswordTokenExpiresIn: 15 * 60,
+      // Old password stops working everywhere the moment a reset succeeds.
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, url }) => {
+        // Dev-only transport (issue #92 decision: fake email, no provider
+        // chosen yet — that's a follow-up task for Long). Never log the
+        // raw token separately; the URL already contains it and this path
+        // only runs outside production email delivery.
+        console.log(`[dev] password reset link for ${user.email}: ${url}`)
+      },
+    },
+    emailVerification: {
+      // Same dev-only transport as sendResetPassword — no production
+      // provider chosen yet (follow-up task for Long).
+      sendVerificationEmail: async ({ user, url }) => {
+        console.log(`[dev] verification link for ${user.email}: ${url}`)
+      },
+      sendOnSignUp: true,
+      // A failed sign-in due to an unverified email quietly sends a fresh
+      // link too, so a user who lost the first email isn't stuck — no
+      // separate "resend" trigger needed on that path.
+      sendOnSignIn: true,
+      // Clicking the link logs the user straight in instead of making them
+      // sign in again right after proving they own the email.
+      autoSignInAfterVerification: true,
+      // 15 min (issue #92 decision) — Better Auth's own default is 1h.
+      expiresIn: 15 * 60,
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {

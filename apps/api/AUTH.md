@@ -30,11 +30,16 @@ Request and error shapes are therefore Better Auth's own contract.
 
 | Method and path | Purpose | Success behavior |
 |---|---|---|
-| `POST /api/auth/sign-up/email` | Register with `name`, `email`, `password` | Creates a user with `role: "user"`, sets a session cookie and returns Better Auth's signup response. Auto-login is enabled. |
-| `POST /api/auth/sign-in/email` | Sign in with `email`, `password` | Sets a session cookie and returns Better Auth's signin response. |
+| `POST /api/auth/sign-up/email` | Register with `name`, `email`, `password` | Creates a user with `role: "user"` and `emailVerified: false`, sends a verification email (dev: `console.log`), and returns `{ token: null, user }` — **no session cookie** until the email is verified. |
+| `POST /api/auth/sign-in/email` | Sign in with `email`, `password` | If `emailVerified` is `false`: `403 FORBIDDEN` (`EMAIL_NOT_VERIFIED`) and a fresh verification email is sent. Otherwise sets a session cookie and returns Better Auth's signin response. |
 | `POST /api/auth/sign-out` | End the current session | Revokes the session and clears the session cookie. |
 | `GET /api/auth/get-session` | Read current session | Returns `null` when unauthenticated or expired; otherwise returns `{ session, user }`. |
 | `POST /api/auth/update-user` | Update the signed-in user's name or image | Returns Better Auth's `{ "status": true }`; fetch the session again to read the updated user. |
+| `POST /api/auth/request-password-reset` | Request a reset email with `email`, `redirectTo` | Always returns `{ "status": true, "message": "..." }`, whether or not the email exists (timing-safe, does not leak account existence). `redirectTo` must be a trusted origin (see Configuration) or the request is rejected before any lookup. |
+| `GET /api/auth/reset-password/:token` | The link the reset email points to | Handled entirely by Better Auth: redirects to `redirectTo` with `?token=<raw>` on a valid token, or `?error=INVALID_TOKEN` if invalid or expired. The frontend never calls this directly — it's the email link's destination. |
+| `POST /api/auth/reset-password` | Set a new password with `token`, `newPassword` | Returns `{ "status": true }` on success. `newPassword` must be 8–128 characters (Better Auth's `minPasswordLength`/`maxPasswordLength` defaults — not overridden in this config). On success, every other session for that user is revoked (`revokeSessionsOnPasswordReset: true`) — the user must sign in again on other devices. |
+| `POST /api/auth/send-verification-email` | (Re)send a verification email with `email`, `callbackURL` | Always returns `{ "status": true }`, whether or not the email exists or is already verified (same non-leaking pattern as password reset). Also fires automatically on a failed sign-in caused by an unverified email (`sendOnSignIn: true`) — the frontend does not need a separate "resend" trigger for that path. |
+| `GET /api/auth/verify-email` | The link the verification email points to, `token` + optional `callbackURL` | Handled entirely by Better Auth. With `callbackURL`: redirects there on success (no extra query params — see below), or with `?error=INVALID_TOKEN\|TOKEN_EXPIRED\|USER_NOT_FOUND` on failure. Without `callbackURL`: returns `{ "status": true, "user": null }` as JSON directly (used by integration tests, not the frontend). On success, sets a session cookie (`autoSignInAfterVerification: true`) — verifying logs the user in. |
 
 Profile updates require a valid session cookie. Send at least one of `name` or
 `image`. A name must contain non-whitespace characters and be at most 100
@@ -66,8 +71,25 @@ payload. Better Auth signup/signin also returns its `token` field outside the
 `user` object; the browser should use the HTTP-only cookie and must not persist
 that field as application state or local storage.
 
-`emailVerified` is returned as stored. Signup does not send verification email
-and an unverified account can sign in in this scope.
+`emailVerified` is returned as stored. Email verification is **mandatory**:
+an account with `emailVerified: false` cannot sign in (`403 EMAIL_NOT_VERIFIED`)
+until the link in the verification email is followed.
+
+Password reset links expire after 15 minutes
+(`resetPasswordTokenExpiresIn: 15 * 60`); verification links also expire after
+15 minutes (`emailVerification.expiresIn: 15 * 60`). Both the reset email and
+the verification email are only ever sent to a `console.log` dev transport
+right now — no production email provider is wired up yet (follow-up task, not
+part of issue #92).
+
+**Frontend quirk**: on a successful `GET /verify-email?...&callbackURL=X`, Better
+Auth redirects to exactly `X` with no extra query params — unlike the error
+case, which appends `?error=...`. So the frontend genuinely cannot tell "just
+verified successfully" apart from "visited this page directly, nothing
+happened yet" from query params alone. `apps/web/app/verify-email/page.tsx`
+doesn't guess: absent `?error=`, it shows one calm message that's true either
+way ("if you just clicked the link, you're verified — otherwise request a new
+one below") instead of claiming a success it can't actually confirm.
 
 ## Frontend state mapping
 
@@ -88,6 +110,9 @@ every allowed role.
 
 ## Out of scope
 
-Login/register UI, password reset email delivery, email verification delivery,
-seller onboarding/approval, admin dashboard, image uploads, payments, and
-purchase history require separate tasks.
+Login/register UI, production email delivery for either flow (a provider
+still needs to be chosen — dev uses a `console.log` transport, see above),
+grandfathering any pre-existing unverified accounts (none exist yet — no
+production users have signed up), social login (Google/GitHub), rate
+limiting on auth endpoints, seller onboarding/approval, admin dashboard,
+image uploads, payments, and purchase history require separate tasks.

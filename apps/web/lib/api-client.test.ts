@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 
-import { ApiClientError, apiFetchJson, resolveApiBaseUrl } from './api-client'
+import { ApiClientError, apiFetchJson, apiMutateJson, resolveApiBaseUrl } from './api-client'
 
 describe('resolveApiBaseUrl — per-runtime base URL config', () => {
   const SAVED: Record<string, string | undefined> = {}
@@ -13,8 +13,13 @@ describe('resolveApiBaseUrl — per-runtime base URL config', () => {
   })
 
   afterAll(() => {
-    process.env.NEXT_PUBLIC_API_URL = SAVED.pub
-    process.env.API_URL_INTERNAL = SAVED.internal
+    // Assigning `undefined` to `process.env.X` stringifies it to "undefined"
+    // instead of unsetting it — delete when there was nothing to restore, so
+    // later test files don't see a polluted literal "undefined" string.
+    if (SAVED.pub === undefined) delete process.env.NEXT_PUBLIC_API_URL
+    else process.env.NEXT_PUBLIC_API_URL = SAVED.pub
+    if (SAVED.internal === undefined) delete process.env.API_URL_INTERNAL
+    else process.env.API_URL_INTERNAL = SAVED.internal
   })
 
   test('server runtime prefers API_URL_INTERNAL (Docker network alias)', () => {
@@ -91,6 +96,74 @@ describe('apiFetchJson', () => {
       const e = error as ApiClientError
       expect(e.status).toBe(0)
       expect(e.message).toContain('ECONNREFUSED')
+    }
+  })
+})
+
+describe('apiMutateJson', () => {
+  test('POSTs JSON with credentials included by default', async () => {
+    let seenRequest: { url: string; init: RequestInit } | undefined
+    const result = await apiMutateJson<{ status: boolean }>(
+      '/auth/request-password-reset',
+      { email: 'user@example.com' },
+      {
+        fetchImpl: async (url, init) => {
+          seenRequest = { url: String(url), init: init as RequestInit }
+          return new Response(JSON.stringify({ status: true }), { status: 200 })
+        },
+        publicApiUrl: 'https://public.example.test',
+        runtime: 'browser',
+      },
+    )
+    expect(result.status).toBe(true)
+    expect(seenRequest?.url).toBe('https://public.example.test/auth/request-password-reset')
+    expect(seenRequest?.init.method).toBe('POST')
+    expect(seenRequest?.init.credentials).toBe('include')
+    expect(JSON.parse(String(seenRequest?.init.body))).toEqual({ email: 'user@example.com' })
+  })
+
+  test('non-2xx surfaces the response body code + message on ApiClientError', async () => {
+    try {
+      await apiMutateJson(
+        '/auth/reset-password',
+        { token: 'bad', newPassword: 'longenough' },
+        {
+          fetchImpl: async () =>
+            new Response(JSON.stringify({ message: 'Invalid token', code: 'INVALID_TOKEN' }), {
+              status: 400,
+            }),
+          publicApiUrl: 'https://public.example.test',
+          runtime: 'browser',
+        },
+      )
+      expect.unreachable()
+    } catch (error) {
+      expect(error instanceof ApiClientError).toBe(true)
+      const e = error as ApiClientError
+      expect(e.status).toBe(400)
+      expect(e.code).toBe('INVALID_TOKEN')
+      expect(e.message).toContain('Invalid token')
+    }
+  })
+
+  test('non-JSON error body falls back to statusText, no code', async () => {
+    try {
+      await apiMutateJson(
+        '/auth/request-password-reset',
+        { email: 'user@example.com' },
+        {
+          fetchImpl: async () =>
+            new Response('not json', { status: 500, statusText: 'Server Error' }),
+          publicApiUrl: 'https://public.example.test',
+          runtime: 'browser',
+        },
+      )
+      expect.unreachable()
+    } catch (error) {
+      const e = error as ApiClientError
+      expect(e.status).toBe(500)
+      expect(e.code).toBeUndefined()
+      expect(e.message).toContain('Server Error')
     }
   })
 })
