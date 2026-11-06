@@ -33,12 +33,8 @@ export const catalogSlugSchema = z
 export const catalogCategorySchema = z.enum(['animation', 'react-component', 'tool'])
 export const catalogSortSchema = z.enum(['newest', 'name'])
 
-/** Public author handle (@username). Real identity lives behind auth (#17). */
-const authorHandleSchema = z
-  .string()
-  .min(2)
-  .max(80)
-  .regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/, 'invalid author handle')
+/** Public display name from the author's profile. */
+const authorDisplayNameSchema = z.string().min(1).max(100)
 
 const semverSchema = z.string().regex(/^\d+\.\d+\.\d+$/, 'version must be semantic (x.y.z)')
 
@@ -62,7 +58,7 @@ export const componentSchema = z
     category: catalogCategorySchema,
     tags: z.array(z.string().min(1).max(40)).max(12).default([]),
     latestVersion: semverSchema,
-    author: authorHandleSchema,
+    author: authorDisplayNameSchema,
     isPublished: z.boolean(),
     /** Optional during the additive rollout; the API emits both fields. */
     price: catalogPriceSchema.nullable().optional(),

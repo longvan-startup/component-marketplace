@@ -71,6 +71,12 @@ describe('toCatalogComponent', () => {
     expect(toCatalogComponent(padded).author).toBe('long-vn')
   })
 
+  test('accepts a Vietnamese display name with spaces', () => {
+    expect(toCatalogComponent({ ...BASE_ROW, authorName: 'Nguyễn Văn A' }).author).toBe(
+      'Nguyễn Văn A',
+    )
+  })
+
   test('violating the contract (category outside enum) throws — fail loud', () => {
     const dbDefaultCategory: CatalogRow = { ...BASE_ROW, category: 'general' }
     expect(() => toCatalogComponent(dbDefaultCategory)).toThrow() // ZodError
