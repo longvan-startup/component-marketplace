@@ -14,7 +14,7 @@ Workflow gate for any non-trivial change: decide branch naming, messaging, and d
 - Branch from the latest `main` (`git fetch origin && git switch -c <type>/<kebab-case-slug> origin/main`), where `<type>` matches `commitlint.config.mjs`'s `type-enum` (`feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `style`, `ci`, `build`, `revert`).
 - Task scope comes from the GitHub issue (`task.md` template) — issue first for M/L-size work; XS/S tweaks may commit directly.
 - One feature branch per task; delete merged branches locally and on remote. Never commit directly to `main`; never force-push.
-- A PR touching both `apps/web/**` and backend (`apps/api/**`, `packages/db/**`) must carry the `cross-domain` label and follow the ownership map in `docs/ENGINEERING.md` (report, don't patch, outside your domain — unless the task grants the scope).
+- PRs may touch any combination of frontend and backend paths; the path-summary workflow is informational and does not require a `cross-domain` label. Follow the ownership map in `docs/ENGINEERING.md` for review context.
 
 ## Commit & PR formatting
 

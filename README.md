@@ -50,7 +50,7 @@ component-marketplace/
 │   └── api.Dockerfile
 ├── docs/                    # ENGINEERING.md | DEPLOYMENT.md | DATABASE_DIAGRAM.md | COMMUNITY_ARCHITECTURE.md
 ├── .github/
-│   ├── workflows/           # ci.yml | cd.yml | owner-scope.yml | auto-assign-reviewers.yml | auto-issue.yml
+│   ├── workflows/           # ci.yml | cd.yml | pr-path-summary.yml | auto-assign-reviewers.yml | auto-issue.yml
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── CODEOWNERS
 ├── .agents/skills/          # skill kit cho AI agent (tư vấn trước khi làm mới)
@@ -144,8 +144,8 @@ bun run db:studio    # mở Drizzle Studio quản trị DB
   tag `oven/bun:1.4.3` trong `docker/*.Dockerfile`. Đổi Bun = sửa đồng thời
   cả 3 file.
 - Chuẩn coding, ownership (CODEOWNERS), Definition of Done, quality gates:
-  xem `docs/ENGINEERING.md`. PR đụng cả 2 domain (web + api/db) phải có
-  nhãn `cross-domain` + đồng thuận cả 2 owner.
+  xem `docs/ENGINEERING.md`. PR có thể thay đổi nhiều domain; workflow không
+  yêu cầu nhãn `cross-domain` hoặc chặn theo đường dẫn.
 - Quy trình branch/commit/PR: xem `CONTRIBUTING.md`.
 - Quy tắc cho AI agent (OpenCode/Codex/T3 Code): xem `AGENTS.md` +
   `.agents/skills/`.
@@ -238,8 +238,8 @@ chạy sau job quality)
 
 Workflow phụ trợ:
 
-- `owner-scope.yml` — chặn PR cross-domain thiếu nhãn `cross-domain`;
-- `auto-assign-reviewers.yml` — tự request review owner còn lại;
+- `pr-path-summary.yml` — ghi nhận các nhóm file thay đổi; không chặn PR theo domain;
+- `auto-assign-reviewers.yml` — tự request review owner còn lại, không phải merge gate;
 - `auto-issue.yml` — CI/CD đỏ trên `main` ⇒ tự mở issue ghim chi tiết;
   xanh trở lại ⇒ tự comment + đóng;
 - `auto-close-issues.yml` — PR chứa `fixes/closes/resolves/implements… #n`

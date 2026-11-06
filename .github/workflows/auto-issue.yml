@@ -15,7 +15,7 @@ name: Auto issue on failure
 #   issue instead of opening a duplicate.
 # - A later success of the same workflow comments "green again" and closes it.
 #
-# Port style follows auto-assign-reviewers.yml / owner-scope.yml
+# Port style follows auto-assign-reviewers.yml / pr-path-summary.yml
 # (single github-script@v9 job, explicit permissions, no secrets beyond the
 # built-in GITHUB_TOKEN).
 
