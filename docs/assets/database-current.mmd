@@ -1,5 +1,5 @@
-%% Current database schema at main commit 7067120 (2026-11-05).
-%% Source of truth: packages/db/src/schema.ts and packages/db/drizzle/0000-0002.
+%% Current feature-branch schema; migration 0005 is pending and not yet merged/applied.
+%% Source of truth: packages/db/src/schema.ts and packages/db/drizzle/0000-0005.
 %% Index names and delete actions are also summarized in docs/DATABASE_DIAGRAM.md.
 erDiagram
     users ||--o{ sessions : "user_id CASCADE"
@@ -8,7 +8,7 @@ erDiagram
 
     users {
         uuid id PK "NOT NULL DEFAULT gen_random_uuid()"
-        text email UK "NOT NULL; users_email_unique"
+        text email UK "NOT NULL; unique on lower(email)"
         text name "NOT NULL"
         boolean email_verified "NOT NULL DEFAULT false"
         text image "NULL"
@@ -28,8 +28,8 @@ erDiagram
     }
     accounts {
         text id PK "NOT NULL"
-        text account_id "NOT NULL"
-        text provider_id "NOT NULL"
+        text account_id "NOT NULL; unique with provider_id"
+        text provider_id "NOT NULL; unique with account_id"
         uuid user_id FK "NOT NULL; accounts_user_id_idx; ON DELETE CASCADE"
         text access_token "NULL"
         text refresh_token "NULL"
@@ -54,10 +54,13 @@ erDiagram
         text slug UK "NOT NULL; components_slug_unique"
         text name "NOT NULL"
         text description "NULL"
-        text category "NOT NULL DEFAULT general"
-        text_array tags "NOT NULL DEFAULT empty array"
+        catalog_category category "NOT NULL; animation|react-component|tool"
+        varchar_array tags "NOT NULL DEFAULT empty array; max 12, each <=40"
         text latest_version "NOT NULL DEFAULT 0.0.0"
         boolean is_published "NOT NULL DEFAULT false"
+        integer price_amount_minor "NULL; positive when set"
+        varchar price_currency "NULL; uppercase 3-letter code paired with amount"
+        boolean requires_payment_for_update "NOT NULL DEFAULT false; requires price"
         uuid author_id FK "NULL; ON DELETE SET NULL"
         timestamptz created_at "NOT NULL DEFAULT now()"
         timestamptz updated_at "NOT NULL DEFAULT now()"

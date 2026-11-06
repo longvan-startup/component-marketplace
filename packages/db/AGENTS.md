@@ -38,6 +38,21 @@ API/domain contract). Backend owner: @NguyenTuMinhLong.
 - The `users_integrity_before_write` trigger normalizes email on insert/update
   and refreshes `updated_at` on every update. Keep this database-enforced rule
   in a forward migration; Drizzle schema snapshots do not represent triggers.
+- Catalog components use the shared category set `animation`,
+  `react-component`, and `tool`; never restore a `general` default. The
+  category conversion migration must stop with a count-only error if legacy
+  rows contain unsupported values. Do not guess a replacement category.
+- Component tags are a bounded `varchar(40)[]` (maximum 12 values), with a GIN
+  index for exact tag filtering. Keep tag validation at the request boundary
+  and the count/empty-value checks in PostgreSQL. A normalized tag table needs
+  a separate product use case such as curated tag metadata or aliases.
+- Component update price is stored in minor currency units with its 3-letter
+  currency code. `NULL` price means no configured charge; a component marked
+  as requiring paid updates must have a price. This metadata does not represent
+  a purchase, payment, or entitlement.
+- `components.latest_version` is the current catalog value, not release
+  history. Add release/artifact tables only with an approved version-delivery
+  task; payment gating must not be inferred from this field.
 - CI runs on a blank volume and does not apply migrations automatically; the
   `/health/db` check only pings `select 1` (see issue #15).
 

@@ -17,6 +17,9 @@ const BASE_ROW: CatalogRow = {
   tags: ['ui', 'hero'],
   latestVersion: '1.2.3',
   isPublished: true,
+  priceAmountMinor: null,
+  priceCurrency: null,
+  requiresPaymentForUpdate: false,
   authorName: 'van-dev',
 }
 
@@ -34,6 +37,8 @@ describe('toCatalogComponent', () => {
       latestVersion: '1.2.3',
       author: 'van-dev',
       isPublished: true,
+      price: null,
+      requiresPaymentForUpdate: false,
     })
   })
 
@@ -82,6 +87,8 @@ describe('toCatalogComponent', () => {
         'isPublished',
         'latestVersion',
         'name',
+        'price',
+        'requiresPaymentForUpdate',
         'slug',
         'summary',
         'tags',
