@@ -35,6 +35,9 @@ Request and error shapes are therefore Better Auth's own contract.
 | `POST /api/auth/sign-out` | End the current session | Revokes the session and clears the session cookie. |
 | `GET /api/auth/get-session` | Read current session | Returns `null` when unauthenticated or expired; otherwise returns `{ session, user }`. |
 | `POST /api/auth/update-user` | Update the signed-in user's name or image | Returns Better Auth's `{ "status": true }`; fetch the session again to read the updated user. |
+| `POST /api/auth/request-password-reset` | Request a reset email with `email`, `redirectTo` | Always returns `{ "status": true, "message": "..." }`, whether or not the email exists (timing-safe, does not leak account existence). `redirectTo` must be a trusted origin (see Configuration) or the request is rejected before any lookup. |
+| `GET /api/auth/reset-password/:token` | The link the reset email points to | Handled entirely by Better Auth: redirects to `redirectTo` with `?token=<raw>` on a valid token, or `?error=INVALID_TOKEN` if invalid or expired. The frontend never calls this directly — it's the email link's destination. |
+| `POST /api/auth/reset-password` | Set a new password with `token`, `newPassword` | Returns `{ "status": true }` on success. `newPassword` must be 8–128 characters (Better Auth's `minPasswordLength`/`maxPasswordLength` defaults — not overridden in this config). On success, every other session for that user is revoked (`revokeSessionsOnPasswordReset: true`) — the user must sign in again on other devices. |
 
 Profile updates require a valid session cookie. Send at least one of `name` or
 `image`. A name must contain non-whitespace characters and be at most 100
@@ -69,6 +72,11 @@ that field as application state or local storage.
 `emailVerified` is returned as stored. Signup does not send verification email
 and an unverified account can sign in in this scope.
 
+Password reset links expire after 15 minutes
+(`resetPasswordTokenExpiresIn: 15 * 60`). The reset email is only ever sent to
+a `console.log` dev transport right now — no production email provider is
+wired up yet (follow-up task, not part of issue #92's first slice).
+
 ## Frontend state mapping
 
 - While the initial session request is pending, show loading state.
@@ -88,6 +96,8 @@ every allowed role.
 
 ## Out of scope
 
-Login/register UI, password reset email delivery, email verification delivery,
-seller onboarding/approval, admin dashboard, image uploads, payments, and
-purchase history require separate tasks.
+Login/register UI, production password-reset email delivery (a provider still
+needs to be chosen — dev uses a `console.log` transport, see above), email
+verification (mandatory-verification behavior, send/resend, the verify-email
+UI — issue #92's second slice), seller onboarding/approval, admin dashboard,
+image uploads, payments, and purchase history require separate tasks.

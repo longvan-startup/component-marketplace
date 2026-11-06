@@ -4,6 +4,7 @@
  * payloads consumed by BOTH apps; apps never redeclare these shapes.
  */
 
+export * from './contracts/auth'
 export * from './contracts/catalog'
 export * from './contracts/common'
 

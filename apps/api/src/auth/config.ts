@@ -45,6 +45,17 @@ export function createAuth(db: Database, env: AuthEnvironment) {
       enabled: true,
       autoSignIn: true,
       requireEmailVerification: false,
+      // 15 min (issue #92 decision) — Better Auth's own default is 1h.
+      resetPasswordTokenExpiresIn: 15 * 60,
+      // Old password stops working everywhere the moment a reset succeeds.
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, url }) => {
+        // Dev-only transport (issue #92 decision: fake email, no provider
+        // chosen yet — that's a follow-up task for Long). Never log the
+        // raw token separately; the URL already contains it and this path
+        // only runs outside production email delivery.
+        console.log(`[dev] password reset link for ${user.email}: ${url}`)
+      },
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
