@@ -108,3 +108,76 @@ export type CatalogListRequest = z.input<typeof listRequestSchema>
 export type CatalogListQuery = z.output<typeof listRequestSchema>
 export type CatalogListResponse = z.infer<typeof listResponseSchema>
 export type CatalogDetailResponse = z.infer<typeof detailResponseSchema>
+
+/* ------------------------------------------------------------------ */
+/* Admin write requests (issue #111)                                   */
+/* ------------------------------------------------------------------ */
+
+/** Tags are normalized at the write boundary: trim, lowercase, dedupe after
+ * normalization. The 12-item / 40-char limits mirror the DB check constraints
+ * in `packages/db/src/schema.ts` (`components_tags_count_check`). */
+export const adminTagsSchema = z
+  .array(z.string().trim().min(1).max(40))
+  .max(12)
+  .default([])
+  .transform((tags) => Array.from(new Set(tags.map((tag) => tag.toLowerCase()))))
+
+/**
+ * Exactly two valid states going forward (issue #111 decision):
+ *   free = price null AND requiresPaymentForUpdate false
+ *   paid = price set  AND requiresPaymentForUpdate true
+ * Any other combination is rejected at the write boundary. This is stricter
+ * than `componentSchema`'s own refine, which only guards legacy/already-
+ * written rows (flag true requires a price; it does not forbid a price on a
+ * free row), so it stays separate rather than replacing that one.
+ */
+export function isValidPriceFlagCombo(
+  price: { amountMinor: number; currency: string } | null,
+  requiresPaymentForUpdate: boolean,
+): boolean {
+  if (price === null) return requiresPaymentForUpdate === false
+  return requiresPaymentForUpdate === true
+}
+
+/** Admin create — the server derives `slug` from `name`; the client never
+ * supplies it. New components are always drafts (`isPublished` is not a
+ * client-settable field here); publish/unpublish are separate actions. */
+export const createComponentRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    description: z.string().trim().min(1).max(5000),
+    category: catalogCategorySchema,
+    tags: adminTagsSchema,
+    latestVersion: semverSchema.default('0.0.0'),
+    price: catalogPriceSchema.nullable().default(null),
+    requiresPaymentForUpdate: z.boolean().default(false),
+  })
+  .superRefine((input, context) => {
+    if (!isValidPriceFlagCombo(input.price, input.requiresPaymentForUpdate)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['requiresPaymentForUpdate'],
+        message:
+          'A free component needs price=null and requiresPaymentForUpdate=false; a paid component needs both set',
+      })
+    }
+  })
+
+/**
+ * Admin update — every field optional (PATCH semantics). The price/flag combo
+ * is NOT re-validated here: the route merges this patch onto the current row
+ * first (so a client may update just one of the pair) and re-checks the
+ * merged result with `isValidPriceFlagCombo` before writing.
+ */
+export const updateComponentRequestSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  description: z.string().trim().min(1).max(5000).optional(),
+  category: z.optional(catalogCategorySchema),
+  tags: z.optional(adminTagsSchema),
+  latestVersion: z.optional(semverSchema),
+  price: catalogPriceSchema.nullable().optional(),
+  requiresPaymentForUpdate: z.boolean().optional(),
+})
+
+export type CreateComponentRequest = z.infer<typeof createComponentRequestSchema>
+export type UpdateComponentRequest = z.infer<typeof updateComponentRequestSchema>

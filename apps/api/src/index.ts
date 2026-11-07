@@ -31,6 +31,9 @@ import { toNodeHandler } from 'better-auth/node'
 import { sql } from 'drizzle-orm'
 import express from 'express'
 import { createAuth } from './auth/config'
+import { requireAuth, requireRole } from './auth/guards'
+import { insertComponent, setPublished, updateComponent } from './catalog/admin-queries'
+import { parseCreateComponentRequest, parseUpdateComponentRequest } from './catalog/admin-requests'
 import { toCatalogComponent } from './catalog/mapper'
 import { getComponentBySlug, listComponents } from './catalog/queries'
 import { parseListRequest, parseSlugParam } from './catalog/requests'
@@ -210,6 +213,53 @@ export function createServer(options: ServerOptions = {}) {
     if (!row) {
       throw new ApiHttpError(404, 'NOT_FOUND', 'Component not found')
     }
+    res.status(200).json({ item: toCatalogComponent(row) })
+  })
+
+  /* --- Catalog admin write endpoints (issue #111) ------------------------
+   * `adminGuard`: when auth isn't configured (missing DB/secret/url in this
+   * environment), respond 503 AUTH_UNAVAILABLE same as the /api/auth/*
+   * fallback — these routes can never run without a real session to check.
+   */
+  const adminGuard: express.RequestHandler[] = auth
+    ? [requireAuth(auth), requireRole('admin')]
+    : [
+        (_req, res) => {
+          sendError(res, {
+            code: 'AUTH_UNAVAILABLE',
+            message: 'Authentication is not configured',
+            status: 503,
+          })
+        },
+      ]
+
+  // POST /admin/components — tạo draft; isPublished luôn false bất kể body.
+  apiRouter.post('/admin/components', ...adminGuard, async (req, res) => {
+    const body = parseCreateComponentRequest(req.body)
+    const authorId = req.authSession?.user.id
+    if (!authorId) throw new ApiHttpError(401, 'UNAUTHENTICATED', 'Authentication is required')
+    const row = await insertComponent(requireDb(), body, authorId)
+    res.status(201).json({ item: toCatalogComponent(row) })
+  })
+
+  // PATCH /admin/components/:slug — sửa metadata; không đổi isPublished.
+  apiRouter.patch('/admin/components/:slug', ...adminGuard, async (req, res) => {
+    const slug = parseSlugParam(req.params.slug)
+    const body = parseUpdateComponentRequest(req.body)
+    const row = await updateComponent(requireDb(), slug, body)
+    res.status(200).json({ item: toCatalogComponent(row) })
+  })
+
+  // POST /admin/components/:slug/publish | /unpublish — idempotent toggle.
+  apiRouter.post('/admin/components/:slug/publish', ...adminGuard, async (req, res) => {
+    const slug = parseSlugParam(req.params.slug)
+    const row = await setPublished(requireDb(), slug, true)
+    res.status(200).json({ item: toCatalogComponent(row) })
+  })
+
+  apiRouter.post('/admin/components/:slug/unpublish', ...adminGuard, async (req, res) => {
+    const slug = parseSlugParam(req.params.slug)
+    const row = await setPublished(requireDb(), slug, false)
     res.status(200).json({ item: toCatalogComponent(row) })
   })
 
