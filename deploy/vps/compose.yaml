@@ -1,15 +1,15 @@
 # ==========================================================================
 # deploy/vps/compose.yaml — production compose for the VPS.
 # Copy this directory to /opt/cmp-api on the VPS (docs/DEPLOYMENT.md).
-# Runs the PREBUILT image from GHCR (published by the CD workflow) — no
+# Runs the PREBUILT image from GHCR (published by the CD preparation workflow) — no
 # builds on the VPS, no repo needed. Secrets live ONLY in local .env.
 # ==========================================================================
 name: cmp-api
 
 services:
   api:
-    # CD workflow publishes: ghcr.io/longvan-startup/cmp-api:{sha-*,latest}
-    image: ${API_IMAGE:-ghcr.io/longvan-startup/cmp-api:latest}
+    # Set API_IMAGE to the immutable image digest or full-SHA tag prepared by CI.
+    image: ${API_IMAGE:?Set API_IMAGE to an immutable GHCR digest or full-SHA tag}
     restart: unless-stopped
     environment:
       NODE_ENV: production

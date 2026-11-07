@@ -1,4 +1,7 @@
 {
+  "git": {
+    "deploymentEnabled": false
+  },
   "outputDirectory": "public",
   "headers": [
     {

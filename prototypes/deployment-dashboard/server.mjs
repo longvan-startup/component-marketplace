@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import auth from './api/auth/[...auth].mjs'
 import deployments from './api/deployments.mjs'
+import release from './api/release.mjs'
 import services from './api/services.mjs'
 
 const html = await readFile(new URL('./public/index.html', import.meta.url))
@@ -14,6 +15,7 @@ const server = createServer(async (req, res) => {
   )
   const path = new URL(req.url, 'http://localhost').pathname
   if (path.startsWith('/api/auth/')) return auth(req, res)
+  if (path.startsWith('/api/release')) return release(req, res)
   if (path === '/api/services') return services(req, res)
   if (path === '/api/deployments') return deployments(req, res)
   if (path === '/' && req.method === 'GET') {
