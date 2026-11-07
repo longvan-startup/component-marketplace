@@ -1,7 +1,7 @@
 # Deployment & CD — current state and activation runbook
 
-Source of truth for CDN/CD. Status verified with real commands (latest check:
-2026-10-24). Every change after this date must update the verified-state table.
+Source of truth for CDN/CD. The platform rows below were last checked on
+2026-10-24. The Control Room entry was verified separately on 2026-11-07.
 
 ## Verified state (2026-10-24)
 
@@ -13,6 +13,8 @@ Source of truth for CDN/CD. Status verified with real commands (latest check:
 | Repo secrets | to be created by owner when activating each layer | `gh api repos/.../actions/secrets` |
 | Web deploy target | **Vercel Services project** (`vercel.json` merged in #46: api internal + web public, binding `API_URL_INTERNAL`, same-origin `/api` fallback) — **activation is one dashboard import** (owner-manual, tracked on the issue board) | merged PR #46 |
 | API deploy target | **VPS + SSH auto-deploy**, gated by secrets `SSH_HOST/SSH_USER/SSH_KEY` (owner decision) | decision |
+| Control Room | Separate Vercel project at `component-marketplace-control-room.vercel.app`; records Web/API/Admin deployment entries in browser storage and does not deploy those targets | Production URL + `prototypes/deployment-dashboard` (2026-11-07) |
+| Marketplace Vercel preview ignore | Skip preview builds for Control Room-only changes; build when Marketplace source paths change; production builds continue | Vercel project setting + PR #113 check (2026-11-07) |
 | Production DB | **Neon**, migrate job gated by secret `PROD_DATABASE_URL` (owner decision) | decision |
 | Branch protection `main` | `enforce_admins=false` (must be re-enabled), `require_code_owner_reviews=false`, approvals=1 | `gh api .../branches/main/protection` |
 
@@ -59,7 +61,31 @@ Manual one-time setup (Vercel dashboard):
 4. Done: every PR gets a **preview** deployment (both services, preview-scoped
    binding); pushes to `main` produce production deploys with Instant Rollback.
 
-Nothing in this repo calls the Vercel API; no deploy secrets exist by design.
+The Marketplace CI/CD pipeline does not use the Vercel API. The separate
+Control Room app has server-side read-only Vercel API routes; its own UI does
+not call those routes when recording deployment history.
+
+The `component-marketplace` Vercel project's ignored-build command is
+`bash scripts/vercel-ignore-marketplace-build.sh`. Production builds proceed.
+For previews, it skips commits whose changes are limited to
+`prototypes/deployment-dashboard`, this deployment runbook, the root workspace
+lock metadata, and the ignore script itself. A change to Marketplace
+application paths still proceeds to the Vercel build.
+
+### Control Room — deployment records only
+
+The Control Room is a separate Vercel project whose source is
+`prototypes/deployment-dashboard`. Its own Vercel production deployment serves
+the dashboard. The three buttons for Web, Backend / API, and Admin only write
+deployment records to the current browser's `localStorage`; they do not send
+code to Vercel, GitHub Actions, or a VPS. The recorded `PASS`, `FAIL`, or
+`Chưa chạy` value is entered by a user; the dashboard does not run tests.
+
+The history is local to one browser and is not shared between teammates or
+devices. The dashboard's existing Vercel API routes are read-only and are not
+called by the record buttons. Connecting those buttons to a real deployment
+target is a separate change that requires the target Vercel projects or VPS to
+exist and be reviewed.
 
 ### VPS path (§2) — status under Services
 

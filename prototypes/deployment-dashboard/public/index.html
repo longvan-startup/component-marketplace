@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Control Room | Deployment records</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #1d2826; background: #f5f6f2; font-synthesis: none; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid #287860; outline-offset: 3px; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 242px minmax(0, 1fr); }
+    .sidebar { background: #142621; color: #e7f0e9; padding: 26px 18px; display: flex; flex-direction: column; gap: 32px; }
+    .brand { display: flex; gap: 11px; align-items: center; padding: 0 7px; }
+    .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #73b9a1; border-radius: 9px; color: #a9e1cc; font-size: 19px; }
+    .brand strong { display: block; font-size: 14px; letter-spacing: -.02em; }
+    .brand small { display: block; color: #a9beb2; margin-top: 3px; font-size: 11px; }
+    .nav-label { color: #a9beb2; font-size: 11px; padding: 0 9px; margin: 0 0 11px; letter-spacing: .06em; text-transform: uppercase; }
+    .nav { display: grid; gap: 5px; }
+    .nav button { text-align: left; border: 0; border-radius: 7px; padding: 11px 10px; background: transparent; color: #c8d7cd; font-size: 13px; }
+    .nav button[aria-current="page"] { background: #2a4338; color: #fff; }
+    .nav button span { display: inline-block; width: 25px; font-size: 16px; }
+    .sidebar-footer { margin-top: auto; padding: 14px 10px; border-top: 1px solid #3b5146; color: #b3c4b8; font-size: 12px; line-height: 1.6; }
+    .main { min-width: 0; }
+    .topbar { min-height: 72px; border-bottom: 1px solid #e0e5df; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 44px; background: #fbfcf9; }
+    .breadcrumbs { color: #64736b; font-size: 13px; } .breadcrumbs strong { color: #263b31; }
+    .mode { display: inline-flex; align-items: center; gap: 7px; color: #576b5e; font-size: 12px; }
+    .top-actions { display: flex; align-items: center; gap: 16px; }
+    .action { background: #254d38; color: white; border: 1px solid #254d38; border-radius: 7px; padding: 10px 14px; font-size: 13px; font-weight: 600; }
+    .action:hover { background: #1c3e2d; }
+    .action.secondary { background: white; color: #254d38; }
+    a.action { display: inline-block; text-decoration: none; }
+    .login { max-width: 530px; }
+    .login label, .record-form label { display: block; font-size: 13px; font-weight: 600; margin: 18px 0 8px; }
+    .login input, .record-form input, .record-form select, .record-form textarea { width: 100%; padding: 11px; border: 1px solid #cbd8cc; border-radius: 7px; background: #fff; color: #1d2826; }
+    .record-form textarea { min-height: 86px; resize: vertical; }
+    .login .action { margin-top: 14px; }
+    .error { color: #9b342c; font-size: 13px; line-height: 1.5; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #a47b39; display: inline-block; flex-shrink: 0; }
+    .content { max-width: 1260px; margin: auto; padding: 43px 44px 70px; }
+    .eyebrow { color: #527765; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 11px; }
+    h1 { font-size: clamp(28px, 3vw, 38px); letter-spacing: -.045em; line-height: 1.1; margin: 0; font-weight: 650; }
+    .intro { margin: 12px 0 0; color: #607169; max-width: 700px; font-size: 14px; line-height: 1.7; }
+    .notice { display: flex; gap: 13px; align-items: flex-start; background: #edf4ed; border: 1px solid #d1e4d5; border-radius: 10px; margin: 28px 0 32px; padding: 16px 18px; font-size: 13px; line-height: 1.55; color: #385b49; }
+    .notice strong { display: block; color: #244536; } .notice-icon { font-size: 18px; line-height: 1.1; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 17px; }
+    h2 { font-size: 18px; letter-spacing: -.025em; margin: 0 0 5px; } .sub { margin: 0; color: #68796f; font-size: 13px; line-height: 1.5; }
+    .service-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .deploy-card, .panel { border: 1px solid #dfe6df; background: #fff; border-radius: 12px; min-width: 0; }
+    .deploy-card { padding: 20px; display: flex; flex-direction: column; min-height: 250px; }
+    .card-head { display: flex; align-items: center; gap: 11px; }
+    .service-icon { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid #dce8de; border-radius: 9px; color: #31674c; background: #f1f7f1; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .card-head strong { display: block; font-size: 15px; }
+    .card-head small { display: block; margin-top: 4px; color: #718078; font-size: 12px; }
+    .status { display: inline-flex; align-items: center; gap: 7px; color: #77633e; background: #faf5e9; border-radius: 5px; padding: 6px 8px; white-space: nowrap; font-size: 11px; margin: 19px 0 12px; width: fit-content; }
+    .status .dot { background: #a47b39; }
+    .card-latest { margin: 0 0 18px; color: #68796f; font-size: 12px; line-height: 1.6; min-height: 39px; }
+    .card-latest strong { color: #304438; }
+    .deploy-card .action { margin-top: auto; width: 100%; }
+    .local-label { margin-top: 10px; color: #718078; font-size: 11px; text-align: center; }
+    .panel { padding: 22px; }
+    .panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid #edf0eb; }
+    .panel-header h2 { font-size: 15px; }
+    .empty { padding: 25px 0 5px; color: #68796f; font-size: 13px; line-height: 1.7; }
+    .empty strong { display: block; color: #273b30; font-size: 14px; margin-bottom: 5px; }
+    .history { list-style: none; margin: 0; padding: 0; }
+    .history li { padding: 16px 0; border-bottom: 1px solid #edf0eb; font-size: 13px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+    .history li:last-child { border-bottom: 0; }
+    .history-main strong { color: #273b30; }
+    .history-meta { display: block; margin-top: 5px; color: #68796f; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .history-side { text-align: right; }
+    .result { display: inline-flex; padding: 5px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .result.pass { color: #245d40; background: #eaf5ec; }
+    .result.fail { color: #943b34; background: #fbefed; }
+    .result.not-run { color: #685b3c; background: #f6f1e4; }
+    .history-side time { display: block; margin-top: 7px; color: #718078; font-size: 11px; white-space: nowrap; }
+    .storage-note { margin: 15px 0 0; padding-top: 13px; border-top: 1px solid #edf0eb; color: #718078; font-size: 12px; line-height: 1.6; }
+    .hidden { display: none; }
+    dialog { width: min(520px, calc(100vw - 28px)); max-height: min(90vh, 760px); padding: 0; border: 1px solid #dfe6df; border-radius: 14px; color: #1d2826; box-shadow: 0 24px 70px #14262138; }
+    dialog::backdrop { background: #14262175; }
+    .record-form { padding: 24px; }
+    .record-form h2 { font-size: 20px; margin-bottom: 7px; }
+    .record-form .sub { margin-bottom: 15px; }
+    .field-help { display: block; color: #68796f; font-size: 11px; line-height: 1.5; margin-top: 6px; }
+    .form-note { background: #f3f6f1; border-radius: 7px; color: #576b5e; padding: 10px 12px; font-size: 12px; line-height: 1.55; margin: 17px 0; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
+    .dialog-actions button { min-height: 40px; }
+    @media (max-width: 980px) { .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 800px) { .app { display: block; } .sidebar { padding: 16px 20px; gap: 16px; } .nav-label, .sidebar-footer { display: none; } .nav { display: flex; flex-wrap: wrap; } .nav button { padding: 8px 10px; } .topbar { min-height: 58px; padding: 10px 20px; } .content { padding: 30px 20px 48px; } }
+    @media (max-width: 560px) { .service-grid { grid-template-columns: 1fr; } .deploy-card { min-height: 0; } .section-head { align-items: flex-start; flex-direction: column; } .history li { grid-template-columns: 1fr; } .history-side { display: flex; justify-content: space-between; align-items: center; text-align: left; } .history-side time { margin: 0; } .record-form { padding: 20px; } .dialog-actions { flex-direction: column-reverse; } .dialog-actions button { width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark" aria-hidden="true">⌘</div><div><strong>Control Room</strong><small>Deployment workspace</small></div></div>
+      <div><p class="nav-label">Workspace</p><nav class="nav" aria-label="Điều hướng">
+        <button type="button" data-view="overview" aria-current="page"><span aria-hidden="true">▦</span>Ghi nhận</button>
+        <button type="button" data-view="activity"><span aria-hidden="true">◷</span>Lịch sử</button>
+      </nav></div>
+      <div class="sidebar-footer">Bản ghi lưu trên trình duyệt này.<br>Chưa gửi thay đổi đến website.</div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div class="breadcrumbs">Workspace <span aria-hidden="true">/</span> <strong id="breadcrumb">Ghi nhận</strong></div><div class="top-actions"><div class="mode"><i class="dot" aria-hidden="true"></i><span id="connection-status">Đang kiểm tra phiên</span></div><a class="action secondary hidden" href="/api/auth/signout" id="logout">Đăng xuất</a></div></header>
+      <div class="content">
+        <p class="eyebrow">Component Marketplace</p>
+        <h1 id="page-title">Ghi nhận lần triển khai</h1>
+        <p class="intro" id="page-intro">Tạo lịch sử cho Web, API và Admin. Chưa có website hoặc máy chủ nhận thay đổi, nên thao tác này chỉ lưu bản ghi.</p>
+        <div class="notice"><span class="notice-icon" aria-hidden="true">ⓘ</span><div><strong>Chỉ ghi nhận, chưa triển khai.</strong><span> Bản ghi và kết quả kiểm tra được lưu trên trình duyệt này. Chưa kết nối nơi nhận code, và không có thay đổi nào được gửi đến Vercel, GitHub Actions hoặc VPS.</span></div></div>
+        <section class="panel login" id="login-panel" aria-labelledby="login-title">
+          <h2 id="login-title">Mở dashboard</h2>
+          <p class="sub">Sử dụng tài khoản GitHub đã được cấp quyền.</p>
+          <p><a class="action" href="/api/auth/signin" id="login-link">Đăng nhập với GitHub</a></p>
+          <p class="error" id="login-error" role="alert"></p>
+        </section>
+        <p class="error hidden" id="load-error" role="alert"></p>
+        <section id="service-section" class="hidden" aria-labelledby="services-heading">
+          <div class="section-head"><div><h2 id="services-heading">Các ứng dụng</h2><p class="sub">Ghi lại commit, kết quả kiểm tra và ghi chú cho từng ứng dụng.</p></div></div>
+          <div class="service-grid" id="services" aria-live="polite"></div>
+        </section>
+        <section class="panel hidden" id="activity-panel" aria-labelledby="activity-title">
+          <div class="panel-header"><div><p class="eyebrow">Deployment records</p><h2 id="activity-title">Lịch sử ghi nhận</h2><p class="sub">Các bản ghi được lưu cục bộ trên trình duyệt này.</p></div></div>
+          <div class="empty" id="empty-history" role="status"><strong>Chưa có lần nào được ghi nhận</strong>Lịch sử sẽ xuất hiện sau khi bạn lưu bản ghi cho Web, API hoặc Admin.</div>
+          <ul class="history" id="history" aria-live="polite"></ul>
+          <p class="storage-note">Kết quả PASS/FAIL do người dùng nhập. Dashboard chưa tự chạy test; lịch sử chưa được chia sẻ giữa các trình duyệt hoặc thiết bị.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+  <dialog id="record-dialog" aria-labelledby="record-title">
+    <form class="record-form" id="record-form">
+      <p class="eyebrow">Ghi nhận deployment</p>
+      <h2 id="record-title">Ghi nhận lần triển khai</h2>
+      <p class="sub" id="record-service"></p>
+      <label for="record-commit">Commit SHA <span class="field-help">Không bắt buộc. Nhập commit mà bạn đã kiểm tra hoặc chuẩn bị triển khai.</span></label>
+      <input id="record-commit" name="commit" type="text" maxlength="40" autocomplete="off" placeholder="Ví dụ: a1b2c3d">
+      <label for="test-result">Kết quả kiểm tra</label>
+      <select id="test-result" name="testResult" required>
+        <option value="">Chọn kết quả</option>
+        <option value="pass">PASS</option>
+        <option value="fail">FAIL</option>
+        <option value="not-run">Chưa chạy</option>
+      </select>
+      <label for="record-note">Ghi chú <span class="field-help">Không bắt buộc. Ví dụ: các bước kiểm tra đã chạy hoặc nội dung thay đổi.</span></label>
+      <textarea id="record-note" name="note" maxlength="500" placeholder="Thêm ghi chú cho lần ghi nhận này"></textarea>
+      <p class="form-note">Lưu bản ghi không gửi code lên website. Kết quả kiểm tra là thông tin bạn nhập; dashboard không tự chạy test.</p>
+      <p class="error hidden" id="storage-error" role="alert"></p>
+      <div class="dialog-actions"><button class="action secondary" type="button" id="cancel-record">Hủy</button><button class="action" type="submit">Ghi nhận lần triển khai</button></div>
+    </form>
+  </dialog>
+  <script>
+    const HISTORY_KEY = 'component-marketplace-control-room:deployment-history:v1'
+    const services = [
+      { id: 'web', name: 'Web', description: 'Giao diện marketplace', initial: 'W' },
+      { id: 'api', name: 'Backend / API', description: 'Dịch vụ API', initial: 'A' },
+      { id: 'admin', name: 'Admin', description: 'Giao diện quản trị', initial: 'M' },
+    ]
+    const views = {
+      overview: ['Ghi nhận', 'Ghi nhận lần triển khai', 'Tạo lịch sử cho Web, API và Admin. Chưa có website hoặc máy chủ nhận thay đổi, nên thao tác này chỉ lưu bản ghi.'],
+      activity: ['Lịch sử', 'Lịch sử ghi nhận', 'Xem các lần ghi nhận và kết quả kiểm tra đã nhập cho từng ứng dụng.'],
+    }
+    const el = id => document.getElementById(id)
+    let activeView = 'overview'
+    let selectedService = null
+    let history = []
+
+    function isRecord(item) {
+      return item && typeof item.id === 'string' && services.some(service => service.id === item.serviceId) &&
+        typeof item.createdAt === 'string' && ['pass', 'fail', 'not-run'].includes(item.testResult) &&
+        typeof item.commit === 'string' && typeof item.note === 'string'
+    }
+    function readHistory() {
+      try {
+        const stored = localStorage.getItem(HISTORY_KEY)
+        if (!stored) return []
+        const parsed = JSON.parse(stored)
+        if (!Array.isArray(parsed)) throw new Error('invalid history')
+        return parsed.filter(isRecord).slice(0, 100)
+      } catch {
+        el('load-error').textContent = 'Không đọc được lịch sử đã lưu trên trình duyệt này.'
+        el('load-error').classList.remove('hidden')
+        return []
+      }
+    }
+    function formatTime(value) {
+      const date = new Date(value)
+      return Number.isNaN(date.getTime()) ? 'Thời gian không hợp lệ' : date.toLocaleString('vi-VN', { dateStyle: 'medium', timeStyle: 'short' })
+    }
+    function sortedHistory() {
+      return [...history].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+    }
+    function testLabel(value) {
+      return value === 'pass' ? 'PASS' : value === 'fail' ? 'FAIL' : 'Chưa chạy'
+    }
+    function renderServices() {
+      const list = el('services')
+      list.replaceChildren()
+      for (const service of services) {
+        const card = document.createElement('article')
+        card.className = 'deploy-card'
+        const head = document.createElement('div'); head.className = 'card-head'
+        const icon = document.createElement('span'); icon.className = 'service-icon'; icon.setAttribute('aria-hidden', 'true'); icon.textContent = service.initial
+        const identity = document.createElement('div')
+        const name = document.createElement('strong'); name.textContent = service.name
+        const description = document.createElement('small'); description.textContent = service.description
+        identity.append(name, description); head.append(icon, identity)
+        const status = document.createElement('span'); status.className = 'status'
+        const dot = document.createElement('i'); dot.className = 'dot'; dot.setAttribute('aria-hidden', 'true')
+        status.append(dot, document.createTextNode('Chưa có nơi nhận code'))
+        const latest = sortedHistory().find(record => record.serviceId === service.id)
+        const last = document.createElement('p'); last.className = 'card-latest'
+        if (latest) {
+          const title = document.createElement('strong'); title.textContent = `Đã ghi nhận · ${testLabel(latest.testResult)}`
+          const detail = document.createElement('span'); detail.textContent = `\n${formatTime(latest.createdAt)}`
+          last.append(title, detail)
+        } else {
+          last.textContent = 'Chưa có bản ghi nào.'
+        }
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'action'; button.id = `record-${service.id}`; button.textContent = 'Ghi nhận lần triển khai'
+        button.addEventListener('click', () => openRecordForm(service))
+        const local = document.createElement('small'); local.className = 'local-label'; local.textContent = 'Chỉ lưu lịch sử trên trình duyệt này'
+        card.append(head, status, last, button, local)
+        list.append(card)
+      }
+    }
+    function renderHistory() {
+      const list = el('history')
+      list.replaceChildren()
+      const records = sortedHistory()
+      el('empty-history').classList.toggle('hidden', records.length > 0)
+      for (const record of records) {
+        const service = services.find(item => item.id === record.serviceId)
+        const row = document.createElement('li')
+        const main = document.createElement('div'); main.className = 'history-main'
+        const title = document.createElement('strong'); title.textContent = `${service.name} · Đã ghi nhận`
+        const meta = document.createElement('span'); meta.className = 'history-meta'
+        meta.textContent = [record.commit && `Commit ${record.commit}`, record.note].filter(Boolean).join(' · ') || 'Không có ghi chú'
+        main.append(title, meta)
+        const side = document.createElement('div'); side.className = 'history-side'
+        const result = document.createElement('span'); result.className = `result ${record.testResult}`; result.textContent = testLabel(record.testResult)
+        const time = document.createElement('time'); time.dateTime = record.createdAt; time.textContent = formatTime(record.createdAt)
+        side.append(result, time); row.append(main, side); list.append(row)
+      }
+    }
+    function render() {
+      renderServices()
+      renderHistory()
+      el('service-section').classList.toggle('hidden', activeView !== 'overview')
+      el('activity-panel').classList.toggle('hidden', activeView !== 'activity')
+    }
+    function openRecordForm(service) {
+      selectedService = service
+      el('record-service').textContent = service.name
+      el('record-form').reset()
+      el('storage-error').textContent = ''
+      el('storage-error').classList.add('hidden')
+      el('record-dialog').showModal()
+      el('record-commit').focus()
+    }
+    function closeRecordForm() {
+      el('record-dialog').close()
+      selectedService = null
+    }
+    document.querySelectorAll('[data-view]').forEach(button => {
+      button.addEventListener('click', () => {
+        activeView = button.dataset.view
+        document.querySelectorAll('[data-view]').forEach(item => {
+          item.removeAttribute('aria-current')
+        })
+        button.setAttribute('aria-current', 'page')
+        el('breadcrumb').textContent = views[activeView][0]
+        el('page-title').textContent = views[activeView][1]
+        el('page-intro').textContent = views[activeView][2]
+        render()
+      })
+    })
+    el('cancel-record').addEventListener('click', closeRecordForm)
+    el('record-form').addEventListener('submit', event => {
+      event.preventDefault()
+      if (!selectedService) return
+      const testResult = el('test-result').value
+      if (!['pass', 'fail', 'not-run'].includes(testResult)) {
+        el('test-result').focus()
+        return
+      }
+      const record = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        serviceId: selectedService.id,
+        createdAt: new Date().toISOString(),
+        commit: el('record-commit').value.trim(),
+        testResult,
+        note: el('record-note').value.trim(),
+      }
+      const nextHistory = [record, ...history].slice(0, 100)
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(nextHistory))
+        history = nextHistory
+        el('load-error').classList.add('hidden')
+        closeRecordForm()
+        render()
+      } catch {
+        el('storage-error').textContent = 'Không lưu được bản ghi. Hãy kiểm tra dung lượng lưu trữ của trình duyệt.'
+        el('storage-error').classList.remove('hidden')
+      }
+    })
+
+    async function initialize() {
+      el('login-error').textContent = 'Đang kiểm tra phiên đăng nhập...'
+      try {
+        const session = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store' })
+        if (!session.ok) throw new Error('Đăng nhập chưa được cấu hình. Liên hệ người quản trị.')
+        const user = await session.json()
+        if (!user?.user) {
+          el('login-error').textContent = ''
+          el('connection-status').textContent = 'Chưa đăng nhập'
+          return
+        }
+        el('login-panel').classList.add('hidden')
+        el('logout').classList.remove('hidden')
+        el('connection-status').textContent = 'Đã đăng nhập'
+        history = readHistory()
+        render()
+      } catch (error) {
+        el('connection-status').textContent = 'Chưa kết nối'
+        if (el('login-panel').classList.contains('hidden')) {
+          el('load-error').textContent = error.message
+          el('load-error').classList.remove('hidden')
+        } else el('login-error').textContent = error.message
+      }
+    }
+    initialize()
+  </script>
+</body>
+</html>
