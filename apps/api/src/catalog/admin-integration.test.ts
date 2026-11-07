@@ -204,6 +204,19 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
     expect(item.isPublished).toBe(true) // PATCH never touches publish state
   })
 
+  test('PATCH omitting tags leaves existing tags untouched (not wiped to [])', async () => {
+    const draft = await createDraft({ name: 'Tags Preserved Component', tags: ['ui', 'hero'] })
+    const slug = draft.slug as string
+
+    const updated = await patch(`/admin/components/${slug}`, adminCookie, {
+      name: 'Tags Preserved After',
+    })
+    expect(updated.status).toBe(200)
+    const item = componentSchema.parse((updated.body as ItemEnvelope).item)
+    expect(item.name).toBe('Tags Preserved After')
+    expect(item.tags).toEqual(['ui', 'hero'])
+  })
+
   test('Tags are normalized (trim, lowercase, dedupe) and bounded', async () => {
     const draft = await createDraft({
       name: 'Tag Normalization Component',
@@ -275,5 +288,15 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
     const second = await createDraft({ name: 'Duplicate Name Component' })
     expect(first.slug).not.toBe(second.slug)
     expect(second.slug).toBe(`${first.slug}-2`)
+  })
+
+  test('Duplicate 80-char slug — suffixed slug still fits the 80-char contract limit', async () => {
+    const longName = 'A'.repeat(100) // slugify() caps the base at 80 chars
+    const first = await createDraft({ name: longName })
+    expect(first.slug.length).toBe(80)
+
+    const second = await createDraft({ name: longName }) // 201, not 500
+    expect(second.slug.length).toBeLessThanOrEqual(80)
+    expect(second.slug).toBe(`${'a'.repeat(78)}-2`)
   })
 })

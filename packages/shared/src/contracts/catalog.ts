@@ -115,12 +115,18 @@ export type CatalogDetailResponse = z.infer<typeof detailResponseSchema>
 
 /** Tags are normalized at the write boundary: trim, lowercase, dedupe after
  * normalization. The 12-item / 40-char limits mirror the DB check constraints
- * in `packages/db/src/schema.ts` (`components_tags_count_check`). */
-export const adminTagsSchema = z
-  .array(z.string().trim().min(1).max(40))
-  .max(12)
-  .default([])
-  .transform((tags) => Array.from(new Set(tags.map((tag) => tag.toLowerCase()))))
+ * in `packages/db/src/schema.ts` (`components_tags_count_check`).
+ *
+ * The `.default([])` lives ONLY on `adminTagsSchema` (create). The update
+ * schema below uses `adminTagsInputSchema` directly (no default): in Zod 4 a
+ * default inside a property still applies even when that property is wrapped
+ * in `.optional()`, so a PATCH body omitting `tags` would otherwise parse to
+ * `tags: []` and wipe the component's existing tags.
+ */
+const adminTagsInputSchema = z.array(z.string().trim().min(1).max(40)).max(12)
+const normalizeTags = (tags: string[]) => Array.from(new Set(tags.map((tag) => tag.toLowerCase())))
+
+export const adminTagsSchema = adminTagsInputSchema.default([]).transform(normalizeTags)
 
 /**
  * Exactly two valid states going forward (issue #111 decision):
@@ -173,7 +179,7 @@ export const updateComponentRequestSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().min(1).max(5000).optional(),
   category: z.optional(catalogCategorySchema),
-  tags: z.optional(adminTagsSchema),
+  tags: adminTagsInputSchema.transform(normalizeTags).optional(),
   latestVersion: z.optional(semverSchema),
   price: catalogPriceSchema.nullable().optional(),
   requiresPaymentForUpdate: z.boolean().optional(),

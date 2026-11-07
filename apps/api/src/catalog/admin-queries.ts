@@ -39,17 +39,24 @@ async function slugExists(db: DatabaseHandle, slug: string): Promise<boolean> {
   return rows.length > 0
 }
 
+/** Hợp đồng `catalogSlugSchema`: tối đa 80 ký tự. */
+const MAX_SLUG_LENGTH = 80
+
 /**
- * Base slug từ `name`, thêm `-2`, `-3`... khi trùng. Giới hạn 1000 lần thử để
- * tránh loop vô hạn nếu dữ liệu bất thường — thực tế admin không tạo hàng
- * nghìn component cùng tên.
+ * Base slug từ `name`, thêm `-2`, `-3`... khi trùng. Mỗi candidate cắt base
+ * lại để chừa đúng chỗ cho suffix — base gần sát 80 ký tự + suffix mới vẫn
+ * không vượt giới hạn contract (nếu không, insert bị DB check constraint
+ * chặn ⇒ 500 thay vì 409/201 gọn gàng). Giới hạn 1000 lần thử để tránh loop
+ * vô hạn nếu dữ liệu bất thường — thực tế admin không tạo hàng nghìn
+ * component cùng tên.
  */
 async function findUniqueSlug(db: DatabaseHandle, name: string): Promise<string> {
   const base = slugify(name)
   let candidate = base
   for (let suffix = 2; suffix <= 1000; suffix++) {
     if (!(await slugExists(db, candidate))) return candidate
-    candidate = `${base}-${suffix}`
+    const tail = `-${suffix}`
+    candidate = `${base.slice(0, MAX_SLUG_LENGTH - tail.length).replace(/-+$/, '')}${tail}`
   }
   throw new ApiHttpError(409, 'SLUG_GENERATION_FAILED', 'Could not generate a unique slug')
 }
