@@ -1,32 +1,32 @@
 # Deployment Control Room
 
-Dashboard Vercel độc lập với đăng nhập GitHub và danh sách người dùng được phép. Giao diện hiện ghi nhận lịch sử cho ba ứng dụng Web, Backend / API và Admin.
+Control Room đọc trạng thái CI từ GitHub Actions và trạng thái deployment từ Vercel. Nút **Deploy Production** chỉ gọi workflow release đã được bảo vệ; nó không tự build, chạy Docker hoặc gọi `localhost` từ server.
 
-## Hành vi ghi nhận
+Web và Backend / API dùng chung một release target vì chúng thuộc cùng một Vercel project. Admin hiển thị Planned / Not configured cho đến khi ứng dụng thật tồn tại trong repository.
 
-- Nút **Ghi nhận lần triển khai** lưu một bản ghi gồm ứng dụng, commit SHA tùy chọn, kết quả kiểm tra và ghi chú tùy chọn.
-- Bản ghi được lưu trong `localStorage` của trình duyệt hiện tại. Dữ liệu không đồng bộ giữa người dùng, trình duyệt hoặc thiết bị.
-- `PASS`, `FAIL` và `Chưa chạy` là kết quả do người dùng nhập. Dashboard không chạy test và không xác nhận thay người dùng.
-- Ghi nhận không gửi code, không tạo deployment và không gọi Vercel, GitHub Actions hoặc VPS. Hiện chưa cấu hình website hay máy chủ nhận thay đổi.
+## Local development links
 
-## Đăng nhập và cấu hình
+Web và API có URL mặc định `http://localhost:3000` và `http://localhost:4000/health`. Mỗi trình duyệt có thể lưu URL riêng. Chỉ `localhost`, `127.0.0.0/8` và `[::1]` được chấp nhận. Dashboard chỉ mở URL trong tab mới; nó không gửi request đến máy local. Admin chưa có URL mặc định.
 
-Đăng nhập qua GitHub OAuth. `DASHBOARD_GITHUB_IDS` giới hạn GitHub user ID được truy cập; session được kiểm tra lại ở mỗi API request. Đăng ký callback `<DASHBOARD_ORIGIN>/api/auth/callback/github` cho GitHub OAuth App.
+Các bản ghi `localStorage` từ phiên bản trước vẫn được hiển thị trong mục **Lịch sử cũ**. Chúng không được dùng làm CI status hay deployment history chính thức.
+
+## Dashboard environment
+
+Đăng nhập vẫn dùng GitHub OAuth và danh sách GitHub ID trong `DASHBOARD_GITHUB_IDS`. Đăng ký callback `<DASHBOARD_ORIGIN>/api/auth/callback/github` cho OAuth App.
 
 | Biến | Mục đích |
 | --- | --- |
-| `DASHBOARD_ORIGIN` | URL HTTPS cố định của dashboard. |
-| `AUTH_SECRET` | Secret mã hóa session, tối thiểu 32 ký tự. |
-| `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | Thông tin OAuth App. |
-| `DASHBOARD_GITHUB_IDS` | Danh sách GitHub user ID cho phép, ngăn cách bằng dấu phẩy. |
-| `VERCEL_API_TOKEN` | Token Vercel dùng cho các API chỉ đọc hiện có; giao diện ghi nhận không gọi token này. |
-| `VERCEL_TEAM_ID` | Team chứa project được phép đọc. |
-| `VERCEL_PROJECT_IDS` | Danh sách tối đa 20 project ID được các API chỉ đọc chấp nhận. |
+| `DASHBOARD_ORIGIN`, `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | Xác thực dashboard. |
+| `DASHBOARD_GITHUB_IDS` | Allowlist Long và Văn. |
+| `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` | GitHub App server-side để đọc CI và dispatch release workflow. Giới hạn App vào repository này; quyền `Actions: read/write`, `Contents: read`. |
+| `RELEASE_GITHUB_REPOSITORY` | Repository có CI và release workflows. |
+| `VERCEL_API_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_IDS` | Chỉ đọc trạng thái project/deployment từ Vercel. Token không gửi xuống browser. |
+| `RELEASE_VERCEL_PROJECT_ID` | Vercel project duy nhất chứa Web và API. Project ID này phải nằm trong `VERCEL_PROJECT_IDS`. |
+| `PRODUCTION_WEB_URL`, `PRODUCTION_API_URL` | HTTPS URLs được hiển thị như production targets. |
+| `RELEASE_PRODUCTION_ENABLED` | Giữ `false` cho tới khi checklist owner trong `docs/DEPLOYMENT.md` hoàn tất. |
 
-Token, OAuth secret và session secret chỉ lưu server-side, không commit hoặc đưa vào trình duyệt. API Vercel chỉ đọc vẫn giới hạn project theo danh sách cho phép; chúng không được dùng để triển khai. Thiếu cấu hình sẽ trả 503 cho API tương ứng; người chưa đăng nhập hoặc không có quyền nhận 401.
+## Local run and tests
 
-## Chạy local và kiểm tra
+Yêu cầu Node 22. Chạy `npm ci --workspaces=false` trong thư mục này, cấu hình `.env` từ `.env.example`, rồi chạy `node server.mjs`. Chạy focused tests bằng `node --test dashboard.test.mjs oauth.test.mjs release.test.mjs ui.test.mjs workflow.test.mjs`.
 
-Dùng Node 22, `npm ci --workspaces=false`, cấu hình biến môi trường rồi chạy `node server.mjs`. Chạy test bằng `node --test dashboard.test.mjs oauth.test.mjs ui.test.mjs`. OAuth trong test dùng GitHub giả; cần kiểm tra đăng nhập trên Vercel sau khi cấu hình.
-
-Nguồn: [Vercel API](https://vercel.com/docs/rest-api), [Auth.js](https://authjs.dev/reference/core).
+Release tests dùng GitHub/Vercel responses giả; không chạy production migration hoặc deployment thật.
