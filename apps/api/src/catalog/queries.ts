@@ -13,6 +13,10 @@
  * 404 ở detail và không bao giờ xuất hiện trong list). Đây là hàm monomorphic
  * trên `Database` của `@marketplace/db` — tests truyền handle thật (xem
  * `integration.test.ts`) hoặc mock khi chỉ cần logic.
+ *
+ * `getComponentAnyStatus` (#111) là ngoại lệ DUY NHẤT không filter theo
+ * `isPublished` — chỉ dùng bởi admin-queries.ts (route đã qua `requireRole
+ * ('admin')`), không bao giờ expose qua route public.
  */
 
 import { type DatabaseHandle, schema } from '@marketplace/db'
@@ -27,7 +31,7 @@ const { components, users } = schema
  * SELECT shape dùng chung cho list + detail: đủ trường public + authorName.
  * Không select createdAt/updatedAt/authorId — không thể rò dù lơ là.
  */
-const rowShape = {
+export const rowShape = {
   id: components.id,
   slug: components.slug,
   name: components.name,
@@ -102,6 +106,20 @@ export async function getComponentBySlug(
     .from(components)
     .leftJoin(users, eq(components.authorId, users.id))
     .where(and(eq(components.slug, slug), eq(components.isPublished, true)))
+    .limit(1)) as unknown as CatalogRow[]
+  return rows[0] ?? null
+}
+
+/** Lấy 1 component THEO SLUG bất kể trạng thái publish — chỉ dùng cho admin. */
+export async function getComponentAnyStatus(
+  db: DatabaseHandle,
+  slug: string,
+): Promise<CatalogRow | null> {
+  const rows = (await db.db
+    .select(rowShape)
+    .from(components)
+    .leftJoin(users, eq(components.authorId, users.id))
+    .where(eq(components.slug, slug))
     .limit(1)) as unknown as CatalogRow[]
   return rows[0] ?? null
 }
