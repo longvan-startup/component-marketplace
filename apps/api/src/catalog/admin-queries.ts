@@ -139,6 +139,7 @@ export async function updateComponent(
       priceAmountMinor: mergedPrice?.amountMinor ?? null,
       priceCurrency: mergedPrice?.currency ?? null,
       requiresPaymentForUpdate: mergedFlag,
+      updatedAt: new Date(),
     })
     .where(eq(components.slug, slug))
 
@@ -158,7 +159,10 @@ export async function setPublished(
   if (!row) throw new ApiHttpError(404, 'NOT_FOUND', 'Component not found')
 
   if (row.isPublished !== isPublished) {
-    await db.db.update(components).set({ isPublished }).where(eq(components.slug, slug))
+    await db.db
+      .update(components)
+      .set({ isPublished, updatedAt: new Date() })
+      .where(eq(components.slug, slug))
   }
 
   const updated = await getComponentAnyStatus(db, slug)

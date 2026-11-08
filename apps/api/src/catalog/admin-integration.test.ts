@@ -117,6 +117,19 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
     return parsed
   }
 
+  /** `updatedAt` isn't in the public row shape (#111 §rowShape) — read it
+   * straight from the DB to verify the write path refreshes it. */
+  const getUpdatedAt = async (slug: string): Promise<Date> => {
+    const rows = await dbHandle.db
+      .select({ updatedAt: schema.components.updatedAt })
+      .from(schema.components)
+      .where(eq(schema.components.slug, slug))
+      .limit(1)
+    const row = rows[0]
+    if (!row) throw new Error(`Component ${slug} not found while reading updatedAt`)
+    return row.updatedAt
+  }
+
   test('POST /admin/components — role matrix (guest 401, user 403, admin 201)', async () => {
     const guest = await post('/admin/components', undefined, {
       name: 'x',
@@ -153,13 +166,17 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
   test('Publish/unpublish toggles public visibility and is idempotent', async () => {
     const draft = await createDraft({ name: 'Publish Toggle Component' })
     const slug = draft.slug as string
+    const createdAt = await getUpdatedAt(slug)
 
     const published = await post(`/admin/components/${slug}/publish`, adminCookie)
     expect(published.status).toBe(200)
     expect(componentSchema.parse((published.body as ItemEnvelope).item).isPublished).toBe(true)
+    const publishedAt = await getUpdatedAt(slug)
+    expect(publishedAt.getTime()).toBeGreaterThan(createdAt.getTime()) // #111: refresh on publish
 
     const publishedAgain = await post(`/admin/components/${slug}/publish`, adminCookie)
     expect(publishedAgain.status).toBe(200) // repeat publish = no-op, not an error
+    expect((await getUpdatedAt(slug)).getTime()).toBe(publishedAt.getTime()) // no-op: no bump
 
     const visible = await get(`/components/${slug}`)
     expect(visible.status).toBe(200)
@@ -168,6 +185,7 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
     const unpublished = await post(`/admin/components/${slug}/unpublish`, adminCookie)
     expect(unpublished.status).toBe(200)
     expect(componentSchema.parse((unpublished.body as ItemEnvelope).item).isPublished).toBe(false)
+    expect((await getUpdatedAt(slug)).getTime()).toBeGreaterThan(publishedAt.getTime()) // #111: refresh on unpublish
 
     const hidden = await get(`/components/${slug}`)
     expect(hidden.status).toBe(404)
@@ -192,6 +210,7 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
     const draft = await createDraft({ name: 'Metadata Before' })
     const slug = draft.slug as string
     await post(`/admin/components/${slug}/publish`, adminCookie)
+    const beforePatch = await getUpdatedAt(slug)
 
     const updated = await patch(`/admin/components/${slug}`, adminCookie, {
       name: 'Metadata After',
@@ -202,6 +221,7 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
     expect(item.name).toBe('Metadata After')
     expect(item.description).toBe('Updated description.')
     expect(item.isPublished).toBe(true) // PATCH never touches publish state
+    expect((await getUpdatedAt(slug)).getTime()).toBeGreaterThan(beforePatch.getTime()) // #111: refresh on PATCH
   })
 
   test('PATCH omitting tags leaves existing tags untouched (not wiped to [])', async () => {
