@@ -1,60 +1,32 @@
-name: CD
+name: CD preparation
 
-# Continuous Delivery — pipeline triggered ONLY after "CI" has completed
-# successfully on main (workflow_run), plus manual workflow_dispatch.
-#
-# Design (docs/DEPLOYMENT.md):
-#  1. `docker-publish` — push the api image to GHCR (no repo secrets needed;
-#     uses the built-in GITHUB_TOKEN). Runs for every CI-green main push.
-#  2. `db-migrate` — applies Drizzle migrations to the production DB (Neon)
-#     ONLY when the secret PROD_DATABASE_URL exists; otherwise skips safely.
-#     Forward-only migrations; never drops/edits applied migrations.
-#  3. `deploy-vps` — SSH-deploys the freshly pushed image to the VPS ONLY
-#     when SSH_HOST/SSH_USER/SSH_KEY secrets exist; otherwise skips safely.
-#     Runs only if db-migrate succeeded or was skipped (never on failure).
-# Web (apps/web) deploys via Vercel Git Integration — configured in the
-# Vercel dashboard, no deploy secrets live in this repo (runbook:
-# docs/DEPLOYMENT.md).
-
+# CI-green pushes to main may publish immutable artifacts and stage a Vercel
+# production build. This workflow never runs database migrations or promotes a
+# deployment to production.
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
     branches: [main]
-  workflow_dispatch:
-
-concurrency:
-  group: cd-${{ github.ref }}
-  cancel-in-progress: false
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  docker-publish:
-    name: Publish api image (GHCR)
+  publish-api-image:
+    name: Publish API image by commit SHA
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
-      - name: Checkout (CI-validated commit)
+      - name: Checkout CI-verified commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-
-      - name: Validate deploy/vps/compose.yaml (deploy manifest sanity)
-        env:
-          DATABASE_URL: postgres://u:p@ep-placeholder.neon.tech/db?sslmode=require
-        run: docker compose -f deploy/vps/compose.yaml -p cd-manifest-check config -q
-
-      - name: Docker meta (sha + latest tags)
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/cmp-api
-          tags: |
-            type=sha
-            type=raw,value=latest
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Login to GHCR
         uses: docker/login-action@v4
@@ -63,100 +35,154 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx (gha cache needs a buildx driver)
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build & push api image
+      - name: Build and publish API image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/api.Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ghcr.io/${{ github.repository_owner }}/cmp-api:sha-${{ github.event.workflow_run.head_sha }}
+          labels: org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  db-migrate:
-    name: Production DB migrate (Neon, gated)
+  stage-vercel:
+    name: Build and stage Vercel services
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.conclusion == 'success' &&
+      vars.VERCEL_PREPARATION_ENABLED == 'true'
     runs-on: ubuntu-latest
-    needs: docker-publish
+    permissions:
+      contents: read
+    env:
+      TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_PREPARATION_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
     steps:
-      - name: Checkout (CI-validated commit)
+      - name: Checkout CI-verified commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Setup Bun
+      - name: Skip until Vercel preparation is configured
+        id: configuration
+        shell: bash
+        run: |
+          if [[ -z "${VERCEL_TOKEN:-}" || ! "${VERCEL_ORG_ID:-}" =~ ^team_[A-Za-z0-9_-]+$ || ! "${VERCEL_PROJECT_ID:-}" =~ ^prj_[A-Za-z0-9_-]+$ ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Vercel staging is not configured; no production target was changed."
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check for an existing staged deployment of this commit
+        if: steps.configuration.outputs.configured == 'true'
+        id: existing
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_PREPARATION_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        shell: bash
+        run: |
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&teamId=$VERCEL_ORG_ID&limit=50")"
+          staged_id="$(jq -r --arg sha "$TARGET_SHA" '
+            [.deployments[]? | select(
+              .meta.githubCommitSha == $sha and
+              .target == "production" and
+              (.readyState // .state) == "READY" and
+              .aliasAssigned == false
+            )] | sort_by(.created // 0) | last | (.uid // .id // empty)
+          ' <<< "$response")"
+          if [[ -n "$staged_id" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::A ready staged Vercel deployment already exists for this commit."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node
+        if: steps.configuration.outputs.configured == 'true' && steps.existing.outputs.exists != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Bun
+        if: steps.configuration.outputs.configured == 'true' && steps.existing.outputs.exists != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
 
-      - name: Install dependencies (pinned drizzle-kit)
-        run: bun install --frozen-lockfile
+      - name: Install pinned Vercel CLI
+        if: steps.configuration.outputs.configured == 'true' && steps.existing.outputs.exists != 'true'
+        run: npm install --global vercel@65.12.1
 
-      - name: Migrate production DB (Neon) — skip unless PROD_DATABASE_URL set
-        # secrets cannot be used in step `if:` (context availability), so the
-        # gating happens inside the shell with the secret mirrored to env.
+      - name: Pull production settings and build staged artifact
+        if: steps.configuration.outputs.configured == 'true' && steps.existing.outputs.exists != 'true'
         env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_PREPARATION_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
         run: |
-          if [ -z "${DATABASE_URL:-}" ]; then
-            echo "::notice::PROD_DATABASE_URL is not set — production migrate skipped. Add the Neon connection string as repo secret PROD_DATABASE_URL to enable."
-            exit 0
-          fi
-          case "$DATABASE_URL" in
-            *localhost*|*127.0.0.1*)
-              echo "::error::PROD_DATABASE_URL points at localhost — refusing to run migrations. This secret must be the Neon connection string."
-              exit 1 ;;
-          esac
-          bun run --cwd packages/db db:migrate
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
 
-  deploy-vps:
-    name: Deploy api to VPS (gated)
-    runs-on: ubuntu-latest
-    needs: [docker-publish, db-migrate]
-    steps:
-      - name: Deploy over SSH (skip unless SSH secrets set)
-        # secrets cannot be used in step `if:` — gating and the graceful
-        # skip happen inside the shell; migrate failure automatically blocks
-        # this job via the default `needs` gating.
+      - name: Upload staged production build without assigning domains
+        if: steps.configuration.outputs.configured == 'true' && steps.existing.outputs.exists != 'true'
         env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          GH_IMAGE: ghcr.io/${{ github.repository_owner }}/cmp-api:latest
+          VERCEL_TOKEN: ${{ secrets.VERCEL_PREPARATION_TOKEN }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: >-
+          vercel deploy --prebuilt --prod --skip-domain --yes
+          --token="$VERCEL_TOKEN"
+          --meta "githubCommitSha=$TARGET_SHA"
+          --meta "githubCommitRef=main"
+
+      - name: Verify exact commit is staged and not assigned to a domain
+        if: steps.configuration.outputs.configured == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_PREPARATION_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
         run: |
-          : "${SSH_PORT:=22}"
-          if [ -z "${SSH_HOST:-}" ] || [ -z "${SSH_USER:-}" ] || [ -z "${SSH_KEY:-}" ]; then
-            echo "::notice::SSH_HOST / SSH_USER / SSH_KEY are not set — VPS auto-deploy skipped. Use the manual runbook in docs/DEPLOYMENT.md."
-            exit 0
-          fi
-          printf '%s\n' "$SSH_KEY" > /tmp/deploy_key
-          chmod 600 /tmp/deploy_key
-          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 \
-              -p "$SSH_PORT" -i /tmp/deploy_key \
-              "${SSH_USER}@${SSH_HOST}" \
-              "GH_IMAGE=$GH_IMAGE bash -s" <<-'REMOTE'
-            set -euo pipefail
-            cd /opt/cmp-api
-            test -f compose.yaml || { echo "compose.yaml missing in /opt/cmp-api — copy deploy/vps/* per docs/DEPLOYMENT.md"; exit 1; }
-            test -f .env || { echo ".env missing in /opt/cmp-api — create it from .env.example (add Neon DATABASE_URL + GHCR_TOKEN)"; exit 1; }
-            grep -q '^GHCR_TOKEN=' .env || { echo ".env must contain GHCR_TOKEN (a PAT with read:packages scope for ghcr.io pulls)"; exit 1; }
-            grep -q '^DATABASE_URL=' .env || { echo ".env must contain DATABASE_URL (Neon connection string)"; exit 1; }
-            ghcr_pat="$(grep '^GHCR_TOKEN=' .env | cut -d= -f2-)"
-            printf '%s' "$ghcr_pat" | docker login ghcr.io -u cmp-deploy --password-stdin >/dev/null
-            docker compose -p cmp-api pull
-            docker compose -p cmp-api up -d --no-deps --force-recreate api
-            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-              curl --silent --fail --max-time 5 http://127.0.0.1:4000/health >/dev/null 2>&1 && {
-                echo "DEPLOY OK — /health reachable (image ${GH_IMAGE})"
-                exit 0
-              }
-              sleep 5
-            done
-            echo "::error::api /health unreachable after deploy — inspect with: docker compose -p cmp-api logs api"
-            exit 1
-          REMOTE
-          rm -f /tmp/deploy_key
+          for attempt in $(seq 1 30); do
+            response="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&teamId=$VERCEL_ORG_ID&limit=50")"
+            verified="$(jq -r --arg sha "$TARGET_SHA" '
+              [.deployments[]? | select(
+                .meta.githubCommitSha == $sha and
+                .target == "production" and
+                (.readyState // .state) == "READY" and
+                .aliasAssigned == false
+              )] | length > 0
+            ' <<< "$response")"
+            if [[ "$verified" == "true" ]]; then
+              echo "A ready immutable deployment for $TARGET_SHA is staged without production aliases."
+              exit 0
+            fi
+            failed="$(jq -r --arg sha "$TARGET_SHA" '
+              [.deployments[]? | select(
+                .meta.githubCommitSha == $sha and
+                .target == "production" and
+                (.readyState // .state) == "ERROR"
+              )] | length > 0
+            ' <<< "$response")"
+            if [[ "$failed" == "true" ]]; then
+              echo "::error::Vercel reported a failed staged build for $TARGET_SHA."
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "::error::Vercel did not report a ready staged deployment for $TARGET_SHA."
+          exit 1
