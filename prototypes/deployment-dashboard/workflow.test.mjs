@@ -16,7 +16,7 @@ const listApiFiles = async (directory = './api') => {
   return nested.flat()
 }
 
-test('dashboard stays within Vercel Hobby function limit and uses one auth catch-all', async () => {
+test('dashboard stays within Vercel Hobby limit and maps nested GitHub OAuth routes', async () => {
   const functionExtensions = new Set(['.cjs', '.js', '.mjs', '.ts', '.tsx'])
   const apiFiles = (await listApiFiles()).filter((path) =>
     functionExtensions.has(path.slice(path.lastIndexOf('.'))),
@@ -24,7 +24,11 @@ test('dashboard stays within Vercel Hobby function limit and uses one auth catch
   const authFiles = apiFiles.filter((path) => path.startsWith('./api/auth/')).sort()
 
   assert.ok(apiFiles.length <= 12, `found ${apiFiles.length} Vercel functions; Hobby limit is 12`)
-  assert.deepEqual(authFiles, ['./api/auth/[...auth].mjs'])
+  assert.deepEqual(authFiles, [
+    './api/auth/[...auth].mjs',
+    './api/auth/callback/github.mjs',
+    './api/auth/signin/github.mjs',
+  ])
 })
 
 test('main CI stays intact while CD preparation cannot migrate or promote production', async () => {
