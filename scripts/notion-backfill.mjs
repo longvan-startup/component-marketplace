@@ -3,9 +3,11 @@
  * the Notion database notion-sync.mjs keeps in sync going forward.
  *
  * notion-sync.mjs only reacts to new `issues`/`pull_request` webhook events,
- * so anything opened/closed before that workflow existed never reaches
- * Notion on its own. This script walks the GitHub REST API once and upserts
- * every issue/PR through the same Notion-writing code path
+ * so anything opened before that workflow existed never reaches Notion on
+ * its own. This script walks the GitHub REST API once for currently-OPEN
+ * issues/PRs only (closed/merged history is not backfilled — scoped down on
+ * request, see docs/NOTION_SYNC.md) and upserts each through the same
+ * Notion-writing code path
  * (buildNotionProperties / upsertPage, reused from notion-sync.mjs) — no
  * @mention comments, since pinging everyone for old activity would be noise,
  * not a notification.
@@ -103,7 +105,7 @@ async function fetchIssues(token, fetchImpl, repo) {
   const items = await paginate(
     token,
     fetchImpl,
-    (page) => `/repos/${repo}/issues?state=all&per_page=${PER_PAGE}&page=${page}`,
+    (page) => `/repos/${repo}/issues?state=open&per_page=${PER_PAGE}&page=${page}`,
   )
   return items.filter((item) => !item.pull_request)
 }
@@ -112,7 +114,7 @@ function fetchPullRequests(token, fetchImpl, repo) {
   return paginate(
     token,
     fetchImpl,
-    (page) => `/repos/${repo}/pulls?state=all&per_page=${PER_PAGE}&page=${page}`,
+    (page) => `/repos/${repo}/pulls?state=open&per_page=${PER_PAGE}&page=${page}`,
   )
 }
 

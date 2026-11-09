@@ -185,6 +185,10 @@ describe('run', () => {
 
     const notionPageCreates = calls.filter((c) => c.method === 'POST' && c.url.endsWith('/pages'))
     expect(notionPageCreates.length).toBe(2)
+
+    const githubCalls = calls.filter((c) => c.url.includes('api.github.com'))
+    expect(githubCalls.every((c) => c.url.includes('state=open'))).toBe(true)
+    expect(githubCalls.some((c) => c.url.includes('state=all'))).toBe(false)
   })
 
   test('paginates GitHub results until a short page is returned', async () => {
