@@ -250,19 +250,47 @@ export async function getReleaseSnapshot(env = process.env, fetchImpl = fetch) {
   }
 }
 
-export async function startRelease(env = process.env, fetchImpl = fetch) {
+export async function startRelease(env = process.env, fetchImpl = fetch, expectedCandidate = {}) {
   const snapshot = await getReleaseSnapshot(env, fetchImpl)
-  if (!snapshot.readyToRelease) return { started: false, snapshot }
   const deployment = snapshot.stagedDeployment
-  if (!deployment?.id || !snapshot.ci.latestVerified?.sha) return { started: false, snapshot }
+  const sha = snapshot.ci.latestVerified?.sha?.toLowerCase() || null
+  const expectedSha =
+    typeof expectedCandidate.expectedSha === 'string'
+      ? expectedCandidate.expectedSha.toLowerCase()
+      : null
+  const currentFailedRunId =
+    snapshot.releaseRun?.status === 'FAILED' ? String(snapshot.releaseRun.id) : null
+  const expectedFailedRunId =
+    expectedCandidate.expectedReleaseRunId == null
+      ? null
+      : String(expectedCandidate.expectedReleaseRunId)
+  if (
+    expectedSha !== sha ||
+    expectedCandidate.expectedDeploymentId !== deployment?.id ||
+    expectedFailedRunId !== currentFailedRunId
+  ) {
+    return { started: false, reason: 'CANDIDATE_CHANGED', snapshot }
+  }
+  if (!snapshot.readyToRelease || !deployment?.id || !sha) {
+    return { started: false, reason: 'NOT_READY', snapshot }
+  }
   const release = await dispatchRelease(
     env,
     {
       target: 'vercel-services',
-      sha: snapshot.ci.latestVerified.sha,
+      sha,
       deploymentId: deployment.id,
+      retryFailedRunId: currentFailedRunId,
     },
     fetchImpl,
   )
-  return { started: true, release }
+  return {
+    started: true,
+    release: {
+      ...release,
+      sha,
+      deploymentId: deployment.id,
+      retryFailedRunId: currentFailedRunId,
+    },
+  }
 }

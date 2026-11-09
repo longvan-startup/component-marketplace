@@ -98,6 +98,8 @@ async function mount(fetchHandler, stored = {}) {
     'refresh-release',
     'confirm-dialog',
     'confirm-sha',
+    'confirm-deployment-id',
+    'confirm-failed-run-id',
     'confirm-error',
     'confirm-release',
     'cancel-release',
@@ -190,10 +192,28 @@ test('Open Local uses loopback URL, Admin remains planned, and deploy confirmati
       snapshot = {
         ...snapshot,
         readyToRelease: false,
-        releaseRun: { status: 'QUEUED', url: 'https://github.com/actions/runs/42' },
+        releaseRun: {
+          id: 42,
+          status: 'QUEUED',
+          url: 'https://github.com/actions/runs/42',
+          sha: 'a'.repeat(40),
+          deploymentId: 'dpl_stage_1',
+          title: `Production release - vercel-services - ${'a'.repeat(40)}`,
+          requestedAt: new Date().toISOString(),
+        },
       }
       return response(
-        { release: { status: 'QUEUED', url: 'https://github.com/actions/runs/42' } },
+        {
+          release: {
+            id: 42,
+            status: 'QUEUED',
+            url: 'https://github.com/actions/runs/42',
+            sha: 'a'.repeat(40),
+            deploymentId: 'dpl_stage_1',
+            title: `Production release - vercel-services - ${'a'.repeat(40)}`,
+            requestedAt: new Date().toISOString(),
+          },
+        },
         202,
       )
     }
@@ -223,18 +243,147 @@ test('Open Local uses loopback URL, Admin remains planned, and deploy confirmati
   cardActions.children[2].listeners.click()
   assert.equal(nodes.get('confirm-dialog').open, true)
   assert.equal(nodes.get('confirm-sha').textContent, 'a'.repeat(40))
+  assert.equal(nodes.get('confirm-deployment-id').textContent, 'dpl_stage_1')
+  assert.equal(nodes.get('confirm-failed-run-id').textContent, 'Không có')
   await nodes.get('confirm-release').listeners.click()
   assert.equal(nodes.get('confirm-dialog').open, false)
   const post = paths.find(
     ([path, options]) => path === '/api/release' && options.method === 'POST',
   )?.[1]
   assert.equal(post.headers['x-csrf-token'], 'csrf-test-token')
-  assert.deepEqual(JSON.parse(post.body), { confirmed: true })
+  assert.deepEqual(JSON.parse(post.body), {
+    confirmed: true,
+    expectedSha: 'a'.repeat(40),
+    expectedDeploymentId: 'dpl_stage_1',
+    expectedReleaseRunId: null,
+  })
   assert.equal(
     nodes.get('services').children[0].children[1].children[1].textContent,
     'Queued · Production',
   )
   assert.equal(local.has('component-marketplace-control-room:local-urls:v1'), false)
+})
+
+test('release confirmation keeps the SHA and staged deployment shown when opened', async () => {
+  let releaseReads = 0
+  let requestBody
+  const changedSnapshot = {
+    ...readySnapshot,
+    ci: { latestVerified: { sha: 'b'.repeat(40) } },
+    stagedDeployment: { id: 'dpl_stage_2', status: 'READY', commitSha: 'b'.repeat(40) },
+  }
+  const { nodes } = await mount(async (path, options = {}) => {
+    if (path === '/api/auth/session') return response({ user: { name: 'User' } })
+    if (path === '/api/release/csrf') return response({ csrfToken: 'csrf-test-token' })
+    if (path === '/api/release' && options.method === 'POST') {
+      requestBody = JSON.parse(options.body)
+      return response({ error: 'RELEASE_CANDIDATE_CHANGED' }, 409)
+    }
+    if (path === '/api/release') {
+      releaseReads++
+      return response(releaseReads === 1 ? readySnapshot : changedSnapshot)
+    }
+    throw new Error(`Unexpected request: ${path}`)
+  })
+
+  nodes.get('deploy-production').listeners.click()
+  assert.equal(nodes.get('confirm-sha').textContent, 'a'.repeat(40))
+  assert.equal(nodes.get('confirm-deployment-id').textContent, 'dpl_stage_1')
+
+  await nodes.get('refresh-release').listeners.click()
+  await nodes.get('confirm-release').listeners.click()
+
+  assert.deepEqual(requestBody, {
+    confirmed: true,
+    expectedSha: 'a'.repeat(40),
+    expectedDeploymentId: 'dpl_stage_1',
+    expectedReleaseRunId: null,
+  })
+  assert.equal(nodes.get('confirm-dialog').open, true)
+  assert.match(nodes.get('confirm-error').textContent, /đã thay đổi/)
+})
+
+test('a failed older run with the same title does not clear the pending run id', async () => {
+  let releaseReads = 0
+  const title = `Production release - vercel-services - ${'a'.repeat(40)}`
+  const { nodes } = await mount(async (path, options = {}) => {
+    if (path === '/api/auth/session') return response({ user: { name: 'User' } })
+    if (path === '/api/release/csrf') return response({ csrfToken: 'csrf-test-token' })
+    if (path === '/api/release' && options.method === 'POST')
+      return response(
+        {
+          release: {
+            id: 42,
+            status: 'QUEUED',
+            title,
+            sha: 'a'.repeat(40),
+            deploymentId: 'dpl_stage_1',
+            requestedAt: new Date().toISOString(),
+            url: 'https://github.com/actions/runs/42',
+          },
+        },
+        202,
+      )
+    if (path === '/api/release') {
+      releaseReads++
+      if (releaseReads === 1) return response(readySnapshot)
+      return response({
+        ...readySnapshot,
+        releaseRun: {
+          id: 22,
+          status: 'FAILED',
+          title,
+          sha: 'a'.repeat(40),
+          url: 'https://github.com/actions/runs/22',
+          createdAt: '2026-11-01T10:00:00.000Z',
+        },
+      })
+    }
+    throw new Error(`Unexpected request: ${path}`)
+  })
+
+  nodes.get('services').children[0].children[4].children[2].listeners.click()
+  await nodes.get('confirm-release').listeners.click()
+
+  assert.equal(nodes.get('readiness-status').textContent, 'Đang chờ release')
+  assert.equal(
+    nodes.get('services').children[0].children[1].children[1].textContent,
+    'Queued · Production',
+  )
+  assert.equal(nodes.get('deploy-production').disabled, true)
+})
+
+test('retry confirmation is bound to the currently failed workflow run id', async () => {
+  const failedSnapshot = {
+    ...readySnapshot,
+    releaseRun: {
+      id: 22,
+      status: 'FAILED',
+      title: `Production release - vercel-services - ${'a'.repeat(40)}`,
+      sha: 'a'.repeat(40),
+      createdAt: '2026-11-08T10:00:00.000Z',
+    },
+  }
+  let requestBody
+  const { nodes } = await mount(async (path, options = {}) => {
+    if (path === '/api/auth/session') return response({ user: { name: 'User' } })
+    if (path === '/api/release/csrf') return response({ csrfToken: 'csrf-test-token' })
+    if (path === '/api/release' && options.method === 'POST') {
+      requestBody = JSON.parse(options.body)
+      return response(
+        { release: { id: 23, status: 'QUEUED', title: failedSnapshot.releaseRun.title } },
+        202,
+      )
+    }
+    if (path === '/api/release') return response(failedSnapshot)
+    throw new Error(`Unexpected request: ${path}`)
+  })
+
+  nodes.get('services').children[0].children[4].children[2].listeners.click()
+  assert.equal(nodes.get('confirm-failed-run-id').textContent, '22')
+  await nodes.get('confirm-release').listeners.click()
+
+  assert.equal(requestBody.expectedReleaseRunId, 22)
 })
 
 test('local URL editor stores only valid loopback URLs in this browser', async () => {

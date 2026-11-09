@@ -8,7 +8,7 @@ import {
   getCiSnapshot,
   workflowState,
 } from './lib/github-release.mjs'
-import { getReleaseSnapshot, releaseConfiguration } from './lib/release.mjs'
+import { getReleaseSnapshot, releaseConfiguration, startRelease } from './lib/release.mjs'
 import { handleRelease } from './lib/release-http.mjs'
 
 const secret = 'test-only-encryption-secret-at-least-32-characters'
@@ -55,6 +55,76 @@ async function cookieFor(id = '199343172') {
 
 function response(body, status = 200) {
   return Response.json(body, { status })
+}
+
+function releaseSnapshotFetch({
+  candidateSha = sha,
+  deploymentId = 'dpl_stage',
+  aliasAssigned = false,
+  releaseRuns = [],
+  onDispatch = () => {},
+} = {}) {
+  return async (url, options = {}) => {
+    const parsed = new URL(url)
+    if (parsed.pathname === '/app/installations/67890/access_tokens')
+      return response({ token: 'test-installation-token' })
+    if (parsed.pathname.endsWith('/actions/workflows/ci.yml/runs'))
+      return response({
+        workflow_runs: [
+          {
+            head_branch: 'main',
+            event: 'push',
+            head_sha: candidateSha,
+            status: 'completed',
+            conclusion: 'success',
+            created_at: '2026-11-07T10:00:00Z',
+            updated_at: '2026-11-07T10:01:00Z',
+          },
+        ],
+      })
+    if (parsed.pathname === '/v9/projects/prj_test')
+      return response({
+        id: 'prj_test',
+        targets: {
+          production: {
+            readyState: 'READY',
+            deploymentId: 'dpl_current',
+            url: 'marketplace.example',
+          },
+        },
+      })
+    if (parsed.pathname === '/v6/deployments')
+      return response({
+        deployments: [
+          {
+            uid: deploymentId,
+            state: 'READY',
+            target: 'production',
+            meta: { githubCommitSha: candidateSha },
+            url: 'staged.vercel.app',
+            aliasAssigned,
+            created: 1762500000000,
+          },
+        ],
+      })
+    if (parsed.pathname === `/v13/deployments/${deploymentId}`)
+      return response({
+        uid: deploymentId,
+        projectId: 'prj_test',
+        readyState: 'READY',
+        target: 'production',
+        meta: { githubCommitSha: candidateSha },
+        url: 'staged.vercel.app',
+        aliasAssigned,
+      })
+    if (parsed.pathname.endsWith('/actions/workflows/release.yml/runs'))
+      return response({ workflow_runs: releaseRuns })
+    if (parsed.pathname.endsWith('/actions/workflows/release.yml/dispatches')) {
+      onDispatch(JSON.parse(options.body))
+      return new Response(null, { status: 204 })
+    }
+    throw new Error(`Unexpected request: ${parsed.pathname}`)
+  }
 }
 
 test('release configuration requires an explicit enable flag and separate production URLs', () => {
@@ -250,6 +320,81 @@ test('release snapshot is ready only for the exact CI SHA and a ready unpromoted
   assert.equal(alreadyPromoted.readyToRelease, false)
 })
 
+test('release readiness requires no active release run for the confirmed candidate', async () => {
+  let dispatches = 0
+  const activeRun = {
+    id: 66,
+    status: 'in_progress',
+    conclusion: null,
+    display_title: `Production release - vercel-services - ${sha}`,
+    created_at: '2026-11-07T10:02:00Z',
+  }
+  const result = await startRelease(
+    env(),
+    releaseSnapshotFetch({
+      releaseRuns: [activeRun],
+      onDispatch: () => dispatches++,
+    }),
+    { expectedSha: sha, expectedDeploymentId: 'dpl_stage' },
+  )
+  assert.equal(result.started, false)
+  assert.equal(result.reason, 'NOT_READY')
+  assert.equal(result.snapshot.readyToRelease, false)
+  assert.equal(dispatches, 0)
+})
+
+test('candidate drift in either SHA or staged deployment is rejected before dispatch', async () => {
+  const cases = [
+    { candidateSha: 'b'.repeat(40), deploymentId: 'dpl_stage' },
+    { candidateSha: sha, deploymentId: 'dpl_new_stage' },
+    {
+      candidateSha: sha,
+      deploymentId: 'dpl_stage',
+      releaseRuns: [
+        {
+          id: 77,
+          status: 'completed',
+          conclusion: 'failure',
+          display_title: `Production release - vercel-services - ${sha}`,
+          created_at: '2026-11-07T10:02:00Z',
+        },
+      ],
+    },
+  ]
+  for (const currentCandidate of cases) {
+    let dispatches = 0
+    const result = await startRelease(
+      env(),
+      releaseSnapshotFetch({
+        ...currentCandidate,
+        onDispatch: () => dispatches++,
+      }),
+      { expectedSha: sha, expectedDeploymentId: 'dpl_stage' },
+    )
+    assert.equal(result.started, false)
+    assert.equal(result.reason, 'CANDIDATE_CHANGED')
+    assert.equal(dispatches, 0)
+  }
+})
+
+test('a matching confirmation dispatches the server-computed verified candidate', async () => {
+  let dispatched
+  const result = await startRelease(
+    env(),
+    releaseSnapshotFetch({ onDispatch: (body) => (dispatched = body) }),
+    { expectedSha: sha, expectedDeploymentId: 'dpl_stage' },
+  )
+  assert.equal(result.started, true)
+  assert.equal(result.release.sha, sha)
+  assert.equal(result.release.deploymentId, 'dpl_stage')
+  assert.deepEqual(dispatched.inputs, {
+    target: 'vercel-services',
+    target_sha: sha,
+    vercel_deployment_id: 'dpl_stage',
+    retry_failed_run_id: '',
+  })
+})
+
 test('release snapshot displays a failed GitHub Actions run as failed and allows a deliberate retry', async () => {
   const fetchImpl = async (url) => {
     const parsed = new URL(url)
@@ -343,9 +488,16 @@ test('workflow dispatch pins the selected staged deployment and never accepts ar
   assert.equal(request.options.headers.authorization, 'Bearer test-installation-token')
   assert.deepEqual(JSON.parse(request.options.body), {
     ref: 'main',
-    inputs: { target: 'vercel-services', target_sha: sha, vercel_deployment_id: 'dpl_stage' },
+    inputs: {
+      target: 'vercel-services',
+      target_sha: sha,
+      vercel_deployment_id: 'dpl_stage',
+      retry_failed_run_id: '',
+    },
     return_run_details: true,
   })
+  assert.equal(result.deploymentId, 'dpl_stage')
+  assert.ok(Number.isFinite(Date.parse(result.requestedAt)))
 })
 
 function mockRes() {
@@ -386,13 +538,18 @@ test('release POST requires an allowlisted session, same-origin request, CSRF co
     'content-type': 'application/json',
     'x-csrf-token': token,
   }
+  const confirmation = {
+    confirmed: true,
+    expectedSha: sha,
+    expectedDeploymentId: 'dpl_stage',
+  }
   const foreignOrigin = mockRes()
   await handleRelease(
     {
       method: 'POST',
       url: '/api/release',
       headers: { ...baseHeaders, origin: 'https://attacker.example' },
-      body: { confirmed: true },
+      body: confirmation,
     },
     foreignOrigin,
   )
@@ -403,26 +560,33 @@ test('release POST requires an allowlisted session, same-origin request, CSRF co
       method: 'POST',
       url: '/api/release',
       headers: { ...baseHeaders, 'x-csrf-token': 'x'.repeat(43) },
-      body: { confirmed: true },
+      body: confirmation,
     },
     badCsrf,
   )
   assert.equal(badCsrf.statusCode, 403)
   const notConfirmed = mockRes()
   await handleRelease(
-    { method: 'POST', url: '/api/release', headers: baseHeaders, body: { confirmed: false } },
+    {
+      method: 'POST',
+      url: '/api/release',
+      headers: baseHeaders,
+      body: { ...confirmation, confirmed: false },
+    },
     notConfirmed,
   )
   assert.equal(notConfirmed.statusCode, 400)
 
   let starts = 0
+  let receivedConfirmation
   const accepted = mockRes()
   await handleRelease(
-    { method: 'POST', url: '/api/release', headers: baseHeaders, body: { confirmed: true } },
+    { method: 'POST', url: '/api/release', headers: baseHeaders, body: confirmation },
     accepted,
     {
-      startRelease: async () => {
+      startRelease: async (expected) => {
         starts++
+        receivedConfirmation = expected
         return { started: true, release: { status: 'QUEUED', id: 9 } }
       },
     },
@@ -430,4 +594,50 @@ test('release POST requires an allowlisted session, same-origin request, CSRF co
   assert.equal(accepted.statusCode, 202)
   assert.equal(accepted.body.release.status, 'QUEUED')
   assert.equal(starts, 1)
+  assert.deepEqual(receivedConfirmation, {
+    expectedSha: sha,
+    expectedDeploymentId: 'dpl_stage',
+    expectedReleaseRunId: null,
+  })
+
+  const drifted = mockRes()
+  await handleRelease(
+    { method: 'POST', url: '/api/release', headers: baseHeaders, body: confirmation },
+    drifted,
+    { startRelease: async () => ({ started: false, reason: 'CANDIDATE_CHANGED' }) },
+  )
+  assert.equal(drifted.statusCode, 409)
+  assert.equal(drifted.body.error, 'RELEASE_CANDIDATE_CHANGED')
+
+  let unblockStart
+  let startEntered
+  const entered = new Promise((resolve) => {
+    startEntered = resolve
+  })
+  const first = mockRes()
+  const firstRequest = handleRelease(
+    { method: 'POST', url: '/api/release', headers: baseHeaders, body: confirmation },
+    first,
+    {
+      startRelease: async () => {
+        starts++
+        startEntered()
+        return new Promise((resolve) => {
+          unblockStart = resolve
+        })
+      },
+    },
+  )
+  await entered
+  const duplicate = mockRes()
+  await handleRelease(
+    { method: 'POST', url: '/api/release', headers: baseHeaders, body: confirmation },
+    duplicate,
+    { startRelease: async () => assert.fail('duplicate request must not dispatch') },
+  )
+  assert.equal(duplicate.statusCode, 409)
+  assert.equal(duplicate.body.error, 'RELEASE_ALREADY_REQUESTED')
+  unblockStart({ started: true, release: { status: 'QUEUED', id: 10 } })
+  await firstRequest
+  assert.equal(first.statusCode, 202)
 })

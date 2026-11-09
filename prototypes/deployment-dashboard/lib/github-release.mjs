@@ -217,15 +217,22 @@ export async function getRunById(env = process.env, runId, fetchImpl = fetch, to
 
 export async function dispatchRelease(
   env = process.env,
-  { target, sha, deploymentId },
+  { target, sha, deploymentId, retryFailedRunId },
   fetchImpl = fetch,
 ) {
   if (target !== 'vercel-services' || !/^[a-f0-9]{40}$/i.test(sha || ''))
     throw new GitHubReleaseError('INVALID_RELEASE_REQUEST', 400)
   if (!/^dpl_[\w-]+$/.test(deploymentId || ''))
     throw new GitHubReleaseError('INVALID_RELEASE_REQUEST', 400)
+  if (
+    retryFailedRunId != null &&
+    retryFailedRunId !== '' &&
+    !/^\d{1,20}$/.test(String(retryFailedRunId))
+  )
+    throw new GitHubReleaseError('INVALID_RELEASE_REQUEST', 400)
   const token = await createInstallationToken(env, fetchImpl)
   const repo = repositoryName(env)
+  const requestedAt = new Date().toISOString()
   const result = await request(`/repos/${repo}/actions/workflows/release.yml/dispatches`, {
     method: 'POST',
     token,
@@ -236,6 +243,7 @@ export async function dispatchRelease(
         target,
         target_sha: sha.toLowerCase(),
         vercel_deployment_id: deploymentId,
+        retry_failed_run_id: retryFailedRunId ? String(retryFailedRunId) : '',
       },
       return_run_details: true,
     },
@@ -246,6 +254,9 @@ export async function dispatchRelease(
       status: 'QUEUED',
       url: typeof result.html_url === 'string' ? result.html_url : null,
       sha: sha.toLowerCase(),
+      deploymentId,
+      retryFailedRunId: retryFailedRunId ? String(retryFailedRunId) : null,
+      requestedAt,
       title: `Production release - ${target} - ${sha.toLowerCase()}`,
     }
   }
@@ -254,6 +265,9 @@ export async function dispatchRelease(
     status: 'QUEUED',
     url: `https://github.com/${repo}/actions/workflows/release.yml`,
     sha: sha.toLowerCase(),
+    deploymentId,
+    retryFailedRunId: retryFailedRunId ? String(retryFailedRunId) : null,
+    requestedAt,
     title: `Production release - ${target} - ${sha.toLowerCase()}`,
   }
 }
