@@ -4,6 +4,7 @@ import test from 'node:test'
 import { encode } from '@auth/core/jwt'
 import {
   appConfiguration,
+  createInstallationToken,
   dispatchRelease,
   GitHubReleaseError,
   getCiSnapshot,
@@ -190,6 +191,24 @@ test('CI snapshot selects only successful main push runs and maps real workflow 
   assert.equal(workflowState({ status: 'in_progress' }), 'RUNNING')
   assert.equal(workflowState({ status: 'completed', conclusion: 'success' }), 'SUCCESS')
   assert.equal(workflowState({ status: 'completed', conclusion: 'failure' }), 'FAILED')
+})
+
+test('GitHub App and CI response failures are classified without exposing response bodies', async () => {
+  await assert.rejects(
+    createInstallationToken(env(), async () => new Response('{bad-json', { status: 201 })),
+    (error) => error instanceof GitHubReleaseError && error.code === 'GITHUB_APP_RESPONSE_INVALID',
+  )
+  await assert.rejects(
+    getCiSnapshot(env(), async () => response({ workflow_runs: {} })),
+    (error) => error instanceof GitHubReleaseError && error.code === 'GITHUB_CI_RESPONSE_INVALID',
+  )
+  await assert.rejects(
+    getCiSnapshot(
+      env(),
+      async () => new Response('ignored', { headers: { 'content-length': '1000001' } }),
+    ),
+    (error) => error instanceof GitHubReleaseError && error.code === 'GITHUB_CI_RESPONSE_TOO_LARGE',
+  )
 })
 
 test('release snapshot is ready only for the exact CI SHA and a ready unpromoted Vercel deployment', async () => {
@@ -657,6 +676,14 @@ test('release status returns only allowlisted upstream reason codes to an author
     error: 'RELEASE_STATUS_UNAVAILABLE',
     reason: 'GITHUB_PERMISSION_DENIED',
   })
+
+  const oversized = mockRes()
+  await handleRelease({ method: 'GET', url: '/api/release', headers }, oversized, {
+    getReleaseSnapshot: async () => {
+      throw new GitHubReleaseError('GITHUB_CI_RESPONSE_TOO_LARGE')
+    },
+  })
+  assert.equal(oversized.body.reason, 'GITHUB_CI_RESPONSE_TOO_LARGE')
 
   const unknown = mockRes()
   await handleRelease({ method: 'GET', url: '/api/release', headers }, unknown, {

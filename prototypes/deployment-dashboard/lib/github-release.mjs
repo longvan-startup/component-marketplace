@@ -47,9 +47,11 @@ function appJwt(config, now = Date.now()) {
   return `${unsigned}.${signer.sign(config.privateKey, 'base64url')}`
 }
 
-async function responseJson(response) {
+async function responseJson(response, errorPrefix) {
+  const invalidResponseCode = `${errorPrefix}_RESPONSE_INVALID`
+  const oversizedResponseCode = `${errorPrefix}_RESPONSE_TOO_LARGE`
   const declaredLength = Number(response.headers.get('content-length') || '0')
-  if (declaredLength > 1_000_000) throw new GitHubReleaseError('GITHUB_RESPONSE')
+  if (declaredLength > 1_000_000) throw new GitHubReleaseError(oversizedResponseCode)
   try {
     if (!response.body) throw new Error('missing body')
     const reader = response.body.getReader()
@@ -62,17 +64,21 @@ async function responseJson(response) {
       size += value.byteLength
       if (size > 1_000_000) {
         await reader.cancel()
-        throw new Error('response too large')
+        throw new GitHubReleaseError(oversizedResponseCode)
       }
       text += decoder.decode(value, { stream: true })
     }
     return JSON.parse(text + decoder.decode())
-  } catch {
-    throw new GitHubReleaseError('GITHUB_RESPONSE')
+  } catch (error) {
+    if (error instanceof GitHubReleaseError) throw error
+    throw new GitHubReleaseError(invalidResponseCode)
   }
 }
 
-async function request(path, { method = 'GET', body, token, fetchImpl = fetch } = {}) {
+async function request(
+  path,
+  { method = 'GET', body, token, fetchImpl = fetch, responseErrorPrefix = 'GITHUB' } = {},
+) {
   let response
   try {
     response = await fetchImpl(new URL(path, API_ORIGIN), {
@@ -99,7 +105,7 @@ async function request(path, { method = 'GET', body, token, fetchImpl = fetch } 
     throw new GitHubReleaseError('GITHUB_UNAVAILABLE')
   }
   if (response.status === 204) return null
-  return responseJson(response)
+  return responseJson(response, responseErrorPrefix)
 }
 
 export async function createInstallationToken(env = process.env, fetchImpl = fetch) {
@@ -111,12 +117,14 @@ export async function createInstallationToken(env = process.env, fetchImpl = fet
     method: 'POST',
     token: jwt,
     fetchImpl,
+    responseErrorPrefix: 'GITHUB_APP',
     body: {
       repositories: [repo.split('/')[1]],
       permissions: { actions: 'write', contents: 'read' },
     },
   })
-  if (!result || typeof result.token !== 'string') throw new GitHubReleaseError('GITHUB_RESPONSE')
+  if (!result || typeof result.token !== 'string')
+    throw new GitHubReleaseError('GITHUB_APP_RESPONSE_INVALID')
   return result.token
 }
 
@@ -146,10 +154,10 @@ export async function getCiSnapshot(env = process.env, fetchImpl = fetch, token)
   const repo = repositoryName(env)
   const result = await request(
     `/repos/${repo}/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=100`,
-    { fetchImpl, token },
+    { fetchImpl, token, responseErrorPrefix: 'GITHUB_CI' },
   )
   if (!result || !Array.isArray(result.workflow_runs))
-    throw new GitHubReleaseError('GITHUB_RESPONSE')
+    throw new GitHubReleaseError('GITHUB_CI_RESPONSE_INVALID')
   const runs = result.workflow_runs
     .filter((run) => run?.head_branch === 'main' && run?.event === 'push')
     .sort((a, b) => Date.parse(b.created_at || '') - Date.parse(a.created_at || ''))
