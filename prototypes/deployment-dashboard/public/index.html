@@ -4,14 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>Control Room | Deployment records</title>
+  <title>Control Room | Release</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #1d2826; background: #f5f6f2; font-synthesis: none; }
     * { box-sizing: border-box; }
     body { margin: 0; min-width: 320px; }
-    button, input, select, textarea { font: inherit; }
+    button, input { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
     button { cursor: pointer; }
-    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid #287860; outline-offset: 3px; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid #287860; outline-offset: 3px; }
     .app { min-height: 100vh; display: grid; grid-template-columns: 242px minmax(0, 1fr); }
     .sidebar { background: #142621; color: #e7f0e9; padding: 26px 18px; display: flex; flex-direction: column; gap: 32px; }
     .brand { display: flex; gap: 11px; align-items: center; padding: 0 7px; }
@@ -27,41 +28,63 @@
     .main { min-width: 0; }
     .topbar { min-height: 72px; border-bottom: 1px solid #e0e5df; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 44px; background: #fbfcf9; }
     .breadcrumbs { color: #64736b; font-size: 13px; } .breadcrumbs strong { color: #263b31; }
-    .mode { display: inline-flex; align-items: center; gap: 7px; color: #576b5e; font-size: 12px; }
     .top-actions { display: flex; align-items: center; gap: 16px; }
-    .action { background: #254d38; color: white; border: 1px solid #254d38; border-radius: 7px; padding: 10px 14px; font-size: 13px; font-weight: 600; }
-    .action:hover { background: #1c3e2d; }
-    .action.secondary { background: white; color: #254d38; }
-    a.action { display: inline-block; text-decoration: none; }
-    .login { max-width: 530px; }
-    .login label, .record-form label { display: block; font-size: 13px; font-weight: 600; margin: 18px 0 8px; }
-    .login input, .record-form input, .record-form select, .record-form textarea { width: 100%; padding: 11px; border: 1px solid #cbd8cc; border-radius: 7px; background: #fff; color: #1d2826; }
-    .record-form textarea { min-height: 86px; resize: vertical; }
-    .login .action { margin-top: 14px; }
-    .error { color: #9b342c; font-size: 13px; line-height: 1.5; }
+    .mode { display: inline-flex; align-items: center; gap: 7px; color: #576b5e; font-size: 12px; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: #a47b39; display: inline-block; flex-shrink: 0; }
+    .action { background: #254d38; color: white; border: 1px solid #254d38; border-radius: 7px; padding: 10px 14px; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-height: 40px; }
+    .action:hover:not(:disabled) { background: #1c3e2d; }
+    .action.secondary { background: white; color: #254d38; }
+    .action.small { padding: 8px 10px; min-height: 36px; font-size: 12px; }
+    .action:disabled { cursor: not-allowed; opacity: .52; }
     .content { max-width: 1260px; margin: auto; padding: 43px 44px 70px; }
     .eyebrow { color: #527765; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 11px; }
     h1 { font-size: clamp(28px, 3vw, 38px); letter-spacing: -.045em; line-height: 1.1; margin: 0; font-weight: 650; }
-    .intro { margin: 12px 0 0; color: #607169; max-width: 700px; font-size: 14px; line-height: 1.7; }
-    .notice { display: flex; gap: 13px; align-items: flex-start; background: #edf4ed; border: 1px solid #d1e4d5; border-radius: 10px; margin: 28px 0 32px; padding: 16px 18px; font-size: 13px; line-height: 1.55; color: #385b49; }
-    .notice strong { display: block; color: #244536; } .notice-icon { font-size: 18px; line-height: 1.1; }
+    .intro { margin: 12px 0 0; color: #607169; max-width: 720px; font-size: 14px; line-height: 1.7; }
     .section-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 17px; }
     h2 { font-size: 18px; letter-spacing: -.025em; margin: 0 0 5px; } .sub { margin: 0; color: #68796f; font-size: 13px; line-height: 1.5; }
+    .panel { border: 1px solid #dfe6df; background: #fff; border-radius: 12px; min-width: 0; padding: 22px; }
+    .login { max-width: 530px; margin-top: 28px; }
+    .login h2 { font-size: 16px; }
+    .login a { margin-top: 12px; }
+    .error { color: #9b342c; font-size: 13px; line-height: 1.5; }
+    .hidden { display: none; }
+    .release-summary { margin: 28px 0 34px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(250px, .8fr); gap: 14px; }
+    .summary-card { border: 1px solid #d1e4d5; background: #edf4ed; border-radius: 12px; padding: 20px; min-width: 0; }
+    .summary-card h2 { color: #244536; font-size: 15px; }
+    .summary-value { margin: 12px 0 4px; font-size: 14px; color: #304438; overflow-wrap: anywhere; }
+    .summary-value code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+    .summary-meta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 13px; }
+    .summary-meta a, .workflow-link { color: #286447; font-size: 12px; font-weight: 650; text-underline-offset: 3px; }
+    .readiness { display: inline-flex; align-items: center; gap: 7px; border-radius: 5px; padding: 6px 8px; background: #fff; color: #685b3c; font-size: 11px; font-weight: 700; }
+    .readiness.ready { color: #245d40; background: #e2f0e4; }
+    .readiness.running { color: #66552f; background: #faf0d9; }
+    .summary-side { border: 1px solid #dfe6df; background: #fff; border-radius: 12px; padding: 20px; }
+    .summary-side p { color: #68796f; font-size: 12px; line-height: 1.6; margin: 10px 0 14px; }
+    .release-error { margin: 15px 0 0; }
     .service-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-    .deploy-card, .panel { border: 1px solid #dfe6df; background: #fff; border-radius: 12px; min-width: 0; }
-    .deploy-card { padding: 20px; display: flex; flex-direction: column; min-height: 250px; }
+    .deploy-card { border: 1px solid #dfe6df; background: #fff; border-radius: 12px; min-width: 0; padding: 20px; display: flex; flex-direction: column; min-height: 320px; }
     .card-head { display: flex; align-items: center; gap: 11px; }
     .service-icon { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid #dce8de; border-radius: 9px; color: #31674c; background: #f1f7f1; font-size: 13px; font-weight: 700; flex-shrink: 0; }
     .card-head strong { display: block; font-size: 15px; }
     .card-head small { display: block; margin-top: 4px; color: #718078; font-size: 12px; }
     .status { display: inline-flex; align-items: center; gap: 7px; color: #77633e; background: #faf5e9; border-radius: 5px; padding: 6px 8px; white-space: nowrap; font-size: 11px; margin: 19px 0 12px; width: fit-content; }
-    .status .dot { background: #a47b39; }
-    .card-latest { margin: 0 0 18px; color: #68796f; font-size: 12px; line-height: 1.6; min-height: 39px; }
+    .status.ready { color: #245d40; background: #eaf5ec; }
+    .status.running { color: #66552f; background: #faf0d9; }
+    .status.failed { color: #943b34; background: #fbefed; }
+    .card-latest { margin: 0 0 16px; color: #68796f; font-size: 12px; line-height: 1.6; min-height: 38px; overflow-wrap: anywhere; }
     .card-latest strong { color: #304438; }
-    .deploy-card .action { margin-top: auto; width: 100%; }
-    .local-label { margin-top: 10px; color: #718078; font-size: 11px; text-align: center; }
-    .panel { padding: 22px; }
+    .target-list { display: grid; gap: 7px; margin: 0 0 16px; }
+    .target-line { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; align-items: baseline; color: #718078; font-size: 11px; }
+    .target-line strong { color: #52655a; font-size: 11px; }
+    .target-line code { color: #304438; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    .card-actions { display: grid; gap: 8px; margin-top: auto; }
+    .card-actions a, .card-actions button { width: 100%; }
+    .local-config { margin-top: 13px; border-top: 1px solid #edf0eb; padding-top: 12px; }
+    .local-config label { display: block; color: #52655a; font-size: 11px; font-weight: 650; margin-bottom: 6px; }
+    .local-row { display: flex; gap: 7px; }
+    .local-row input { min-width: 0; flex: 1; border: 1px solid #cbd8cc; border-radius: 6px; padding: 8px; font-size: 12px; color: #243a2e; }
+    .local-help { display: block; margin-top: 5px; color: #718078; font-size: 10px; line-height: 1.45; }
+    .planned { margin-top: auto; padding: 12px; border-radius: 8px; background: #f3f5f1; color: #637268; font-size: 12px; line-height: 1.55; }
     .panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid #edf0eb; }
     .panel-header h2 { font-size: 15px; }
     .empty { padding: 25px 0 5px; color: #68796f; font-size: 13px; line-height: 1.7; }
@@ -71,26 +94,20 @@
     .history li:last-child { border-bottom: 0; }
     .history-main strong { color: #273b30; }
     .history-meta { display: block; margin-top: 5px; color: #68796f; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
-    .history-side { text-align: right; }
-    .result { display: inline-flex; padding: 5px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; white-space: nowrap; }
-    .result.pass { color: #245d40; background: #eaf5ec; }
-    .result.fail { color: #943b34; background: #fbefed; }
-    .result.not-run { color: #685b3c; background: #f6f1e4; }
-    .history-side time { display: block; margin-top: 7px; color: #718078; font-size: 11px; white-space: nowrap; }
+    .history-side { text-align: right; color: #718078; font-size: 11px; }
+    .history-side time { display: block; margin-top: 7px; white-space: nowrap; }
     .storage-note { margin: 15px 0 0; padding-top: 13px; border-top: 1px solid #edf0eb; color: #718078; font-size: 12px; line-height: 1.6; }
-    .hidden { display: none; }
-    dialog { width: min(520px, calc(100vw - 28px)); max-height: min(90vh, 760px); padding: 0; border: 1px solid #dfe6df; border-radius: 14px; color: #1d2826; box-shadow: 0 24px 70px #14262138; }
+    dialog { width: min(520px, calc(100vw - 28px)); max-height: min(90vh, 720px); padding: 0; border: 1px solid #dfe6df; border-radius: 14px; color: #1d2826; box-shadow: 0 24px 70px #14262138; }
     dialog::backdrop { background: #14262175; }
-    .record-form { padding: 24px; }
-    .record-form h2 { font-size: 20px; margin-bottom: 7px; }
-    .record-form .sub { margin-bottom: 15px; }
-    .field-help { display: block; color: #68796f; font-size: 11px; line-height: 1.5; margin-top: 6px; }
-    .form-note { background: #f3f6f1; border-radius: 7px; color: #576b5e; padding: 10px 12px; font-size: 12px; line-height: 1.55; margin: 17px 0; }
+    .confirm-form { padding: 24px; }
+    .confirm-form h2 { font-size: 20px; margin-bottom: 7px; }
+    .confirm-details { background: #f3f6f1; border-radius: 8px; color: #576b5e; padding: 13px; margin: 18px 0; font-size: 13px; line-height: 1.7; }
+    .confirm-details code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
     .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
-    .dialog-actions button { min-height: 40px; }
     @media (max-width: 980px) { .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 800px) { .app { display: block; } .sidebar { padding: 16px 20px; gap: 16px; } .nav-label, .sidebar-footer { display: none; } .nav { display: flex; flex-wrap: wrap; } .nav button { padding: 8px 10px; } .topbar { min-height: 58px; padding: 10px 20px; } .content { padding: 30px 20px 48px; } }
-    @media (max-width: 560px) { .service-grid { grid-template-columns: 1fr; } .deploy-card { min-height: 0; } .section-head { align-items: flex-start; flex-direction: column; } .history li { grid-template-columns: 1fr; } .history-side { display: flex; justify-content: space-between; align-items: center; text-align: left; } .history-side time { margin: 0; } .record-form { padding: 20px; } .dialog-actions { flex-direction: column-reverse; } .dialog-actions button { width: 100%; } }
+    @media (max-width: 800px) { .app { display: block; } .sidebar { padding: 16px 20px; gap: 16px; } .nav-label, .sidebar-footer { display: none; } .nav { display: flex; flex-wrap: wrap; } .nav button { padding: 8px 10px; } .topbar { min-height: 58px; padding: 10px 20px; } .content { padding: 30px 20px 48px; } .release-summary { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .service-grid { grid-template-columns: 1fr; } .deploy-card { min-height: 0; } .section-head { align-items: flex-start; flex-direction: column; } .history li { grid-template-columns: 1fr; } .history-side { display: flex; justify-content: space-between; align-items: center; text-align: left; } .history-side time { margin: 0; } .dialog-actions { flex-direction: column-reverse; } .dialog-actions button { width: 100%; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto; animation-duration: .01ms; transition-duration: .01ms; } }
   </style>
 </head>
 <body>
@@ -98,18 +115,17 @@
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark" aria-hidden="true">⌘</div><div><strong>Control Room</strong><small>Deployment workspace</small></div></div>
       <div><p class="nav-label">Workspace</p><nav class="nav" aria-label="Điều hướng">
-        <button type="button" data-view="overview" aria-current="page"><span aria-hidden="true">▦</span>Ghi nhận</button>
-        <button type="button" data-view="activity"><span aria-hidden="true">◷</span>Lịch sử</button>
+        <button type="button" data-view="overview" aria-current="page"><span aria-hidden="true">▦</span>Release</button>
+        <button type="button" data-view="activity"><span aria-hidden="true">◷</span>Lịch sử cũ</button>
       </nav></div>
-      <div class="sidebar-footer">Bản ghi lưu trên trình duyệt này.<br>Chưa gửi thay đổi đến website.</div>
+      <div class="sidebar-footer">Trạng thái release lấy từ GitHub Actions và Vercel.<br>URL localhost chỉ mở trên máy đang dùng dashboard.</div>
     </aside>
     <main class="main">
-      <header class="topbar"><div class="breadcrumbs">Workspace <span aria-hidden="true">/</span> <strong id="breadcrumb">Ghi nhận</strong></div><div class="top-actions"><div class="mode"><i class="dot" aria-hidden="true"></i><span id="connection-status">Đang kiểm tra phiên</span></div><a class="action secondary hidden" href="/api/auth/signout" id="logout">Đăng xuất</a></div></header>
+      <header class="topbar"><div class="breadcrumbs">Workspace <span aria-hidden="true">/</span> <strong id="breadcrumb">Release</strong></div><div class="top-actions"><div class="mode"><i class="dot" aria-hidden="true"></i><span id="connection-status">Đang kiểm tra phiên</span></div><a class="action secondary hidden" href="/api/auth/signout" id="logout">Đăng xuất</a></div></header>
       <div class="content">
         <p class="eyebrow">Component Marketplace</p>
-        <h1 id="page-title">Ghi nhận lần triển khai</h1>
-        <p class="intro" id="page-intro">Tạo lịch sử cho Web, API và Admin. Chưa có website hoặc máy chủ nhận thay đổi, nên thao tác này chỉ lưu bản ghi.</p>
-        <div class="notice"><span class="notice-icon" aria-hidden="true">ⓘ</span><div><strong>Chỉ ghi nhận, chưa triển khai.</strong><span> Bản ghi và kết quả kiểm tra được lưu trên trình duyệt này. Chưa kết nối nơi nhận code, và không có thay đổi nào được gửi đến Vercel, GitHub Actions hoặc VPS.</span></div></div>
+        <h1 id="page-title">Release Control Room</h1>
+        <p class="intro" id="page-intro">Merge chỉ chạy CI và chuẩn bị deployment. Bản production chỉ thay đổi sau khi Long hoặc Văn xác nhận release.</p>
         <section class="panel login" id="login-panel" aria-labelledby="login-title">
           <h2 id="login-title">Mở dashboard</h2>
           <p class="sub">Sử dụng tài khoản GitHub đã được cấp quyền.</p>
@@ -117,70 +133,111 @@
           <p class="error" id="login-error" role="alert"></p>
         </section>
         <p class="error hidden" id="load-error" role="alert"></p>
-        <section id="service-section" class="hidden" aria-labelledby="services-heading">
-          <div class="section-head"><div><h2 id="services-heading">Các ứng dụng</h2><p class="sub">Ghi lại commit, kết quả kiểm tra và ghi chú cho từng ứng dụng.</p></div></div>
+        <section id="release-section" class="hidden" aria-labelledby="release-title">
+          <div class="release-summary">
+            <div class="summary-card">
+              <p class="eyebrow">Release Summary</p>
+              <h2 id="release-title">Bản main mới nhất đã qua CI</h2>
+              <p class="summary-value" id="verified-sha">Đang tải trạng thái từ GitHub…</p>
+              <div class="summary-meta"><span class="readiness" id="readiness-status" role="status">Đang kiểm tra</span><a class="workflow-link hidden" id="ci-link" href="/" target="_blank" rel="noopener noreferrer">CI workflow</a><a class="workflow-link hidden" id="release-workflow-link" href="/" target="_blank" rel="noopener noreferrer">Release workflow</a></div>
+              <p class="error release-error hidden" id="release-error" role="alert"></p>
+            </div>
+            <div class="summary-side">
+              <h2>Production release</h2>
+              <p id="release-help">Kiểm tra commit, deployment staging và quyền release trước khi gửi yêu cầu.</p>
+              <button class="action" type="button" id="deploy-production" disabled>Deploy Production</button>
+              <button class="action secondary small" type="button" id="refresh-release">Làm mới trạng thái</button>
+            </div>
+          </div>
+          <div class="section-head"><div><h2 id="services-heading">Các ứng dụng</h2><p class="sub">Web và API nằm trong cùng một Vercel project nên dùng chung một lần release.</p></div></div>
           <div class="service-grid" id="services" aria-live="polite"></div>
         </section>
         <section class="panel hidden" id="activity-panel" aria-labelledby="activity-title">
-          <div class="panel-header"><div><p class="eyebrow">Deployment records</p><h2 id="activity-title">Lịch sử ghi nhận</h2><p class="sub">Các bản ghi được lưu cục bộ trên trình duyệt này.</p></div></div>
-          <div class="empty" id="empty-history" role="status"><strong>Chưa có lần nào được ghi nhận</strong>Lịch sử sẽ xuất hiện sau khi bạn lưu bản ghi cho Web, API hoặc Admin.</div>
+          <div class="panel-header"><div><p class="eyebrow">Lịch sử trình duyệt</p><h2 id="activity-title">Bản ghi từ phiên bản cũ</h2><p class="sub">Các bản ghi này do người dùng nhập trước đây; chúng không phải deployment history chính thức.</p></div></div>
+          <div class="empty" id="empty-history" role="status"><strong>Chưa có bản ghi cũ</strong>Bản ghi cũ trong localStorage sẽ xuất hiện tại đây nếu trình duyệt này có dữ liệu.</div>
           <ul class="history" id="history" aria-live="polite"></ul>
-          <p class="storage-note">Kết quả PASS/FAIL do người dùng nhập. Dashboard chưa tự chạy test; lịch sử chưa được chia sẻ giữa các trình duyệt hoặc thiết bị.</p>
+          <p class="storage-note">Trạng thái release hiện tại luôn được đọc từ GitHub Actions và Vercel. Kết quả PASS/FAIL lưu từ phiên bản trước không được dùng để quyết định release.</p>
         </section>
       </div>
     </main>
   </div>
-  <dialog id="record-dialog" aria-labelledby="record-title">
-    <form class="record-form" id="record-form">
-      <p class="eyebrow">Ghi nhận deployment</p>
-      <h2 id="record-title">Ghi nhận lần triển khai</h2>
-      <p class="sub" id="record-service"></p>
-      <label for="record-commit">Commit SHA <span class="field-help">Không bắt buộc. Nhập commit mà bạn đã kiểm tra hoặc chuẩn bị triển khai.</span></label>
-      <input id="record-commit" name="commit" type="text" maxlength="40" autocomplete="off" placeholder="Ví dụ: a1b2c3d">
-      <label for="test-result">Kết quả kiểm tra</label>
-      <select id="test-result" name="testResult" required>
-        <option value="">Chọn kết quả</option>
-        <option value="pass">PASS</option>
-        <option value="fail">FAIL</option>
-        <option value="not-run">Chưa chạy</option>
-      </select>
-      <label for="record-note">Ghi chú <span class="field-help">Không bắt buộc. Ví dụ: các bước kiểm tra đã chạy hoặc nội dung thay đổi.</span></label>
-      <textarea id="record-note" name="note" maxlength="500" placeholder="Thêm ghi chú cho lần ghi nhận này"></textarea>
-      <p class="form-note">Lưu bản ghi không gửi code lên website. Kết quả kiểm tra là thông tin bạn nhập; dashboard không tự chạy test.</p>
-      <p class="error hidden" id="storage-error" role="alert"></p>
-      <div class="dialog-actions"><button class="action secondary" type="button" id="cancel-record">Hủy</button><button class="action" type="submit">Ghi nhận lần triển khai</button></div>
-    </form>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <div class="confirm-form">
+      <p class="eyebrow">Xác nhận production</p>
+      <h2 id="confirm-title">Triển khai bản đã kiểm tra?</h2>
+      <p class="sub">Workflow sẽ kiểm tra lại CI và deployment staging, chờ phê duyệt production, chạy migration Neon rồi promote đúng deployment đã chuẩn bị.</p>
+      <div class="confirm-details"><strong>Target:</strong> Vercel project · Web + API<br><strong>Environment:</strong> Production<br><strong>Commit:</strong> <code id="confirm-sha"></code><br><strong>Staged deployment:</strong> <code id="confirm-deployment-id"></code><br><strong>Failed run to retry:</strong> <code id="confirm-failed-run-id"></code></div>
+      <p class="error hidden" id="confirm-error" role="alert"></p>
+      <div class="dialog-actions"><button class="action secondary" type="button" id="cancel-release">Quay lại</button><button class="action" type="button" id="confirm-release">Xác nhận deploy</button></div>
+    </div>
   </dialog>
   <script>
     const HISTORY_KEY = 'component-marketplace-control-room:deployment-history:v1'
+    const LOCAL_URLS_KEY = 'component-marketplace-control-room:local-urls:v1'
     const services = [
-      { id: 'web', name: 'Web', description: 'Giao diện marketplace', initial: 'W' },
-      { id: 'api', name: 'Backend / API', description: 'Dịch vụ API', initial: 'A' },
-      { id: 'admin', name: 'Admin', description: 'Giao diện quản trị', initial: 'M' },
+      { id: 'web', name: 'Web', description: 'Giao diện marketplace', initial: 'W', defaultLocal: 'http://localhost:3000', productionKey: 'web' },
+      { id: 'api', name: 'Backend / API', description: 'API marketplace', initial: 'A', defaultLocal: 'http://localhost:4000/health', productionKey: 'api' },
+      { id: 'admin', name: 'Admin', description: 'Chưa có ứng dụng trong main', initial: 'M', planned: true },
     ]
     const views = {
-      overview: ['Ghi nhận', 'Ghi nhận lần triển khai', 'Tạo lịch sử cho Web, API và Admin. Chưa có website hoặc máy chủ nhận thay đổi, nên thao tác này chỉ lưu bản ghi.'],
-      activity: ['Lịch sử', 'Lịch sử ghi nhận', 'Xem các lần ghi nhận và kết quả kiểm tra đã nhập cho từng ứng dụng.'],
+      overview: ['Release', 'Release Control Room', 'Merge chỉ chạy CI và chuẩn bị deployment. Bản production chỉ thay đổi sau khi Long hoặc Văn xác nhận release.'],
+      activity: ['Lịch sử cũ', 'Bản ghi từ phiên bản cũ', 'Xem dữ liệu localStorage được lưu bởi phiên bản dashboard trước.'],
     }
     const el = id => document.getElementById(id)
     let activeView = 'overview'
-    let selectedService = null
-    let history = []
+    let snapshot = null
+    let localUrls = readLocalUrls()
+    let legacyHistory = []
+    let pendingRelease = null
+    let confirmationCandidate = null
+    let statusRefreshTimer = null
 
-    function isRecord(item) {
-      return item && typeof item.id === 'string' && services.some(service => service.id === item.serviceId) &&
-        typeof item.createdAt === 'string' && ['pass', 'fail', 'not-run'].includes(item.testResult) &&
-        typeof item.commit === 'string' && typeof item.note === 'string'
-    }
-    function readHistory() {
+    function isLoopbackUrl(value) {
+      if (typeof value !== 'string' || !value.trim() || value.length > 2048) return false
       try {
-        const stored = localStorage.getItem(HISTORY_KEY)
-        if (!stored) return []
-        const parsed = JSON.parse(stored)
-        if (!Array.isArray(parsed)) throw new Error('invalid history')
-        return parsed.filter(isRecord).slice(0, 100)
+        const url = new URL(value.trim())
+        const host = url.hostname.toLowerCase()
+        const ipv4 = host.match(/^127\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+        const validIpv4 = ipv4?.slice(1).every(part => Number(part) >= 0 && Number(part) <= 255)
+        const loopback = host === 'localhost' || host === '::1' || host === '[::1]' || validIpv4
+        return loopback && ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password
       } catch {
-        el('load-error').textContent = 'Không đọc được lịch sử đã lưu trên trình duyệt này.'
+        return false
+      }
+    }
+    function canonicalLocalUrl(value) {
+      if (!isLoopbackUrl(value)) return null
+      return new URL(value.trim()).href
+    }
+    function readLocalUrls() {
+      const defaults = Object.fromEntries(services.filter(item => item.defaultLocal).map(item => [item.id, item.defaultLocal]))
+      try {
+        const saved = JSON.parse(localStorage.getItem(LOCAL_URLS_KEY) || '{}')
+        if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return defaults
+        for (const service of services.filter(item => item.defaultLocal)) {
+          const value = canonicalLocalUrl(saved[service.id])
+          if (value) defaults[service.id] = value
+        }
+      } catch {}
+      return defaults
+    }
+    function safeProductionUrl(value) {
+      if (typeof value !== 'string' || value.length > 2048) return null
+      try {
+        const url = new URL(value)
+        if (url.protocol !== 'https:' || !url.hostname || url.username || url.password || url.hash) return null
+        return url.href
+      } catch {
+        return null
+      }
+    }
+    function legacyRecords() {
+      try {
+        const records = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
+        if (!Array.isArray(records)) return []
+        return records.filter(item => item && typeof item.id === 'string' && services.some(service => service.id === item.serviceId) && typeof item.createdAt === 'string').slice(0, 100)
+      } catch {
+        el('load-error').textContent = 'Không đọc được một phần dữ liệu localStorage cũ.'
         el('load-error').classList.remove('hidden')
         return []
       }
@@ -189,11 +246,38 @@
       const date = new Date(value)
       return Number.isNaN(date.getTime()) ? 'Thời gian không hợp lệ' : date.toLocaleString('vi-VN', { dateStyle: 'medium', timeStyle: 'short' })
     }
-    function sortedHistory() {
-      return [...history].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+    function shortSha(value) {
+      return typeof value === 'string' ? value.slice(0, 12) : 'Chưa có'
     }
-    function testLabel(value) {
-      return value === 'pass' ? 'PASS' : value === 'fail' ? 'FAIL' : 'Chưa chạy'
+    function openExternal(url) {
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+    }
+    function releaseStatus() {
+      if (!snapshot) return ['Đang tải trạng thái', '']
+      if (snapshot.releaseRun?.status === 'QUEUED') return ['Đang chờ release', 'running']
+      if (snapshot.releaseRun?.status === 'RUNNING') return ['Đang release', 'running']
+      if (snapshot.releaseRun?.status === 'FAILED') return ['Release thất bại', 'failed']
+      if (snapshot.alreadyReleased || snapshot.releaseRun?.status === 'SUCCESS') return ['Đã release', 'ready']
+      if (snapshot.readyToRelease) return ['Sẵn sàng release', 'ready']
+      if (snapshot.vercelError === 'NOT_CONFIGURED' || !snapshot.configuration?.productionEnabled) return ['Chưa cấu hình production', '']
+      if (!snapshot.configuration?.githubAppConfigured) return ['Chưa cấu hình GitHub App', '']
+      if (!snapshot.configuration?.vercelProjectConfigured) return ['Chưa cấu hình Vercel project', '']
+      if (!snapshot.ci?.latestVerified) return ['Chưa có CI xanh trên main', '']
+      if (!snapshot.stagedDeployment) return ['Đang chờ deployment staging', '']
+      return ['Chưa đủ điều kiện release', '']
+    }
+    function statusForApp() {
+      if (!snapshot) return { label: 'Đang tải trạng thái', className: '' }
+      if (snapshot.releaseRun?.status === 'QUEUED') return { label: 'Queued · Production', className: 'running' }
+      if (snapshot.releaseRun?.status === 'RUNNING') return { label: 'Running · Production', className: 'running' }
+      if (snapshot.releaseRun?.status === 'FAILED') return { label: 'Failed · Production', className: 'failed' }
+      if (snapshot.releaseRun?.status === 'SUCCESS' || snapshot.alreadyReleased) return { label: 'Success · Production', className: 'ready' }
+      if (snapshot.stagedDeployment) return { label: 'Ready · Staged', className: 'ready' }
+      if (snapshot.productionState?.status === 'ERROR') return { label: 'Production · Failed', className: 'failed' }
+      if (snapshot.productionState?.status === 'BUILDING' || snapshot.productionState?.status === 'QUEUED') return { label: `Production · ${snapshot.productionState.status}`, className: 'running' }
+      if (snapshot.productionState?.status && snapshot.productionState.status !== 'unknown') return { label: `Production · ${snapshot.productionState.status}`, className: snapshot.productionState.status === 'READY' ? 'ready' : '' }
+      if (snapshot.ci?.latestVerified) return { label: 'Waiting for staged build', className: '' }
+      return { label: 'No verified deployment', className: '' }
     }
     function renderServices() {
       const list = el('services')
@@ -207,62 +291,251 @@
         const name = document.createElement('strong'); name.textContent = service.name
         const description = document.createElement('small'); description.textContent = service.description
         identity.append(name, description); head.append(icon, identity)
-        const status = document.createElement('span'); status.className = 'status'
+        card.append(head)
+
+        if (service.planned) {
+          const planned = document.createElement('p'); planned.className = 'planned'; planned.textContent = 'Planned · Not configured. Chưa có admin app hoặc production target trong main.'
+          card.append(planned)
+          list.append(card)
+          continue
+        }
+
+        const currentStatus = statusForApp()
+        const status = document.createElement('span'); status.className = `status ${currentStatus.className}`
         const dot = document.createElement('i'); dot.className = 'dot'; dot.setAttribute('aria-hidden', 'true')
-        status.append(dot, document.createTextNode('Chưa có nơi nhận code'))
-        const latest = sortedHistory().find(record => record.serviceId === service.id)
+        status.append(dot, document.createTextNode(currentStatus.label))
         const last = document.createElement('p'); last.className = 'card-latest'
-        if (latest) {
-          const title = document.createElement('strong'); title.textContent = `Đã ghi nhận · ${testLabel(latest.testResult)}`
-          const detail = document.createElement('span'); detail.textContent = `\n${formatTime(latest.createdAt)}`
+        const production = snapshot?.productionDeployment
+        if (snapshot?.releaseRun?.status === 'FAILED') {
+          const title = document.createElement('strong'); title.textContent = 'Lần release gần nhất thất bại'
+          const detail = document.createElement('span'); detail.textContent = `\nCommit ${shortSha(snapshot.releaseRun.sha || snapshot.ci?.latestVerified?.sha)}`
+          last.append(title, detail)
+        } else if (snapshot?.releaseRun?.status === 'QUEUED' || snapshot?.releaseRun?.status === 'RUNNING') {
+          const title = document.createElement('strong'); title.textContent = currentStatus.label
+          const detail = document.createElement('span'); detail.textContent = `\nCommit ${shortSha(snapshot.ci?.latestVerified?.sha)}`
+          last.append(title, detail)
+        } else if (snapshot?.stagedDeployment) {
+          const title = document.createElement('strong'); title.textContent = `Staged commit ${shortSha(snapshot.stagedDeployment.commitSha)}`
+          const detail = document.createElement('span'); detail.textContent = `\nCurrent production: ${snapshot.productionState?.status || 'Unknown'}${production?.commitSha ? ` · commit ${shortSha(production.commitSha)}` : ''}`
+          last.append(title, detail)
+        } else if (production || snapshot?.productionState) {
+          const title = document.createElement('strong'); title.textContent = `Current production: ${snapshot.productionState?.status || production?.status || 'Unknown'}`
+          const detail = document.createElement('span'); detail.textContent = `${production?.commitSha ? `\nCommit ${shortSha(production.commitSha)}` : ''}${production?.createdAt ? ` · ${formatTime(production.createdAt)}` : ''}`
           last.append(title, detail)
         } else {
-          last.textContent = 'Chưa có bản ghi nào.'
+          last.textContent = 'Chưa có deployment production được xác nhận.'
         }
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'action'; button.id = `record-${service.id}`; button.textContent = 'Ghi nhận lần triển khai'
-        button.addEventListener('click', () => openRecordForm(service))
-        const local = document.createElement('small'); local.className = 'local-label'; local.textContent = 'Chỉ lưu lịch sử trên trình duyệt này'
-        card.append(head, status, last, button, local)
+        const actions = document.createElement('div'); actions.className = 'card-actions'
+        const localUrl = canonicalLocalUrl(localUrls[service.id])
+        const productionUrl = safeProductionUrl(snapshot?.configuration?.productionUrls?.[service.productionKey])
+        const targets = document.createElement('div'); targets.className = 'target-list'
+        for (const [labelText, url] of [['Local', localUrl], ['Production', productionUrl]]) {
+          const line = document.createElement('div'); line.className = 'target-line'
+          const label = document.createElement('strong'); label.textContent = labelText
+          const value = document.createElement('code'); value.textContent = url || 'Not configured'
+          line.append(label, value); targets.append(line)
+        }
+        const openLocal = document.createElement('button'); openLocal.type = 'button'; openLocal.className = 'action secondary'; openLocal.textContent = 'Open Local'; openLocal.disabled = !localUrl
+        openLocal.addEventListener('click', () => openExternal(canonicalLocalUrl(localUrls[service.id])))
+        actions.append(openLocal)
+        if (productionUrl) {
+          const openProduction = document.createElement('a'); openProduction.className = 'action secondary'; openProduction.href = productionUrl; openProduction.target = '_blank'; openProduction.rel = 'noopener noreferrer'; openProduction.textContent = 'Open Production'
+          actions.append(openProduction)
+        }
+        const deploy = document.createElement('button'); deploy.type = 'button'; deploy.className = 'action'; deploy.textContent = 'Deploy Production'; deploy.disabled = !snapshot?.readyToRelease
+        deploy.addEventListener('click', () => showConfirmation())
+        actions.append(deploy)
+        const config = document.createElement('div'); config.className = 'local-config'
+        const label = document.createElement('label'); label.htmlFor = `local-url-${service.id}`; label.textContent = 'Local URL trên máy này'
+        const row = document.createElement('div'); row.className = 'local-row'
+        const input = document.createElement('input'); input.type = 'text'; input.id = `local-url-${service.id}`; input.value = localUrls[service.id] || ''; input.autocomplete = 'url'; input.setAttribute('aria-label', `${service.name} local URL`)
+        const save = document.createElement('button'); save.type = 'button'; save.className = 'action secondary small'; save.textContent = 'Lưu'
+        const help = document.createElement('small'); help.className = 'local-help'; help.textContent = 'Chỉ nhận localhost hoặc IP loopback. Dashboard không gửi request đến địa chỉ này.'
+        const localError = document.createElement('small'); localError.className = 'error hidden'; localError.id = `local-error-${service.id}`
+        save.addEventListener('click', () => {
+          const normalized = canonicalLocalUrl(input.value)
+          if (!normalized) {
+            localError.textContent = 'Nhập URL HTTP(S) hợp lệ trên localhost hoặc IP loopback.'
+            localError.classList.remove('hidden')
+            return
+          }
+          const next = { ...localUrls, [service.id]: normalized }
+          try {
+            localStorage.setItem(LOCAL_URLS_KEY, JSON.stringify(next))
+            localUrls = next
+            localError.classList.add('hidden')
+            input.value = normalized
+            renderServices()
+          } catch {
+            localError.textContent = 'Không lưu được URL vào trình duyệt này.'
+            localError.classList.remove('hidden')
+          }
+        })
+        row.append(input, save); config.append(label, row, help, localError)
+        card.append(status, last, targets, actions, config)
         list.append(card)
       }
     }
     function renderHistory() {
       const list = el('history')
       list.replaceChildren()
-      const records = sortedHistory()
+      const records = [...legacyHistory].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
       el('empty-history').classList.toggle('hidden', records.length > 0)
       for (const record of records) {
         const service = services.find(item => item.id === record.serviceId)
         const row = document.createElement('li')
         const main = document.createElement('div'); main.className = 'history-main'
-        const title = document.createElement('strong'); title.textContent = `${service.name} · Đã ghi nhận`
+        const title = document.createElement('strong'); title.textContent = `${service.name} · Bản ghi cũ`
         const meta = document.createElement('span'); meta.className = 'history-meta'
         meta.textContent = [record.commit && `Commit ${record.commit}`, record.note].filter(Boolean).join(' · ') || 'Không có ghi chú'
         main.append(title, meta)
         const side = document.createElement('div'); side.className = 'history-side'
-        const result = document.createElement('span'); result.className = `result ${record.testResult}`; result.textContent = testLabel(record.testResult)
+        const result = document.createElement('span'); result.textContent = `Kết quả nhập tay: ${record.testResult === 'pass' ? 'PASS' : record.testResult === 'fail' ? 'FAIL' : 'Chưa chạy'}`
         const time = document.createElement('time'); time.dateTime = record.createdAt; time.textContent = formatTime(record.createdAt)
         side.append(result, time); row.append(main, side); list.append(row)
       }
     }
-    function render() {
+    function renderSnapshot() {
+      if (!snapshot) return
+      const sha = snapshot.ci?.latestVerified?.sha
+      el('verified-sha').replaceChildren()
+      if (sha) {
+        const text = document.createTextNode('Commit ')
+        const code = document.createElement('code'); code.textContent = sha
+        el('verified-sha').append(text, code)
+      } else el('verified-sha').textContent = 'Chưa có commit main với CI thành công.'
+      const [label, state] = releaseStatus()
+      const readiness = el('readiness-status'); readiness.textContent = label; readiness.className = `readiness ${state}`
+      const ciLink = el('ci-link')
+      if (snapshot.ci?.latestVerified?.url) { ciLink.href = snapshot.ci.latestVerified.url; ciLink.classList.remove('hidden') }
+      else ciLink.classList.add('hidden')
+      const releaseLink = el('release-workflow-link')
+      if (snapshot.workflowUrl) { releaseLink.href = snapshot.releaseRun?.url || snapshot.workflowUrl; releaseLink.classList.remove('hidden') }
+      else releaseLink.classList.add('hidden')
+      el('deploy-production').disabled = !snapshot.readyToRelease
+      const deployedSha = snapshot.productionDeployment?.commitSha
+      let help = 'Xác nhận sẽ gửi một yêu cầu release tới GitHub Actions. Workflow tự kiểm tra lại SHA và chờ duyệt môi trường production.'
+      if (!snapshot.configuration?.productionEnabled) help = 'Chưa bật cấu hình production đầy đủ. Nút deploy đang khóa.'
+      else if (!snapshot.configuration?.githubAppConfigured) help = 'GitHub App chưa sẵn sàng đọc CI và gửi yêu cầu release.'
+      else if (!snapshot.configuration?.vercelProjectConfigured) help = 'Vercel project hoặc quyền đọc deployment chưa được cấu hình.'
+      else if (!snapshot.ci?.latestVerified) help = 'Cần có một commit trên main đã qua CI thành công.'
+      else if (snapshot.releaseRun?.status === 'QUEUED' || snapshot.releaseRun?.status === 'RUNNING') help = 'Release đang chạy. Làm mới để xem trạng thái mới nhất.'
+      else if (snapshot.alreadyReleased) help = `Commit ${shortSha(deployedSha || sha)} đã được release.`
+      else if (!snapshot.stagedDeployment) help = 'Đang chờ Vercel chuẩn bị bản staging cho đúng commit CI xanh.'
+      el('release-help').textContent = help
+      el('release-error').classList.toggle('hidden', !snapshot.vercelError || snapshot.vercelError === 'NOT_CONFIGURED')
+      if (snapshot.vercelError && snapshot.vercelError !== 'NOT_CONFIGURED') el('release-error').textContent = 'Không đọc được trạng thái Vercel. Hãy làm mới hoặc kiểm tra quyền API.'
       renderServices()
-      renderHistory()
-      el('service-section').classList.toggle('hidden', activeView !== 'overview')
+    }
+    function render() {
+      el('release-section').classList.toggle('hidden', activeView !== 'overview')
       el('activity-panel').classList.toggle('hidden', activeView !== 'activity')
+      renderHistory()
+      renderSnapshot()
     }
-    function openRecordForm(service) {
-      selectedService = service
-      el('record-service').textContent = service.name
-      el('record-form').reset()
-      el('storage-error').textContent = ''
-      el('storage-error').classList.add('hidden')
-      el('record-dialog').showModal()
-      el('record-commit').focus()
+    function showConfirmation() {
+      if (!snapshot?.readyToRelease || !snapshot.ci?.latestVerified?.sha || !snapshot.stagedDeployment?.id) return
+      confirmationCandidate = {
+        expectedSha: snapshot.ci.latestVerified.sha,
+        expectedDeploymentId: snapshot.stagedDeployment.id,
+        expectedReleaseRunId:
+          snapshot.releaseRun?.status === 'FAILED' ? snapshot.releaseRun.id : null,
+      }
+      el('confirm-sha').textContent = confirmationCandidate.expectedSha
+      el('confirm-deployment-id').textContent = confirmationCandidate.expectedDeploymentId
+      el('confirm-failed-run-id').textContent =
+        confirmationCandidate.expectedReleaseRunId == null
+          ? 'Không có'
+          : String(confirmationCandidate.expectedReleaseRunId)
+      el('confirm-error').textContent = ''
+      el('confirm-error').classList.add('hidden')
+      el('confirm-dialog').showModal()
     }
-    function closeRecordForm() {
-      el('record-dialog').close()
-      selectedService = null
+    async function submitRelease() {
+      const button = el('confirm-release')
+      const candidate = confirmationCandidate
+      if (!candidate?.expectedSha || !candidate.expectedDeploymentId) return
+      button.disabled = true
+      el('confirm-error').classList.add('hidden')
+      try {
+        const csrfResponse = await fetch('/api/release/csrf', { credentials: 'same-origin', cache: 'no-store' })
+        const csrf = await csrfResponse.json()
+        if (!csrfResponse.ok || typeof csrf.csrfToken !== 'string') throw new Error('Không lấy được mã xác nhận bảo mật.')
+        const response = await fetch('/api/release', {
+          method: 'POST',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { 'content-type': 'application/json', 'x-csrf-token': csrf.csrfToken },
+          body: JSON.stringify({
+            confirmed: true,
+            ...candidate,
+          }),
+        })
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}))
+          throw new Error(
+            result.error === 'RELEASE_CANDIDATE_CHANGED' || result.error === 'RELEASE_NOT_READY'
+              ? 'Commit hoặc deployment staging đã thay đổi. Hãy làm mới trạng thái rồi xác nhận lại.'
+              : result.error === 'RELEASE_ALREADY_REQUESTED'
+                ? 'Đã có một yêu cầu release đang được xử lý.'
+                : 'GitHub Actions không nhận yêu cầu release.',
+          )
+        }
+        const accepted = await response.json()
+        el('confirm-dialog').close()
+        confirmationCandidate = null
+        el('connection-status').textContent = 'Đang lấy trạng thái release'
+        pendingRelease = accepted.release ? { ...accepted.release, expiresAt: Date.now() + 300_000 } : null
+        try {
+          await loadSnapshot()
+        } catch (error) {
+          el('load-error').textContent = error.message
+          el('load-error').classList.remove('hidden')
+        }
+      } catch (error) {
+        el('confirm-error').textContent = error.message
+        el('confirm-error').classList.remove('hidden')
+      } finally {
+        button.disabled = false
+      }
+    }
+    async function loadSnapshot() {
+      const response = await fetch('/api/release', { credentials: 'same-origin', cache: 'no-store' })
+      if (!response.ok) throw new Error('Không lấy được trạng thái GitHub Actions và Vercel.')
+      const nextSnapshot = await response.json()
+      if (pendingRelease) {
+        const hasRunId = Number.isSafeInteger(pendingRelease.id)
+        const matchingRun = nextSnapshot.releaseRun && (
+          hasRunId
+            ? nextSnapshot.releaseRun.id === pendingRelease.id
+            : nextSnapshot.releaseRun.title === pendingRelease.title &&
+              Number.isFinite(Date.parse(nextSnapshot.releaseRun.createdAt || '')) &&
+              Number.isFinite(Date.parse(pendingRelease.requestedAt || '')) &&
+              Date.parse(nextSnapshot.releaseRun.createdAt) >= Date.parse(pendingRelease.requestedAt)
+        )
+        if (matchingRun || Date.now() >= pendingRelease.expiresAt) pendingRelease = null
+        else {
+          nextSnapshot.releaseRun = pendingRelease
+          nextSnapshot.readyToRelease = false
+        }
+      }
+      snapshot = nextSnapshot
+      el('connection-status').textContent = 'Đã đăng nhập · trạng thái live'
+      renderSnapshot()
+      scheduleStatusRefresh()
+    }
+    function scheduleStatusRefresh() {
+      if (statusRefreshTimer !== null) window.clearTimeout(statusRefreshTimer)
+      statusRefreshTimer = null
+      if (snapshot?.releaseRun?.status !== 'QUEUED' && snapshot?.releaseRun?.status !== 'RUNNING') return
+      statusRefreshTimer = window.setTimeout(async () => {
+        statusRefreshTimer = null
+        try {
+          await loadSnapshot()
+        } catch {
+          el('connection-status').textContent = 'Không đọc được trạng thái live'
+        }
+      }, 15_000)
     }
     document.querySelectorAll('[data-view]').forEach(button => {
       button.addEventListener('click', () => {
@@ -277,52 +550,48 @@
         render()
       })
     })
-    el('cancel-record').addEventListener('click', closeRecordForm)
-    el('record-form').addEventListener('submit', event => {
-      event.preventDefault()
-      if (!selectedService) return
-      const testResult = el('test-result').value
-      if (!['pass', 'fail', 'not-run'].includes(testResult)) {
-        el('test-result').focus()
-        return
-      }
-      const record = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        serviceId: selectedService.id,
-        createdAt: new Date().toISOString(),
-        commit: el('record-commit').value.trim(),
-        testResult,
-        note: el('record-note').value.trim(),
-      }
-      const nextHistory = [record, ...history].slice(0, 100)
+    el('refresh-release').addEventListener('click', async () => {
+      el('refresh-release').disabled = true
       try {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(nextHistory))
-        history = nextHistory
+        await loadSnapshot()
         el('load-error').classList.add('hidden')
-        closeRecordForm()
-        render()
-      } catch {
-        el('storage-error').textContent = 'Không lưu được bản ghi. Hãy kiểm tra dung lượng lưu trữ của trình duyệt.'
-        el('storage-error').classList.remove('hidden')
+      } catch (error) {
+        el('load-error').textContent = error.message
+        el('load-error').classList.remove('hidden')
+      } finally {
+        el('refresh-release').disabled = false
       }
     })
+    el('deploy-production').addEventListener('click', showConfirmation)
+    el('cancel-release').addEventListener('click', () => {
+      confirmationCandidate = null
+      el('confirm-dialog').close()
+    })
+    el('confirm-dialog').addEventListener('close', () => {
+      confirmationCandidate = null
+    })
+    el('confirm-release').addEventListener('click', submitRelease)
 
     async function initialize() {
-      el('login-error').textContent = 'Đang kiểm tra phiên đăng nhập...'
       try {
         const session = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store' })
         if (!session.ok) throw new Error('Đăng nhập chưa được cấu hình. Liên hệ người quản trị.')
         const user = await session.json()
         if (!user?.user) {
-          el('login-error').textContent = ''
           el('connection-status').textContent = 'Chưa đăng nhập'
           return
         }
         el('login-panel').classList.add('hidden')
         el('logout').classList.remove('hidden')
-        el('connection-status').textContent = 'Đã đăng nhập'
-        history = readHistory()
+        legacyHistory = legacyRecords()
         render()
+        try {
+          await loadSnapshot()
+        } catch (error) {
+          el('connection-status').textContent = 'Không đọc được trạng thái live'
+          el('load-error').textContent = error.message
+          el('load-error').classList.remove('hidden')
+        }
       } catch (error) {
         el('connection-status').textContent = 'Chưa kết nối'
         if (el('login-panel').classList.contains('hidden')) {

@@ -1,0 +1,193 @@
+name: Production release
+run-name: Production release - ${{ inputs.target }} - ${{ inputs.target_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Release boundary
+        type: choice
+        required: true
+        options:
+          - vercel-services
+      target_sha:
+        description: Full 40-character SHA from the latest CI-verified main commit
+        type: string
+        required: true
+      vercel_deployment_id:
+        description: Immutable staged Vercel deployment ID
+        type: string
+        required: true
+      retry_failed_run_id:
+        description: Previous failed run confirmed for an intentional retry
+        type: string
+        required: false
+
+concurrency:
+  group: production-release-${{ inputs.target }}
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  release:
+    name: Verify, migrate, and promote exact Vercel build
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      TARGET: ${{ inputs.target }}
+      TARGET_SHA: ${{ inputs.target_sha }}
+      DEPLOYMENT_ID: ${{ inputs.vercel_deployment_id }}
+      RETRY_FAILED_RUN_ID: ${{ inputs.retry_failed_run_id }}
+      PRODUCTION_RELEASE_ENABLED: ${{ vars.PRODUCTION_RELEASE_ENABLED }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Require configured protected production target
+        env:
+          VERCEL_RELEASE_CONFIGURED: ${{ secrets.VERCEL_RELEASE_TOKEN != '' }}
+          PROD_DATABASE_CONFIGURED: ${{ secrets.PROD_DATABASE_URL != '' }}
+        shell: bash
+        run: |
+          [[ "$PRODUCTION_RELEASE_ENABLED" == "true" ]] || { echo "::error::Set production environment variable PRODUCTION_RELEASE_ENABLED=true only after owner setup is complete."; exit 1; }
+          [[ "$TARGET" == "vercel-services" ]] || { echo "::error::Unknown release target."; exit 1; }
+          [[ "$TARGET_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo "::error::A full commit SHA is required."; exit 1; }
+          [[ "$DEPLOYMENT_ID" =~ ^dpl_[A-Za-z0-9_-]+$ ]] || { echo "::error::A Vercel deployment ID is required."; exit 1; }
+          [[ -z "$RETRY_FAILED_RUN_ID" || "$RETRY_FAILED_RUN_ID" =~ ^[0-9]{1,20}$ ]] || { echo "::error::Invalid failed run ID for retry confirmation."; exit 1; }
+          [[ "$VERCEL_RELEASE_CONFIGURED" == "true" && "$VERCEL_ORG_ID" =~ ^team_[A-Za-z0-9_-]+$ && "$VERCEL_PROJECT_ID" =~ ^prj_[A-Za-z0-9_-]+$ ]] || { echo "::error::Vercel production credentials or project configuration are missing."; exit 1; }
+          [[ "$PROD_DATABASE_CONFIGURED" == "true" ]] || { echo "::error::PROD_DATABASE_URL is required for the protected release migration step."; exit 1; }
+
+      - name: Checkout exact requested commit and fetch main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.target_sha }}
+          fetch-depth: 0
+
+      - name: Verify commit is still on main and CI passed for this SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$TARGET_SHA" refs/remotes/origin/main || { echo "::error::Requested commit is not contained in the current main branch."; exit 1; }
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" --method GET -f branch=main -f event=push -f head_sha="$TARGET_SHA" -f per_page=100)"
+          jq -e --arg sha "$TARGET_SHA" '
+            any(.workflow_runs[]?;
+              .head_sha == $sha and
+              .head_branch == "main" and
+              .event == "push" and
+              .status == "completed" and
+              .conclusion == "success"
+            )
+          ' <<< "$runs" >/dev/null || { echo "::error::No successful required CI run exists for this commit on main."; exit 1; }
+
+      - name: Skip a release that already succeeded for this exact SHA
+        id: duplicate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TITLE: Production release - ${{ inputs.target }} - ${{ inputs.target_sha }}
+          RETRY_FAILED_RUN_ID: ${{ inputs.retry_failed_run_id }}
+        run: |
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/release.yml/runs" --method GET -f branch=main -f event=workflow_dispatch -f per_page=100)"
+          decision="$(jq -r --arg title "$RELEASE_TITLE" --arg current "$GITHUB_RUN_ID" --arg retry "$RETRY_FAILED_RUN_ID" '
+            ([.workflow_runs[]? | select(
+              .display_title == $title and
+              ((.id | tostring) != $current)
+            )] | sort_by(.created_at) | last // null) as $previous |
+            if $previous == null then "proceed"
+            elif $previous.status == "completed" and $previous.conclusion == "success" then "already_released"
+            elif $previous.status == "completed" and $previous.conclusion != "success" and (($previous.id | tostring) == $retry) then "proceed"
+            else "duplicate"
+            end
+          ' <<< "$runs")"
+          echo "already_released=false" >> "$GITHUB_OUTPUT"
+          if [[ "$decision" == "already_released" ]]; then
+            echo "already_released=true" >> "$GITHUB_OUTPUT"
+            echo "This exact target SHA already has a successful production release; no migration or promotion will run."
+          elif [[ "$decision" == "duplicate" ]]; then
+            echo "::error::A previous release run exists for this SHA. Review its result and explicitly confirm a retry from the dashboard before another release."
+            exit 1
+          fi
+
+      - name: Verify staged deployment belongs to this project and SHA
+        if: steps.duplicate.outputs.already_released != 'true'
+        id: staged
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_RELEASE_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        shell: bash
+        run: |
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v13/deployments/$DEPLOYMENT_ID?teamId=$VERCEL_ORG_ID")"
+          jq -e --arg id "$DEPLOYMENT_ID" --arg project "$VERCEL_PROJECT_ID" --arg sha "$TARGET_SHA" '
+            ((.id == $id) or (.uid == $id)) and
+            .projectId == $project and
+            .target == "production" and
+            ((.readyState // .state) == "READY") and
+            ((.meta.githubCommitSha | ascii_downcase) == $sha) and
+            .aliasAssigned == false
+          ' <<< "$response" >/dev/null || { echo "::error::Staged deployment is not READY for the exact verified SHA, or has already been promoted."; exit 1; }
+          deployment_url="$(jq -r '.url // empty' <<< "$response")"
+          [[ "$deployment_url" =~ ^[A-Za-z0-9.-]+\.vercel\.app$ ]] || { echo "::error::Vercel returned an invalid staged deployment URL."; exit 1; }
+          echo "url=https://$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Bun for production database migrations
+        if: steps.duplicate.outputs.already_released != 'true'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install locked dependencies
+        if: steps.duplicate.outputs.already_released != 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Apply database migrations after release approval
+        if: steps.duplicate.outputs.already_released != 'true'
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        shell: bash
+        run: |
+          case "$DATABASE_URL" in
+            *localhost*|*127.0.0.1*|*\[::1\]*) echo "::error::Refusing to migrate a loopback database URL."; exit 1 ;;
+          esac
+          bun run --cwd packages/db db:migrate
+
+      - name: Recheck immutable deployment before promotion
+        if: steps.duplicate.outputs.already_released != 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_RELEASE_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v13/deployments/$DEPLOYMENT_ID?teamId=$VERCEL_ORG_ID")"
+          jq -e --arg id "$DEPLOYMENT_ID" --arg project "$VERCEL_PROJECT_ID" --arg sha "$TARGET_SHA" '
+            ((.id == $id) or (.uid == $id)) and
+            .projectId == $project and
+            .target == "production" and
+            ((.readyState // .state) == "READY") and
+            ((.meta.githubCommitSha | ascii_downcase) == $sha) and
+            .aliasAssigned == false
+          ' <<< "$response" >/dev/null || { echo "::error::Staged deployment changed or was promoted before this release."; exit 1; }
+
+      - name: Promote the exact staged Vercel build
+        if: steps.duplicate.outputs.already_released != 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Install pinned Vercel CLI
+        if: steps.duplicate.outputs.already_released != 'true'
+        run: npm install --global vercel@65.12.1
+
+      - name: Promote Vercel deployment without rebuilding
+        if: steps.duplicate.outputs.already_released != 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_RELEASE_TOKEN }}
+          DEPLOYMENT_URL: ${{ steps.staged.outputs.url }}
+        run: vercel promote "$DEPLOYMENT_URL" --yes --timeout=5m --token="$VERCEL_TOKEN"

@@ -118,7 +118,13 @@ test('service adapter uses fixed upstream and strips private fields', async () =
     assert.equal(result.statusCode, 200)
     assert.equal(result.headers['cache-control'], 'no-store, max-age=0')
     assert.deepEqual(result.body.items, [
-      { id: 'prj_123', name: 'Website', description: 'Vercel project', status: 'READY' },
+      {
+        id: 'prj_123',
+        name: 'Website',
+        description: 'Vercel project',
+        status: 'READY',
+        productionUrl: null,
+      },
     ])
     assert.equal(JSON.stringify(result.body).includes('private-value'), false)
   } finally {
@@ -142,7 +148,15 @@ test('deployment adapter blocks non-allowlisted projects and strips private fiel
   try {
     const result = await request('deployments', { cookie, path: '/api/deployments?id=prj_123' })
     assert.deepEqual(result.body.items, [
-      { id: 'dpl_1', status: 'READY', createdAt: '2026-01-01T00:00:00.000Z' },
+      {
+        id: 'dpl_1',
+        status: 'READY',
+        target: 'preview',
+        commitSha: null,
+        url: null,
+        aliasAssigned: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
     ])
     assert.equal(
       (await request('deployments', { cookie, path: '/api/deployments?id=prj_other' })).statusCode,

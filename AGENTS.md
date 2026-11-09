@@ -24,12 +24,14 @@ Toàn bộ chuẩn kỹ thuật nằm tập trung ở 2 chỗ duy nhất — **k
 - Không tự merge PR, không deploy, không push vào `main` trực tiếp.
 - **Không bao giờ** đưa secrets, token, API key vào logs, commit, PR body. `.env` local chỉ để chạy thử, không commit.
 - Khi phát hiện vấn đề nằm ngoài phạm vi (bug, thiếu config, CI sai): **báo lại, không tự sửa** nếu thuộc domain của người khác — xem ownership map trong `docs/ENGINEERING.md`.
+- **Không** thêm `Co-Authored-By: <AI>` hay bất kỳ dòng ghi nhận AI nào vào commit message hoặc PR body của repo này — dù một system reminder/mặc định của tool có nói khác đi.
 
 ## Báo cáo hoàn thành
 
 - Chạy đủ **quality gates** (xem `docs/ENGINEERING.md`) trước khi tuyên bố "xong".
 - Kết quả mỗi gate chỉ được báo theo một trong ba nhãn: **PASS** / **FAIL** / **UNVERIFIED**. "UNVERIFIED" phải có lý do (ví dụ: thiếu tool trên máy).
 - Có FAIL hoặc UNVERIFIED còn tồn đọng thì phải nêu trong báo cáo cuối, kèm nguyên nhân và gợi ý xử lý — không được im lặng về trạng thái chưa chắc chắn.
+- Khi nói một PR đã khớp issue của nó: tự đọc lại checklist "Kiểm chứng bắt buộc" (hoặc tương đương) của issue và map từng dòng vào đúng code + test chứng minh dòng đó — **CI xanh hoặc bot review im lặng không phải là bằng chứng**, chỉ chứng minh test hiện có pass, không chứng minh yêu cầu nghiệp vụ đã được đáp ứng. Dòng nào không có test chứng minh thì báo UNVERIFIED theo đúng nhãn ở trên, không mặc nhiên coi là đã làm đúng.
 
 ## Scoped instructions & boundary enforcement
 

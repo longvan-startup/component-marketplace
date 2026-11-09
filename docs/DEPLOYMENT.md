@@ -1,160 +1,77 @@
-# Deployment & CD — current state and activation runbook
+# Deployment and release runbook
 
-Source of truth for CDN/CD. The platform rows below were last checked on
-2026-10-24. The Control Room entry was verified separately on 2026-11-07.
+## Release policy
 
-## Verified state (2026-10-24)
+The production path is:
 
-| Item | Status | How verified |
-|---|---|---|
-| CI (`ci.yml`) | green on main (lint+boundary+typecheck+test+build+docker isolation+DB migration smoke) | `gh run list` |
-| CD workflow (`cd.yml`) | publishes api image to GHCR; production steps gated by repo secrets | workflow source |
-| GHCR publish | ready to run — uses built-in `GITHUB_TOKEN`, runs automatically after CI-green main push | workflow source |
-| Repo secrets | to be created by owner when activating each layer | `gh api repos/.../actions/secrets` |
-| Web deploy target | **Vercel Services project** (`vercel.json` merged in #46: api internal + web public, binding `API_URL_INTERNAL`, same-origin `/api` fallback) — **activation is one dashboard import** (owner-manual, tracked on the issue board) | merged PR #46 |
-| API deploy target | **VPS + SSH auto-deploy**, gated by secrets `SSH_HOST/SSH_USER/SSH_KEY` (owner decision) | decision |
-| Control Room | Separate Vercel project at `component-marketplace-control-room.vercel.app`; records Web/API/Admin deployment entries in browser storage and does not deploy those targets | Production URL + `prototypes/deployment-dashboard` (2026-11-07) |
-| Marketplace Vercel preview ignore | Skip preview builds for Control Room-only changes; build when Marketplace source paths change; production builds continue | Vercel project setting + PR #113 check (2026-11-07) |
-| Production DB | **Neon**, migrate job gated by secret `PROD_DATABASE_URL` (owner decision) | decision |
-| Branch protection `main` | `enforce_admins=false` (must be re-enabled), `require_code_owner_reviews=false`, approvals=1 | `gh api .../branches/main/protection` |
-
-## Pipeline flow (on main push, after CI green)
-
-```
-CI green on main
-   └─► cd.yml (workflow_run)
-        ├─ 1. docker-publish  → ghcr.io/longvan-startup/cmp-api:{sha-*,latest}
-        ├─ 2. db-migrate      → runs `drizzle-kit migrate` against Neon
-        │     (SKIPPED with notice while PROD_DATABASE_URL is absent;
-        │      refuses localhost URLs as a dev-DB safety guard)
-        └─ 3. deploy-vps      → ssh: docker compose pull + up + /health assert
-              (SKIPPED with notice while SSH secrets are absent)
+```text
+Merge to main → required CI passes → prepare immutable artifacts → Ready to Release
+                                                        ↓ owner confirms
+                                      protected GitHub release workflow → Production
 ```
 
-Each layer activates independently the moment its secret(s) exist — no code
-changes needed.
+`CI` still owns lint, typecheck, tests, build and Docker runtime/migration smoke checks. `CD preparation` runs only after a successful `CI` push to `main`. It may publish the API image under its full commit SHA and create a Vercel production-target deployment with domains skipped. It never runs production migrations, assigns production domains, or deploys to a VPS.
 
-## 1. Vercel Services — one project, api + web (no secrets in GitHub)
+The root [`vercel.json`](../vercel.json) disables automatic Vercel Git deployments for every branch; a CLI-created staged deployment is the only Vercel candidate used for release. Web and API share this one Vercel project and one release target (`vercel-services`). They must not be deployed as two separate projects from the dashboard. The dashboard's own [`vercel.json`](../prototypes/deployment-dashboard/vercel.json) also disables automatic Git deployments for every branch.
 
-Current layout: root `vercel.json` defines two services — `api` (`apps/api`,
-Express, internal) and `web` (`apps/web`, Next.js, public); top-level rewrites
-route `/api/(.*)` → api and `/(.*)` → web. The web service declares a binding
-to api which injects the internal base URL as `API_URL_INTERNAL` (read by
-`apps/web/lib/api-client.ts` for SSR calls). The api also stays reachable
-publicly with the same path prefix it sees (`/api/health`, …) — the Express
-routes are mounted under `/api` **in addition to** `/` when `VERCEL` is set,
-so Docker/VPS behavior is unchanged.
+The `Production release` workflow can be started only with GitHub `workflow_dispatch`. The dashboard confirmation binds the displayed full SHA and staged Vercel deployment ID; before dispatch, the server recomputes readiness and returns `409` if the candidate changed. The workflow independently checks that the full SHA is still on `main`, that required CI passed for that SHA, and that the staged deployment belongs to the configured project, is `READY`, and contains the exact same SHA. It applies database migrations only after the protected `production` environment allows the job, then promotes that immutable deployment without rebuilding. A successful release for the same SHA is a no-op on re-dispatch; a shared concurrency group serializes production releases. A failed release can be retried only when the dashboard confirmation is bound to the latest failed run ID; an older queued dispatch cannot turn a failed attempt into an automatic retry.
 
-Manual one-time setup (Vercel dashboard):
+Missing configuration keeps the Control Room action disabled. The current code does not create a simulated deployment or fall back to local URLs for production. The API and dashboard endpoints read GitHub Actions/Vercel state server-side; no deployment credential is sent to the browser. Legacy localStorage records are labeled as old user-entered records and are not release status.
 
-1. Browse <https://vercel.com> → Add New… → Project → **Import** the
-   `longvan-startup/component-marketplace` GitHub repo (install the Vercel
-   GitHub App for the `longvan-startup` org — org owner approves).
-   The `vercel.json` committed at the repo root drives the services config;
-   leave Root Directory unset (services carry their own roots).
-2. Environment Variables for the **api** service: `DATABASE_URL` = Neon pooled
-   connection string (gated DB; unset ⇒ `/health` still OK, `/health/db` 503
-   by design). No Web variables needed: browser calls default to same-origin
-   `/api`, SSR calls use the injected binding.
-3. Local parity: `vercel dev` runs both services and injects the binding
-   (CLI ≥ 47.0.5).
-4. Done: every PR gets a **preview** deployment (both services, preview-scoped
-   binding); pushes to `main` produce production deploys with Instant Rollback.
+## Release targets
 
-The Marketplace CI/CD pipeline does not use the Vercel API. The separate
-Control Room app has server-side read-only Vercel API routes; its own UI does
-not call those routes when recording deployment history.
+| Target | Release boundary | Current behavior |
+| --- | --- | --- |
+| Web + Backend / API | One Vercel project and one staged deployment | Prepared after CI if Vercel Actions configuration exists; explicit promotion only. |
+| Admin | No application exists in `main` | Planned / Not configured; no fake server or deployment. |
+| VPS API | Separate host and deployment target | No automatic SSH deployment in this MVP. The GHCR full-SHA image may be prepared, but a VPS release path needs owner-approved host credentials and a later implementation. |
+| Neon database | Migration required by a release | `drizzle-kit migrate` runs only within the approved production release workflow. It never runs after merge by `CD preparation`. |
 
-The `component-marketplace` Vercel project's ignored-build command is
-`bash scripts/vercel-ignore-marketplace-build.sh`. Production builds proceed.
-For previews, it skips commits whose changes are limited to
-`prototypes/deployment-dashboard`, this deployment runbook, the root workspace
-lock metadata, and the ignore script itself. A change to Marketplace
-application paths still proceeds to the Vercel build.
+## Owner setup checklist
 
-### Control Room — deployment records only
+Do not set the enable flags until all required steps below are complete and a staging build has been verified. These are remote owner settings; this code change does not modify GitHub, Vercel, or Neon settings.
 
-The Control Room is a separate Vercel project whose source is
-`prototypes/deployment-dashboard`. Its own Vercel production deployment serves
-the dashboard. The three buttons for Web, Backend / API, and Admin only write
-deployment records to the current browser's `localStorage`; they do not send
-code to Vercel, GitHub Actions, or a VPS. The recorded `PASS`, `FAIL`, or
-`Chưa chạy` value is entered by a user; the dashboard does not run tests.
+### 1. Vercel staged deployment
 
-The history is local to one browser and is not shared between teammates or
-devices. The dashboard's existing Vercel API routes are read-only and are not
-called by the record buttons. Connecting those buttons to a real deployment
-target is a separate change that requires the target Vercel projects or VPS to
-exist and be reviewed.
+1. Confirm the Marketplace Vercel Services project points at `longvan-startup/component-marketplace`, with the repository root as its project root and the current `vercel.json` services configuration.
+2. Disable automatic deployments for every branch in the Vercel project's Git settings. The repository config sets `git.deploymentEnabled` to `false`; verify the Vercel project settings enforce it before enabling release. This also disables automatic PR previews. Vercel documents both this Git setting and staged production deployments via `--prod --skip-domain` followed by `vercel promote`:
+   - <https://vercel.com/docs/project-configuration/git-configuration>
+   - <https://vercel.com/docs/cli/deploying-from-cli>
+3. Create separate Vercel tokens for the Marketplace project if the account supports that scope: `VERCEL_PREPARATION_TOKEN` as a repository secret for staging and `VERCEL_RELEASE_TOKEN` as a `production` environment secret for promotion. Keep both server-side and limited to the Marketplace team/project. They are used in different workflows so either can be revoked independently.
+4. Add repository variables `VERCEL_TEAM_ID` (`team_…`) and `VERCEL_PROJECT_ID` (`prj_…`). Set `VERCEL_PREPARATION_ENABLED=true` only after a CI-green main commit can be staged with `aliasAssigned=false` and its deployment metadata contains the same full SHA.
+5. Record the intended public Web URL and API health URL in the Control Room's server-side Vercel environment as `PRODUCTION_WEB_URL` and `PRODUCTION_API_URL`. Confirm the API path against the Vercel Services rewrites before enabling release.
 
-### VPS path (§2) — status under Services
+### 2. Protected release workflow and Neon
 
-The GHCR + VPS deploy layer stays valid independently (deploy/manifest
-unchanged, job gated by SSH secrets). It can be activated as a second
-transport for the api (e.g. self-hosted fallback or WebSocket hosting for the
-chat milestone M3) while Vercel serves the public `/api/*` surface. Keeping
-both is a small-cost option; deactivating the VPS path means never setting its
-secrets.
+1. Create the GitHub Environment named `production`; add Long and Văn as required reviewers. Keep branch restrictions limited to `main`.
+2. Add environment variables `PRODUCTION_RELEASE_ENABLED=true`, `VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID` after confirming Vercel setup.
+3. Add environment secrets `VERCEL_RELEASE_TOKEN` and `PROD_DATABASE_URL`. The database URL must point at the intended Neon production database, never a local/test database.
+4. Confirm the first release can run migrations successfully and the Neon project's backup/restore recovery path is known before enabling the dashboard action.
 
-## 2. API — GHCR + VPS auto-deploy
+GitHub documents environment protection and required reviewers at <https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments>.
 
-One-time VPS preparation (Mắt Bão or any Docker-capable host):
+### 3. Control Room credentials
 
-```bash
-ssh <user>@<vps>
-mkdir -p /opt/cmp-api && chmod 700 /opt/cmp-api
-# copy the manifest + env template from the repo:
-scp deploy/vps/compose.yaml deploy/vps/.env.example <user>@<vps>:/opt/cmp-api/
-# on the VPS, fill /opt/cmp-api/.env (chmod 600; never committed):
-#   DATABASE_URL=<Neon connection string>
-#   GHCR_TOKEN=<PAT with read:packages scope>
-#   # optional: API_BIND / API_PORT
-```
+1. Install a GitHub App only on `longvan-startup/component-marketplace`, with `Actions: read and write` and `Contents: read`. Keep the allowlist in `DASHBOARD_GITHUB_IDS` limited to Long and Văn.
+2. Add `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, and `GITHUB_APP_PRIVATE_KEY` to the Control Room Vercel project environment. The app private key remains server-side.
+3. Add a read-only Vercel API token and the project/team IDs to the Control Room environment: `VERCEL_API_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_IDS`, `RELEASE_VERCEL_PROJECT_ID`.
+4. Set `RELEASE_GITHUB_REPOSITORY=longvan-startup/component-marketplace` and the production URLs. Keep `RELEASE_PRODUCTION_ENABLED=false` until the GitHub App can read CI, dispatch the workflow, and the protected environment and required secrets have been checked.
+5. Set `RELEASE_PRODUCTION_ENABLED=true` only after a non-production/focused verification confirms that a release action remains disabled when any required target/configuration is missing. No production deployment should be used as an acceptance test.
 
-Then create repo secrets (Settings → Secrets and variables → Actions):
+### 4. Optional VPS connection later
 
-| Secret | Purpose |
-|---|---|
-| `SSH_HOST` | VPS hostname/IP |
-| `SSH_USER` | SSH user |
-| `SSH_KEY` | private key (Ed25519 recommended; add public key to VPS) |
-| `SSH_PORT` | optional; defaults to 22 |
+This MVP does not deploy to a VPS. To add that target later, first provision and secure a Linux host, set up TLS/reverse proxy and health monitoring, and use a least-privilege GHCR reader. The production image must be pinned by registry digest or full commit SHA; `deploy/vps/compose.yaml` has no mutable `latest` fallback. Add a protected release job and explicit owner approval before setting any VPS credential. Do not add SSH secrets to this repository for the current Vercel-only release target.
 
-Behavior: after CI-green pushes to main, the workflow does
-`docker login ghcr.io` (PAT from VPS `.env`) → `pull` → `up -d` → asserts
-`/health` from localhost. On failure it exits non-zero with the log command.
-Rollback: `API_IMAGE=ghcr.io/longvan-startup/cmp-api:sha-<old>` in `.env`
-(compose pins image via var), then `docker compose up -d`.
+## Local links and dashboard history
 
-Reverse proxy (nginx/caddy) terminates TLS and forwards to
-`127.0.0.1:${API_PORT:-4000}` — out of CD scope, one-time infra step.
+The Control Room opens Web at `http://localhost:3000` and API at `http://localhost:4000/health` by default. Long and Văn can save different loopback URLs in their own browsers. Only HTTP(S) loopback URLs are accepted; the dashboard never probes them. Admin has no local URL until an admin app exists.
 
-## 3. Production DB — Neon (gated migrate)
+Old `component-marketplace-control-room:deployment-history:v1` localStorage data remains visible under **Lịch sử cũ** for reference. Those user-entered PASS/FAIL records are not authoritative deployment or CI status.
 
-1. Create the Neon project (fixcas — owner action in the Neon console).
-2. Copy the **pooled** connection string (`...neon.tech/dbname?sslmode=require`).
-3. Add repo secret `PROD_DATABASE_URL` with that value.
-4. The CD `db-migrate` job then runs automatically ahead of every VPS deploy:
-   `drizzle-kit migrate` (forward-only; applied migrations are never edited).
-   Migrations apply BEFORE the new container starts (`needs` ordering), then
-   deploy-vps only proceeds on `success` or `skipped` — never on migrate failure.
+## Verification and rollback notes
 
-Safety rails in the job: refuses `localhost`/`127.0.0.1` URLs; announces a
-skip notice instead of failing while the secret is absent.
-
-## Secrets & permissions summary
-
-| Where | Values | Note |
-|---|---|---|
-| GitHub repo secrets | `PROD_DATABASE_URL`, `SSH_HOST`, `SSH_USER`, `SSH_KEY`, (`SSH_PORT`) | all optional; each enables its CD layer |
-| Vercel dashboard | `NEXT_PUBLIC_API_URL` (per environment) | never stored in GitHub |
-| VPS `.env` | `DATABASE_URL`, `GHCR_TOKEN`, binds/ports | chmod 600, never committed |
-| GHCR | built-in `GITHUB_TOKEN` (publish), PAT read:packages (VPS pulls) | repo-scoped |
-
-## Rollback
-
-| Layer | Method |
-|---|---|
-| Web | Vercel Instant Rollback ( Immutable deployments) |
-| API | pin previous sha tag via `API_IMAGE` in VPS `.env`, `docker compose up -d` |
-| DB | additive migrations usually need no rollback; destructive → plan 2-phase migration + Neon PITR |
+- CI and the CD preparation build remain separate from promotion. Docker runtime smoke tests stay in `CI`.
+- `workflow_dispatch` receives the expected SHA and Vercel deployment ID from the confirmation. When retrying a failure it also receives the failed run ID. The server checks the expected candidate and failed run against fresh GitHub/Vercel state; the workflow independently validates the SHA and deployment and rejects duplicate or unconfirmed retries.
+- Failed releases keep their GitHub Actions conclusion and Vercel deployment state visible. Retry only after inspecting the failed workflow logs and confirming whether the migration completed.
+- Vercel promotion uses the staged deployment and does not rebuild it. Vercel rollback remains an owner action from the Vercel deployment dashboard or CLI.
+- If a database migration has applied but Vercel promotion fails, do not blindly rerun or roll back the database. Inspect the migration journal and apply a compatible follow-up or restore plan with the database owner.
