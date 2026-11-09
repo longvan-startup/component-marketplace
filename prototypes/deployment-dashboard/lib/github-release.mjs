@@ -5,6 +5,7 @@ const API_VERSION = '2026-03-10'
 const DEFAULT_REPOSITORY = 'longvan-startup/component-marketplace'
 const CI_RUN_PAGE_SIZE = 20
 const CI_RUN_MAX_PAGES = 5
+const PULL_REQUEST_PAGE_SIZE = 5
 
 export class GitHubReleaseError extends Error {
   constructor(code, status = 502) {
@@ -110,7 +111,11 @@ async function request(
   return responseJson(response, responseErrorPrefix)
 }
 
-export async function createInstallationToken(env = process.env, fetchImpl = fetch) {
+export async function createInstallationToken(
+  env = process.env,
+  fetchImpl = fetch,
+  { includePullRequests = false } = {},
+) {
   const config = appConfiguration(env)
   if (!config) throw new GitHubReleaseError('GITHUB_APP_NOT_CONFIGURED', 503)
   const jwt = appJwt(config)
@@ -122,7 +127,11 @@ export async function createInstallationToken(env = process.env, fetchImpl = fet
     responseErrorPrefix: 'GITHUB_APP',
     body: {
       repositories: [repo.split('/')[1]],
-      permissions: { actions: 'write', contents: 'read' },
+      permissions: {
+        actions: 'write',
+        contents: 'read',
+        ...(includePullRequests ? { pull_requests: 'read' } : {}),
+      },
     },
   })
   if (!result || typeof result.token !== 'string')
@@ -194,6 +203,76 @@ export async function getCiSnapshot(env = process.env, fetchImpl = fetch, token)
         }
       : null,
   }
+}
+
+function safeTimestamp(value) {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return null
+  return new Date(value).toISOString()
+}
+
+function safePullRequestUrl(value, repository, number) {
+  if (typeof value !== 'string') return null
+  try {
+    const url = new URL(value)
+    const expectedPath = `/${repository}/pull/${number}`
+    if (
+      url.protocol !== 'https:' ||
+      url.hostname !== 'github.com' ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      url.pathname.toLowerCase() !== expectedPath.toLowerCase()
+    )
+      return null
+    return url.href
+  } catch {
+    return null
+  }
+}
+
+function safePullRequest(item, repository) {
+  if (
+    !item ||
+    !Number.isSafeInteger(item.number) ||
+    item.number < 1 ||
+    typeof item.title !== 'string' ||
+    !['open', 'closed'].includes(item.state)
+  )
+    return null
+  const mergedAt = safeTimestamp(item.merged_at)
+  return {
+    number: item.number,
+    title: item.title.slice(0, 240),
+    state: mergedAt ? 'MERGED' : item.state.toUpperCase(),
+    updatedAt: safeTimestamp(item.updated_at),
+    mergedAt,
+    url: safePullRequestUrl(item.html_url, repository, item.number),
+  }
+}
+
+export async function getRecentPullRequests(env = process.env, fetchImpl = fetch, token) {
+  const repo = repositoryName(env)
+  const path = `/repos/${repo}/pulls?state=all&sort=updated&direction=desc&per_page=${PULL_REQUEST_PAGE_SIZE}`
+  let result
+  try {
+    result = await request(path, { fetchImpl, token, responseErrorPrefix: 'GITHUB_PRS' })
+  } catch (error) {
+    if (!token || error?.code !== 'GITHUB_PERMISSION_DENIED') throw error
+    result = await request(path, { fetchImpl, responseErrorPrefix: 'GITHUB_PRS' })
+  }
+  if (!Array.isArray(result)) throw new GitHubReleaseError('GITHUB_PRS_RESPONSE_INVALID')
+  return result
+    .map((item) => safePullRequest(item, repo))
+    .filter(Boolean)
+    .sort((left, right) => {
+      const byUpdatedAt =
+        Date.parse(right.updatedAt || right.mergedAt || '') -
+        Date.parse(left.updatedAt || left.mergedAt || '')
+      return Number.isFinite(byUpdatedAt) && byUpdatedAt !== 0
+        ? byUpdatedAt
+        : right.number - left.number
+    })
 }
 
 export async function getReleaseRun(

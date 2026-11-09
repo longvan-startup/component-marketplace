@@ -8,6 +8,7 @@ import {
   dispatchRelease,
   GitHubReleaseError,
   getCiSnapshot,
+  getRecentPullRequests,
   workflowState,
 } from './lib/github-release.mjs'
 import { getReleaseSnapshot, releaseConfiguration, startRelease } from './lib/release.mjs'
@@ -64,12 +65,19 @@ function releaseSnapshotFetch({
   deploymentId = 'dpl_stage',
   aliasAssigned = false,
   releaseRuns = [],
+  rejectPullRequestPermission = false,
+  onTokenRequest = () => {},
   onDispatch = () => {},
 } = {}) {
   return async (url, options = {}) => {
     const parsed = new URL(url)
-    if (parsed.pathname === '/app/installations/67890/access_tokens')
+    if (parsed.pathname === '/app/installations/67890/access_tokens') {
+      const body = JSON.parse(options.body)
+      onTokenRequest(body)
+      if (rejectPullRequestPermission && body.permissions.pull_requests)
+        return response({ message: 'permission missing' }, 422)
       return response({ token: 'test-installation-token' })
+    }
     if (parsed.pathname.endsWith('/actions/workflows/ci.yml/runs'))
       return response({
         workflow_runs: [
@@ -84,6 +92,42 @@ function releaseSnapshotFetch({
           },
         ],
       })
+    if (parsed.pathname.endsWith('/pulls'))
+      return response([
+        {
+          number: 130,
+          title: 'Most recent open PR',
+          state: 'open',
+          updated_at: '2026-11-09T08:00:00Z',
+          merged_at: null,
+          html_url: 'https://github.com/longvan-startup/component-marketplace/pull/130',
+        },
+        {
+          number: 125,
+          title: 'Newer merge with smaller number',
+          state: 'closed',
+          updated_at: '2026-11-09T07:22:10Z',
+          merged_at: '2026-11-09T07:22:10Z',
+          html_url: 'https://github.com/longvan-startup/component-marketplace/pull/125',
+        },
+        {
+          number: 128,
+          title: 'Earlier merge with larger number',
+          state: 'closed',
+          updated_at: '2026-11-09T07:17:18Z',
+          merged_at: '2026-11-09T07:17:18Z',
+          html_url: 'https://github.com/longvan-startup/component-marketplace/pull/128',
+        },
+        {
+          number: 129,
+          title: 'Unsafe link is omitted',
+          state: 'closed',
+          updated_at: '2026-11-09T07:15:00Z',
+          merged_at: '2026-11-09T07:15:00Z',
+          html_url: 'https://attacker.example/longvan-startup/component-marketplace/pull/129',
+          body: 'This body is not included in the response.',
+        },
+      ])
     if (parsed.pathname === '/v9/projects/prj_test')
       return response({
         id: 'prj_test',
@@ -118,6 +162,17 @@ function releaseSnapshotFetch({
         meta: { githubCommitSha: candidateSha },
         url: 'staged.vercel.app',
         aliasAssigned,
+      })
+    if (parsed.pathname === '/v13/deployments/dpl_current')
+      return response({
+        uid: 'dpl_current',
+        projectId: 'prj_test',
+        readyState: 'ERROR',
+        target: 'production',
+        meta: { githubCommitSha: 'd'.repeat(40) },
+        url: 'marketplace.vercel.app',
+        aliasAssigned: true,
+        createdAt: 1762400000000,
       })
     if (parsed.pathname.endsWith('/actions/workflows/release.yml/runs'))
       return response({ workflow_runs: releaseRuns })
@@ -272,6 +327,100 @@ test('CI snapshot does not read beyond the prior 100-run history limit', async (
   assert.equal(result.latestVerified, null)
 })
 
+test('recent PR snapshot sorts by update time, labels merged state, and falls back to public reads', async () => {
+  const requests = []
+  const fetchImpl = async (url, options = {}) => {
+    const parsed = new URL(url)
+    requests.push({ parsed, authorization: options.headers?.authorization })
+    if (options.headers?.authorization) return new Response('permission missing', { status: 403 })
+    return response([
+      {
+        number: 128,
+        title: 'Earlier merge with larger number',
+        state: 'closed',
+        updated_at: '2026-11-09T07:17:18Z',
+        merged_at: '2026-11-09T07:17:18Z',
+        html_url: 'https://github.com/longvan-startup/component-marketplace/pull/128',
+      },
+      {
+        number: 125,
+        title: 'Newer merge with smaller number',
+        state: 'closed',
+        updated_at: '2026-11-09T07:22:10Z',
+        merged_at: '2026-11-09T07:22:10Z',
+        html_url: 'https://github.com/longvan-startup/component-marketplace/pull/125',
+        body: 'Private PR body should not be forwarded.',
+      },
+      {
+        number: 130,
+        title: 'Open <script> title',
+        state: 'open',
+        updated_at: '2026-11-09T08:00:00Z',
+        merged_at: null,
+        html_url: 'https://github.com/longvan-startup/component-marketplace/pull/130',
+      },
+      {
+        number: 129,
+        title: 'Unsafe link is omitted',
+        state: 'closed',
+        updated_at: '2026-11-09T07:15:00Z',
+        merged_at: '2026-11-09T07:15:00Z',
+        html_url: 'https://attacker.example/longvan-startup/component-marketplace/pull/129',
+      },
+    ])
+  }
+
+  const result = await getRecentPullRequests(env(), fetchImpl, 'installation-token')
+  assert.equal(requests.length, 2)
+  assert.equal(requests[0].authorization, 'Bearer installation-token')
+  assert.equal(requests[1].authorization, undefined)
+  assert.equal(requests[0].parsed.searchParams.get('state'), 'all')
+  assert.equal(requests[0].parsed.searchParams.get('sort'), 'updated')
+  assert.equal(requests[0].parsed.searchParams.get('per_page'), '5')
+  assert.deepEqual(
+    result.map(({ number }) => number),
+    [130, 125, 128, 129],
+  )
+  assert.equal(result[1].state, 'MERGED')
+  assert.equal(result[0].state, 'OPEN')
+  assert.equal(result[3].url, null)
+  assert.equal(Object.hasOwn(result[1], 'body'), false)
+  assert.equal(result[0].title, 'Open <script> title')
+
+  let tokenPermissions
+  await createInstallationToken(
+    env(),
+    async (_url, options) => {
+      tokenPermissions = JSON.parse(options.body).permissions
+      return response({ token: 'read-pr-installation-token' })
+    },
+    { includePullRequests: true },
+  )
+  assert.deepEqual(tokenPermissions, {
+    actions: 'write',
+    contents: 'read',
+    pull_requests: 'read',
+  })
+})
+
+test('missing PR permission falls back to the existing app scope and keeps release readiness intact', async () => {
+  const tokenRequests = []
+  const fetchImpl = releaseSnapshotFetch({
+    rejectPullRequestPermission: true,
+    onTokenRequest: (body) => tokenRequests.push(body.permissions),
+  })
+  const result = await getReleaseSnapshot(env(), fetchImpl)
+
+  assert.deepEqual(tokenRequests, [
+    { actions: 'write', contents: 'read', pull_requests: 'read' },
+    { actions: 'write', contents: 'read' },
+  ])
+  assert.equal(result.configuration.githubAppConfigured, true)
+  assert.equal(result.pullRequestsAvailable, true)
+  assert.equal(result.pullRequests[0].number, 130)
+  assert.equal(result.readyToRelease, true)
+})
+
 test('release snapshot is ready only for the exact CI SHA and a ready unpromoted Vercel deployment', async () => {
   const calls = []
   const fetchImpl = async (url, options = {}) => {
@@ -317,16 +466,18 @@ test('release snapshot is ready only for the exact CI SHA and a ready unpromoted
             aliasAssigned: false,
             created: 1762500000000,
           },
-          {
-            uid: 'dpl_current',
-            state: 'READY',
-            target: 'production',
-            meta: { githubCommitSha: 'd'.repeat(40) },
-            url: 'marketplace.vercel.app',
-            aliasAssigned: true,
-            created: 1762400000000,
-          },
         ],
+      })
+    if (parsed.pathname === '/v13/deployments/dpl_current')
+      return response({
+        uid: 'dpl_current',
+        projectId: 'prj_test',
+        readyState: 'ERROR',
+        target: 'production',
+        meta: { githubCommitSha: 'd'.repeat(40) },
+        url: 'marketplace.vercel.app',
+        aliasAssigned: true,
+        createdAt: 1762400000000,
       })
     if (parsed.pathname === '/v13/deployments/dpl_stage')
       return response({
@@ -348,6 +499,7 @@ test('release snapshot is ready only for the exact CI SHA and a ready unpromoted
   assert.equal(result.readyToRelease, true)
   assert.equal(result.ci.latestVerified.sha, sha)
   assert.equal(result.stagedDeployment.id, 'dpl_stage')
+  assert.equal(result.productionDeployment.id, 'dpl_current')
   assert.equal(result.productionDeployment.commitSha, 'd'.repeat(40))
   assert.equal(result.productionState.status, 'ERROR')
   assert.equal(result.configuration.productionUrls.web, 'https://marketplace.example')
@@ -403,6 +555,7 @@ test('release snapshot is ready only for the exact CI SHA and a ready unpromoted
 
 test('release readiness requires no active release run for the confirmed candidate', async () => {
   let dispatches = 0
+  const tokenRequests = []
   const activeRun = {
     id: 66,
     status: 'in_progress',
@@ -415,6 +568,7 @@ test('release readiness requires no active release run for the confirmed candida
     releaseSnapshotFetch({
       releaseRuns: [activeRun],
       onDispatch: () => dispatches++,
+      onTokenRequest: (body) => tokenRequests.push(body.permissions),
     }),
     { expectedSha: sha, expectedDeploymentId: 'dpl_stage' },
   )
@@ -422,6 +576,7 @@ test('release readiness requires no active release run for the confirmed candida
   assert.equal(result.reason, 'NOT_READY')
   assert.equal(result.snapshot.readyToRelease, false)
   assert.equal(dispatches, 0)
+  assert.deepEqual(tokenRequests, [{ actions: 'write', contents: 'read' }])
 })
 
 test('candidate drift in either SHA or staged deployment is rejected before dispatch', async () => {
