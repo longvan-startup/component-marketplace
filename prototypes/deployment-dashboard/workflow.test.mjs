@@ -1,8 +1,31 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8')
+
+const listApiFiles = async (directory = './api') => {
+  const entries = await readdir(new URL(directory, import.meta.url), { withFileTypes: true })
+  const nested = await Promise.all(
+    entries.map((entry) => {
+      const path = `${directory}/${entry.name}`
+      return entry.isDirectory() ? listApiFiles(path) : [path]
+    }),
+  )
+
+  return nested.flat()
+}
+
+test('dashboard stays within Vercel Hobby function limit and uses one auth catch-all', async () => {
+  const functionExtensions = new Set(['.cjs', '.js', '.mjs', '.ts', '.tsx'])
+  const apiFiles = (await listApiFiles()).filter((path) =>
+    functionExtensions.has(path.slice(path.lastIndexOf('.'))),
+  )
+  const authFiles = apiFiles.filter((path) => path.startsWith('./api/auth/')).sort()
+
+  assert.ok(apiFiles.length <= 12, `found ${apiFiles.length} Vercel functions; Hobby limit is 12`)
+  assert.deepEqual(authFiles, ['./api/auth/[...auth].mjs'])
+})
 
 test('main CI stays intact while CD preparation cannot migrate or promote production', async () => {
   const ci = await read('../../.github/workflows/ci.yml')
