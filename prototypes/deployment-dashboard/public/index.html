@@ -61,6 +61,16 @@
     .summary-side { border: 1px solid #dfe6df; background: #fff; border-radius: 12px; padding: 20px; }
     .summary-side p { color: #68796f; font-size: 12px; line-height: 1.6; margin: 10px 0 14px; }
     .release-error { margin: 15px 0 0; }
+    .pr-section { margin: 0 0 34px; }
+    .pr-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid #edf0eb; }
+    .pr-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 13px 0; border-bottom: 1px solid #edf0eb; }
+    .pr-title { color: #286447; font-size: 13px; font-weight: 650; line-height: 1.5; overflow-wrap: anywhere; text-underline-offset: 3px; }
+    .pr-title:hover { text-decoration-thickness: 2px; }
+    .pr-meta { margin-top: 4px; color: #718078; font-size: 11px; }
+    .pr-state { width: fit-content; border-radius: 5px; padding: 5px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .pr-state.open, .pr-state.merged { color: #245d40; background: #eaf5ec; }
+    .pr-state.closed { color: #66552f; background: #faf0d9; }
+    .pr-empty { padding: 15px 0; color: #68796f; font-size: 13px; }
     .service-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
     .deploy-card { border: 1px solid #dfe6df; background: #fff; border-radius: 12px; min-width: 0; padding: 20px; display: flex; flex-direction: column; min-height: 320px; }
     .card-head { display: flex; align-items: center; gap: 11px; }
@@ -106,7 +116,7 @@
     .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
     @media (max-width: 980px) { .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 800px) { .app { display: block; } .sidebar { padding: 16px 20px; gap: 16px; } .nav-label, .sidebar-footer { display: none; } .nav { display: flex; flex-wrap: wrap; } .nav button { padding: 8px 10px; } .topbar { min-height: 58px; padding: 10px 20px; } .content { padding: 30px 20px 48px; } .release-summary { grid-template-columns: 1fr; } }
-    @media (max-width: 560px) { .service-grid { grid-template-columns: 1fr; } .deploy-card { min-height: 0; } .section-head { align-items: flex-start; flex-direction: column; } .history li { grid-template-columns: 1fr; } .history-side { display: flex; justify-content: space-between; align-items: center; text-align: left; } .history-side time { margin: 0; } .dialog-actions { flex-direction: column-reverse; } .dialog-actions button { width: 100%; } }
+    @media (max-width: 560px) { .service-grid { grid-template-columns: 1fr; } .deploy-card { min-height: 0; } .section-head { align-items: flex-start; flex-direction: column; } .pr-item { grid-template-columns: 1fr; gap: 8px; align-items: start; } .history li { grid-template-columns: 1fr; } .history-side { display: flex; justify-content: space-between; align-items: center; text-align: left; } .history-side time { margin: 0; } .dialog-actions { flex-direction: column-reverse; } .dialog-actions button { width: 100%; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto; animation-duration: .01ms; transition-duration: .01ms; } }
   </style>
 </head>
@@ -149,6 +159,11 @@
               <button class="action secondary small" type="button" id="refresh-release">Làm mới trạng thái</button>
             </div>
           </div>
+          <section class="pr-section" aria-labelledby="recent-prs-heading">
+            <div class="section-head"><div><h2 id="recent-prs-heading">PR gần đây</h2><p class="sub">Năm PR được cập nhật gần nhất trên GitHub.</p></div></div>
+            <p class="error hidden" id="pull-request-error" role="alert"></p>
+            <ul class="pr-list" id="recent-pull-requests" aria-live="polite"></ul>
+          </section>
           <div class="section-head"><div><h2 id="services-heading">Các ứng dụng</h2><p class="sub">Web và API nằm trong cùng một Vercel project nên dùng chung một lần release.</p></div></div>
           <div class="service-grid" id="services" aria-live="polite"></div>
         </section>
@@ -226,6 +241,28 @@
       try {
         const url = new URL(value)
         if (url.protocol !== 'https:' || !url.hostname || url.username || url.password || url.hash) return null
+        return url.href
+      } catch {
+        return null
+      }
+    }
+    function safePullRequestUrl(value, number) {
+      if (typeof value !== 'string' || value.length > 2048) return null
+      try {
+        const url = new URL(value)
+        const parts = url.pathname.split('/').filter(Boolean)
+        if (
+          url.protocol !== 'https:' ||
+          url.hostname !== 'github.com' ||
+          url.username ||
+          url.password ||
+          url.search ||
+          url.hash ||
+          parts.length !== 4 ||
+          parts[2] !== 'pull' ||
+          parts[3] !== String(number)
+        )
+          return null
         return url.href
       } catch {
         return null
@@ -395,6 +432,59 @@
         side.append(result, time); row.append(main, side); list.append(row)
       }
     }
+    function renderPullRequests() {
+      const list = el('recent-pull-requests')
+      const error = el('pull-request-error')
+      list.replaceChildren()
+      if (!snapshot?.pullRequestsAvailable) {
+        error.textContent = 'Không lấy được danh sách PR. Hãy làm mới trạng thái để thử lại.'
+        error.classList.remove('hidden')
+        return
+      }
+      error.classList.add('hidden')
+      const pullRequests = Array.isArray(snapshot.pullRequests) ? snapshot.pullRequests : []
+      if (pullRequests.length === 0) {
+        const empty = document.createElement('li')
+        empty.className = 'pr-empty'
+        empty.textContent = 'Chưa có PR gần đây.'
+        list.append(empty)
+        return
+      }
+      for (const pullRequest of pullRequests) {
+        const row = document.createElement('li')
+        row.className = 'pr-item'
+        const details = document.createElement('div')
+        const url = safePullRequestUrl(pullRequest.url, pullRequest.number)
+        const title = document.createElement(url ? 'a' : 'span')
+        title.className = 'pr-title'
+        title.textContent = pullRequest.title
+        if (url) {
+          title.href = url
+          title.target = '_blank'
+          title.rel = 'noopener noreferrer'
+        }
+        const meta = document.createElement('p')
+        meta.className = 'pr-meta'
+        const activityAt = pullRequest.updatedAt || pullRequest.mergedAt
+        meta.textContent = [
+          `#${pullRequest.number}`,
+          activityAt && `Cập nhật ${formatTime(activityAt)}`,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+        const state = document.createElement('span')
+        state.className = `pr-state ${String(pullRequest.state || '').toLowerCase()}`
+        state.textContent =
+          pullRequest.state === 'MERGED'
+            ? 'Đã merge'
+            : pullRequest.state === 'CLOSED'
+              ? 'Đã đóng'
+              : 'Đang mở'
+        details.append(title, meta)
+        row.append(details, state)
+        list.append(row)
+      }
+    }
     function renderSnapshot() {
       if (!snapshot) return
       const sha = snapshot.ci?.latestVerified?.sha
@@ -425,6 +515,7 @@
       el('release-help').textContent = help
       el('release-error').classList.toggle('hidden', !snapshot.vercelError || snapshot.vercelError === 'NOT_CONFIGURED')
       if (snapshot.vercelError && snapshot.vercelError !== 'NOT_CONFIGURED') el('release-error').textContent = 'Không đọc được trạng thái Vercel. Hãy làm mới hoặc kiểm tra quyền API.'
+      renderPullRequests()
       renderServices()
     }
     function render() {

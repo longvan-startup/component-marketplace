@@ -3,6 +3,7 @@ import {
   createInstallationToken,
   dispatchRelease,
   getCiSnapshot,
+  getRecentPullRequests,
   getReleaseRun,
 } from './github-release.mjs'
 import {
@@ -114,20 +115,43 @@ export function releaseConfiguration(env = process.env) {
   }
 }
 
-export async function getReleaseSnapshot(env = process.env, fetchImpl = fetch) {
+export async function getReleaseSnapshot(
+  env = process.env,
+  fetchImpl = fetch,
+  { includePullRequests = true } = {},
+) {
   const configuration = releaseConfiguration(env)
   let githubToken
+  let pullRequestToken
   let githubAppReady = false
   if (configuration.githubAppConfigured) {
     try {
-      githubToken = await createInstallationToken(env, fetchImpl)
+      githubToken = await createInstallationToken(env, fetchImpl, { includePullRequests })
+      if (includePullRequests) pullRequestToken = githubToken
       githubAppReady = true
     } catch {
-      githubAppReady = false
+      if (includePullRequests) {
+        try {
+          githubToken = await createInstallationToken(env, fetchImpl)
+          githubAppReady = true
+        } catch {
+          githubAppReady = false
+        }
+      } else {
+        githubAppReady = false
+      }
     }
   }
 
-  const ci = await getCiSnapshot(env, fetchImpl, githubToken)
+  const pullRequestResult = includePullRequests
+    ? getRecentPullRequests(env, fetchImpl, pullRequestToken)
+        .then((items) => ({ items, available: true }))
+        .catch(() => ({ items: [], available: false }))
+    : Promise.resolve({ items: [], available: true })
+  const [ci, pullRequests] = await Promise.all([
+    getCiSnapshot(env, fetchImpl, githubToken),
+    pullRequestResult,
+  ])
   let vercelDeployments = []
   let productionState = null
   let vercelError = null
@@ -147,7 +171,7 @@ export async function getReleaseSnapshot(env = process.env, fetchImpl = fetch) {
   }
 
   const latestVerifiedSha = ci.latestVerified?.sha || null
-  const productionDeployment =
+  let productionDeployment =
     vercelDeployments.find(
       (deployment) =>
         deployment.target === 'production' &&
@@ -159,6 +183,26 @@ export async function getReleaseSnapshot(env = process.env, fetchImpl = fetch) {
         (deployment) => deployment.target === 'production' && deployment.aliasAssigned === true,
       ),
     )[0]
+  if (
+    productionState?.deploymentId &&
+    (productionDeployment?.id !== productionState.deploymentId || !productionDeployment.commitSha)
+  ) {
+    try {
+      const activeDeployment = await getDeploymentDetails(
+        productionState.deploymentId,
+        configuration.projectId,
+        env,
+        fetchImpl,
+      )
+      if (
+        activeDeployment.id === productionState.deploymentId &&
+        activeDeployment.target === 'production'
+      )
+        productionDeployment = activeDeployment
+    } catch {
+      // Keep the project target status when Vercel omits deployment metadata.
+    }
+  }
   let stagedDeployment = null
   if (latestVerifiedSha) {
     const stagedCandidate = sortedNewest(
@@ -239,6 +283,8 @@ export async function getReleaseSnapshot(env = process.env, fetchImpl = fetch) {
       missing: configuration.missing,
     },
     ci,
+    pullRequests: pullRequests.items,
+    pullRequestsAvailable: pullRequests.available,
     workflowUrl,
     vercelError,
     stagedDeployment,
@@ -251,7 +297,7 @@ export async function getReleaseSnapshot(env = process.env, fetchImpl = fetch) {
 }
 
 export async function startRelease(env = process.env, fetchImpl = fetch, expectedCandidate = {}) {
-  const snapshot = await getReleaseSnapshot(env, fetchImpl)
+  const snapshot = await getReleaseSnapshot(env, fetchImpl, { includePullRequests: false })
   const deployment = snapshot.stagedDeployment
   const sha = snapshot.ci.latestVerified?.sha?.toLowerCase() || null
   const expectedSha =

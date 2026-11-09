@@ -62,6 +62,8 @@ const readySnapshot = {
       url: 'https://github.com/longvan-startup/component-marketplace/actions/runs/1',
     },
   },
+  pullRequests: [],
+  pullRequestsAvailable: true,
   workflowUrl:
     'https://github.com/longvan-startup/component-marketplace/actions/workflows/release.yml',
   stagedDeployment: { id: 'dpl_stage_1', status: 'READY', commitSha: 'a'.repeat(40) },
@@ -88,6 +90,8 @@ async function mount(fetchHandler, stored = {}) {
     'history',
     'empty-history',
     'services',
+    'recent-pull-requests',
+    'pull-request-error',
     'verified-sha',
     'readiness-status',
     'ci-link',
@@ -114,6 +118,7 @@ async function mount(fetchHandler, stored = {}) {
     'activity-panel',
     'release-section',
     'release-error',
+    'pull-request-error',
     'ci-link',
     'release-workflow-link',
     'confirm-error',
@@ -179,6 +184,60 @@ test('guest remains on sign-in and does not request release data', async () => {
   assert.deepEqual(paths, ['/api/auth/session'])
   assert.equal(nodes.get('login-panel').classList.contains('hidden'), false)
   assert.equal(nodes.get('release-section').classList.contains('hidden'), true)
+})
+
+test('recent PRs show their GitHub state and activity separately from CI and production', async () => {
+  const snapshot = {
+    ...structuredClone(readySnapshot),
+    pullRequests: [
+      {
+        number: 130,
+        title: 'Open <script> title',
+        state: 'OPEN',
+        mergedAt: null,
+        updatedAt: '2026-11-09T08:00:00.000Z',
+        url: 'https://github.com/longvan-startup/component-marketplace/pull/130',
+      },
+      {
+        number: 125,
+        title: 'A recent merged change',
+        state: 'MERGED',
+        mergedAt: '2026-11-09T07:22:10.000Z',
+        updatedAt: '2026-11-09T07:22:10.000Z',
+        url: 'https://github.com/longvan-startup/component-marketplace/pull/125',
+      },
+      {
+        number: 131,
+        title: 'Untrusted URL stays unlinked',
+        state: 'CLOSED',
+        mergedAt: '2026-11-09T07:00:00.000Z',
+        updatedAt: '2026-11-09T07:00:00.000Z',
+        url: 'https://attacker.example/longvan-startup/component-marketplace/pull/131',
+      },
+    ],
+    productionState: { status: 'ERROR' },
+    productionDeployment: { commitSha: 'f'.repeat(40), createdAt: '2026-11-08T10:00:00Z' },
+  }
+  const { nodes } = await mount(async (path) => {
+    if (path === '/api/auth/session') return response({ user: { name: 'User' } })
+    if (path === '/api/release') return response(snapshot)
+    throw new Error(`Unexpected request: ${path}`)
+  })
+
+  const rows = nodes.get('recent-pull-requests').children
+  assert.equal(rows.length, 3)
+  assert.equal(rows[0].children[0].children[0].tagName, 'a')
+  assert.equal(rows[0].children[0].children[0].href, snapshot.pullRequests[0].url)
+  assert.equal(rows[0].children[0].children[0].textContent, 'Open <script> title')
+  assert.equal(rows[0].children[1].textContent, 'Đang mở')
+  assert.match(rows[1].children[0].children[1].textContent, /#125 · Cập nhật/)
+  assert.equal(rows[1].children[1].textContent, 'Đã merge')
+  assert.equal(rows[2].children[0].children[0].tagName, 'span')
+  assert.match(
+    nodes.get('services').children[0].children[2].children[1].textContent,
+    /commit f{12}/i,
+  )
+  assert.equal(nodes.get('readiness-status').textContent, 'Sẵn sàng release')
 })
 
 test('Open Local uses loopback URL, Admin remains planned, and deploy confirmation sends only a protected request', async () => {
