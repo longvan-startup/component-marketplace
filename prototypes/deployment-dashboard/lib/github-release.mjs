@@ -3,6 +3,8 @@ import { createPrivateKey, createSign } from 'node:crypto'
 const API_ORIGIN = 'https://api.github.com'
 const API_VERSION = '2026-03-10'
 const DEFAULT_REPOSITORY = 'longvan-startup/component-marketplace'
+const CI_RUN_PAGE_SIZE = 20
+const CI_RUN_MAX_PAGES = 5
 
 export class GitHubReleaseError extends Error {
   constructor(code, status = 502) {
@@ -152,13 +154,18 @@ function safeRun(run) {
 
 export async function getCiSnapshot(env = process.env, fetchImpl = fetch, token) {
   const repo = repositoryName(env)
-  const result = await request(
-    `/repos/${repo}/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=100`,
-    { fetchImpl, token, responseErrorPrefix: 'GITHUB_CI' },
-  )
-  if (!result || !Array.isArray(result.workflow_runs))
-    throw new GitHubReleaseError('GITHUB_CI_RESPONSE_INVALID')
-  const runs = result.workflow_runs
+  const workflowRuns = []
+  for (let page = 1; page <= CI_RUN_MAX_PAGES; page++) {
+    const result = await request(
+      `/repos/${repo}/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=${CI_RUN_PAGE_SIZE}&page=${page}`,
+      { fetchImpl, token, responseErrorPrefix: 'GITHUB_CI' },
+    )
+    if (!result || !Array.isArray(result.workflow_runs))
+      throw new GitHubReleaseError('GITHUB_CI_RESPONSE_INVALID')
+    workflowRuns.push(...result.workflow_runs)
+    if (result.workflow_runs.length < CI_RUN_PAGE_SIZE) break
+  }
+  const runs = workflowRuns
     .filter((run) => run?.head_branch === 'main' && run?.event === 'push')
     .sort((a, b) => Date.parse(b.created_at || '') - Date.parse(a.created_at || ''))
   const latest = runs[0] || null

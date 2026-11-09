@@ -211,6 +211,67 @@ test('GitHub App and CI response failures are classified without exposing respon
   )
 })
 
+test('CI snapshot paginates small responses and still finds a verified run within the prior 100-run limit', async () => {
+  const firstPageRuns = Array.from({ length: 20 }, (_, index) => ({
+    head_branch: 'main',
+    event: 'push',
+    head_sha: String(index + 1).padStart(40, 'b'),
+    status: 'completed',
+    conclusion: 'failure',
+    created_at: new Date(Date.UTC(2026, 10, 9, 12, -index)).toISOString(),
+  }))
+  const pages = []
+  const fetchImpl = async (url) => {
+    const parsed = new URL(url)
+    const page = Number(parsed.searchParams.get('page'))
+    pages.push({ page, perPage: Number(parsed.searchParams.get('per_page')) })
+    if (page === 1) return response({ workflow_runs: firstPageRuns })
+    return response({
+      workflow_runs: [
+        {
+          head_branch: 'main',
+          event: 'push',
+          head_sha: sha,
+          status: 'completed',
+          conclusion: 'success',
+          created_at: '2026-11-08T12:00:00Z',
+          updated_at: '2026-11-08T12:01:00Z',
+        },
+      ],
+    })
+  }
+
+  const result = await getCiSnapshot(env(), fetchImpl)
+  assert.deepEqual(pages, [
+    { page: 1, perPage: 20 },
+    { page: 2, perPage: 20 },
+  ])
+  assert.equal(result.latestMain.sha, firstPageRuns[0].head_sha)
+  assert.equal(result.latestVerified.sha, sha)
+})
+
+test('CI snapshot does not read beyond the prior 100-run history limit', async () => {
+  const pages = []
+  const fetchImpl = async (url) => {
+    const page = Number(new URL(url).searchParams.get('page'))
+    pages.push(page)
+    return response({
+      workflow_runs: Array.from({ length: 20 }, (_, index) => ({
+        head_branch: 'main',
+        event: 'push',
+        head_sha: String(page * 20 + index).padStart(40, 'c'),
+        status: 'completed',
+        conclusion: 'failure',
+        created_at: new Date(Date.UTC(2026, 10, 9, 12 - page, -index)).toISOString(),
+      })),
+    })
+  }
+
+  const result = await getCiSnapshot(env(), fetchImpl)
+  assert.deepEqual(pages, [1, 2, 3, 4, 5])
+  assert.equal(result.latestVerified, null)
+})
+
 test('release snapshot is ready only for the exact CI SHA and a ready unpromoted Vercel deployment', async () => {
   const calls = []
   const fetchImpl = async (url, options = {}) => {
