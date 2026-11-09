@@ -5,6 +5,7 @@ import { encode } from '@auth/core/jwt'
 import {
   appConfiguration,
   dispatchRelease,
+  GitHubReleaseError,
   getCiSnapshot,
   workflowState,
 } from './lib/github-release.mjs'
@@ -640,4 +641,30 @@ test('release POST requires an allowlisted session, same-origin request, CSRF co
   unblockStart({ started: true, release: { status: 'QUEUED', id: 10 } })
   await firstRequest
   assert.equal(first.statusCode, 202)
+})
+
+test('release status returns only allowlisted upstream reason codes to an authorized session', async () => {
+  Object.assign(process.env, env())
+  const headers = { cookie: await cookieFor() }
+  const failed = mockRes()
+  await handleRelease({ method: 'GET', url: '/api/release', headers }, failed, {
+    getReleaseSnapshot: async () => {
+      throw new GitHubReleaseError('GITHUB_PERMISSION_DENIED', 503)
+    },
+  })
+  assert.equal(failed.statusCode, 502)
+  assert.deepEqual(failed.body, {
+    error: 'RELEASE_STATUS_UNAVAILABLE',
+    reason: 'GITHUB_PERMISSION_DENIED',
+  })
+
+  const unknown = mockRes()
+  await handleRelease({ method: 'GET', url: '/api/release', headers }, unknown, {
+    getReleaseSnapshot: async () => {
+      throw Object.assign(new Error('sensitive upstream detail'), {
+        code: 'sensitive upstream detail',
+      })
+    },
+  })
+  assert.deepEqual(unknown.body, { error: 'RELEASE_STATUS_UNAVAILABLE' })
 })

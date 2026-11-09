@@ -1,8 +1,17 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { authSettings, hasAccess } from './auth.mjs'
+import { GitHubReleaseError } from './github-release.mjs'
 import { getReleaseSnapshot, startRelease } from './release.mjs'
 
 const CSRF_COOKIE = 'control-room-release-csrf'
+const RELEASE_STATUS_ERROR_CODES = new Set([
+  'CONFIG_NOT_VALID',
+  'GITHUB_APP_NOT_CONFIGURED',
+  'GITHUB_NOT_FOUND',
+  'GITHUB_PERMISSION_DENIED',
+  'GITHUB_RESPONSE',
+  'GITHUB_UNAVAILABLE',
+])
 
 function respond(res, status, body, headers = {}) {
   res.statusCode = status
@@ -81,8 +90,15 @@ export async function handleRelease(req, res, dependencies = {}) {
   if (path === '/api/release' && req.method === 'GET') {
     try {
       return respond(res, 200, await getSnapshot())
-    } catch {
-      return respond(res, 502, { error: 'RELEASE_STATUS_UNAVAILABLE' })
+    } catch (error) {
+      const reason =
+        error instanceof GitHubReleaseError && RELEASE_STATUS_ERROR_CODES.has(error.code)
+          ? error.code
+          : undefined
+      return respond(res, 502, {
+        error: 'RELEASE_STATUS_UNAVAILABLE',
+        ...(reason ? { reason } : {}),
+      })
     }
   }
 
