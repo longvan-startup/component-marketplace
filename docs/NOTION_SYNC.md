@@ -36,6 +36,7 @@ property sau (tên và kiểu phải khớp chính xác — script build request
 | `URL` | URL |
 | `Labels` | Multi-select (để trống option, script tự tạo theo tên label GitHub) |
 | `Author` | Text |
+| `Assignee` | Text — danh sách GitHub login được assign, cách nhau bởi `, `; `—` nếu chưa ai |
 | `Updated At` | Date |
 
 Mở database → `...` (góc trên phải) → **Connections** → add integration vừa
@@ -75,9 +76,15 @@ chú (`::notice::`), không fail, không có hành vi "demo mode" nào thay th�
   khi sync xong — database chỉ hiện đúng cái đang mở, không cần tự xoá tay.
   Mở lại issue/PR đó sau này sẽ tạo row mới (không khôi phục row cũ đã archive
   — API Notion không query ra page đã archive).
-- Chỉ 3 trường hợp có thêm comment @mention: `review_requested` (ping
-  reviewer), `assigned` (ping assignee), PR đóng với `merged=true` (ping tác
-  giả PR). Mọi action khác chỉ sync, không ping.
+- Cột `Assignee` luôn phản ánh danh sách assignee **hiện tại** của issue/PR đó
+  (từ payload GitHub `assignees`), không chỉ người vừa được assign ở event này.
+- Có 4 trường hợp thêm comment @mention — nội dung mô tả rõ việc cần làm thay
+  vì chỉ ping suông, để không mơ hồ như title email GitHub:
+  - `assigned` (issue hoặc PR): `"Bạn được phân công: Issue/PR #N "<title>" — cần xem/xử lý"`
+  - `review_requested` (PR): `"Bạn được yêu cầu review: PR #N "<title>""`
+  - PR đóng với `merged=true`: `"PR #N "<title>" đã merge"` (ping tác giả PR)
+
+  Mọi action khác chỉ sync, không ping.
 - GitHub login không có trong `NOTION_GITHUB_USER_MAP` ⇒ vẫn sync row bình
   thường, chỉ bỏ qua bước comment (ghi `::notice::`, không fail workflow).
 - PR comment/review nội dung **không** được sync — đúng giới hạn của Notion

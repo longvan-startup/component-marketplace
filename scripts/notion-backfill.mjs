@@ -44,6 +44,10 @@ function labelNames(labels) {
     .filter(Boolean)
 }
 
+function loginNames(users) {
+  return (users ?? []).map((user) => user?.login).filter(Boolean)
+}
+
 export function toIssueRecord(repo, issue) {
   return {
     kind: 'issue',
@@ -54,6 +58,7 @@ export function toIssueRecord(repo, issue) {
     state: issue.state,
     labels: labelNames(issue.labels),
     author: issue.user?.login ?? null,
+    assignees: loginNames(issue.assignees),
     updatedAt: issue.updated_at ?? null,
   }
 }
@@ -69,6 +74,7 @@ export function toPullRequestRecord(repo, pr) {
     state,
     labels: labelNames(pr.labels),
     author: pr.user?.login ?? null,
+    assignees: loginNames(pr.assignees),
     updatedAt: pr.updated_at ?? null,
   }
 }

@@ -43,6 +43,7 @@ describe('toIssueRecord / toPullRequestRecord', () => {
       state: 'open',
       labels: [{ name: 'decision' }],
       user: { login: 'DaoDungVan' },
+      assignees: [{ login: 'NguyenTuMinhLong' }],
       updated_at: '2026-11-08T00:00:00Z',
     })
     expect(record).toEqual({
@@ -54,6 +55,7 @@ describe('toIssueRecord / toPullRequestRecord', () => {
       state: 'open',
       labels: ['decision'],
       author: 'DaoDungVan',
+      assignees: ['NguyenTuMinhLong'],
       updatedAt: '2026-11-08T00:00:00Z',
     })
   })
