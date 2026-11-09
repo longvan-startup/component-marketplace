@@ -4,6 +4,7 @@
  */
 import { describe, expect, test } from 'bun:test'
 import {
+  archivePage,
   buildNotionProperties,
   buildQueryFilter,
   parseGithubEvent,
@@ -221,6 +222,15 @@ describe('upsertPage', () => {
   })
 })
 
+describe('archivePage', () => {
+  test('PATCHes the page with archived=true', async () => {
+    const { impl, calls } = fakeFetch()
+    await archivePage('token', impl, 'page-1')
+    const call = calls.find((c) => c.method === 'PATCH' && c.url.endsWith('/pages/page-1'))
+    expect(call?.body).toEqual({ archived: true })
+  })
+})
+
 describe('postNotifyComment', () => {
   test('sends a mention block followed by the message text', async () => {
     const { impl, calls } = fakeFetch()
@@ -272,7 +282,7 @@ describe('run', () => {
       requested_reviewer: { login: 'NguyenTuMinhLong' },
     })
     const result = await run(env, impl, async () => payload)
-    expect(result).toEqual({ skipped: false, pageId: 'page-new' })
+    expect(result).toEqual({ skipped: false, pageId: 'page-new', archived: false })
     expect(calls.some((c) => c.url.endsWith('/comments'))).toBe(true)
   })
 
@@ -284,5 +294,32 @@ describe('run', () => {
     const result = await run(baseEnv, impl, async () => payload)
     expect(result.skipped).toBe(false)
     expect(calls.some((c) => c.url.endsWith('/comments'))).toBe(false)
+  })
+
+  test('archives the page when a PR is merged', async () => {
+    const { impl, calls } = fakeFetch({ results: [] })
+    const payload = pullRequestPayload('closed', {
+      pull_request: { merged: true, state: 'closed' },
+    })
+    const result = await run(baseEnv, impl, async () => payload)
+    expect(result).toEqual({ skipped: false, pageId: 'page-new', archived: true })
+    const archiveCall = calls.find((c) => c.method === 'PATCH' && c.url.endsWith('/pages/page-new'))
+    expect(archiveCall?.body).toEqual({ archived: true })
+  })
+
+  test('archives the page when an issue is closed', async () => {
+    const { impl, calls } = fakeFetch({ results: [] })
+    const payload = issuesPayload('closed', { issue: { state: 'closed' } })
+    const result = await run({ ...baseEnv, GITHUB_EVENT_NAME: 'issues' }, impl, async () => payload)
+    expect(result).toEqual({ skipped: false, pageId: 'page-new', archived: true })
+    expect(calls.some((c) => c.method === 'PATCH' && c.url.endsWith('/pages/page-new'))).toBe(true)
+  })
+
+  test('does not archive an open issue/PR', async () => {
+    const { impl, calls } = fakeFetch({ results: [] })
+    const payload = pullRequestPayload('opened')
+    const result = await run(baseEnv, impl, async () => payload)
+    expect(result.archived).toBe(false)
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false)
   })
 })

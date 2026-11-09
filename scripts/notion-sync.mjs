@@ -15,6 +15,12 @@
  * Missing NOTION_API_TOKEN/NOTION_DATABASE_ID ⇒ skip with a notice, same
  * fail-safe-off pattern as prototypes/deployment-dashboard — never guess or
  * fall back to a demo mode.
+ *
+ * A closed or merged issue/PR is archived (Notion's trash) right after
+ * syncing, not just marked State=closed — the database should only ever
+ * show what's still open. Reopening later creates a fresh row rather than
+ * restoring the archived one (Notion's query API doesn't return archived
+ * pages), which is fine: an archived page is meant to stay gone.
  */
 
 import { realpathSync } from 'node:fs'
@@ -191,6 +197,12 @@ export async function upsertPage(token, databaseId, fetchImpl, record) {
   return created.id
 }
 
+/** Closed/merged items are removed from the active view — "archived" is
+ * Notion's trash, same as deleting a row from the database UI by hand. */
+export async function archivePage(token, fetchImpl, pageId) {
+  await notionRequest(token, fetchImpl, 'PATCH', `/pages/${pageId}`, { archived: true })
+}
+
 /** @mention IS the notification — Notion pushes it to that workspace member. */
 export async function postNotifyComment(token, fetchImpl, pageId, notionUserId, message) {
   await notionRequest(token, fetchImpl, 'POST', '/comments', {
@@ -249,7 +261,13 @@ export async function run(
     }
   }
 
-  return { skipped: false, pageId }
+  const archived = record.state === 'closed' || record.state === 'merged'
+  if (archived) {
+    await archivePage(config.token, fetchImpl, pageId)
+    console.log(`Archived ${record.kind} #${record.number} (state=${record.state})`)
+  }
+
+  return { skipped: false, pageId, archived }
 }
 
 // Run the CLI only when executed directly (bun scripts/notion-sync.mjs); do

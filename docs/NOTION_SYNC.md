@@ -71,6 +71,10 @@ chú (`::notice::`), không fail, không có hành vi "demo mode" nào thay th�
 - Mọi action của `issues`/`pull_request` trong `on:` của workflow đều đồng bộ
   1 row (tạo nếu chưa có row khớp `Repo`+`Number`+`Type`, update nếu đã có —
   không bao giờ tạo trùng).
+- Issue/PR **đóng hoặc merge** ⇒ row bị archive (vào thùng rác Notion) ngay sau
+  khi sync xong — database chỉ hiện đúng cái đang mở, không cần tự xoá tay.
+  Mở lại issue/PR đó sau này sẽ tạo row mới (không khôi phục row cũ đã archive
+  — API Notion không query ra page đã archive).
 - Chỉ 3 trường hợp có thêm comment @mention: `review_requested` (ping
   reviewer), `assigned` (ping assignee), PR đóng với `merged=true` (ping tác
   giả PR). Mọi action khác chỉ sync, không ping.
@@ -84,3 +88,24 @@ chú (`::notice::`), không fail, không có hành vi "demo mode" nào thay th�
 `bun test scripts/notion-sync.test.ts` — toàn bộ test dùng `fetchImpl` giả,
 không gọi Notion thật. Chạy thử với API thật: tạo 1 PR/issue nháp sau khi đã
 cấu hình đủ 3 giá trị ở bước 4, xem Actions tab job "Notion sync".
+
+## Backfill issue/PR có sẵn (chạy 1 lần)
+
+Workflow chỉ bắt event `issues`/`pull_request` mới từ lúc merge trở đi — issue/PR
+có từ trước đó không tự thêm vào Notion. `scripts/notion-backfill.mjs` quét các
+issue/PR **đang mở** (không lấy lịch sử đã đóng/merged) qua GitHub REST API rồi
+upsert vào Notion qua đúng code dùng chung với `notion-sync.mjs` — không gửi
+comment @mention (ping hàng loạt cho hoạt động cũ là spam, không phải thông báo).
+
+Chạy thủ công, 1 lần, không phải GitHub Action:
+
+```bash
+GITHUB_TOKEN=<gh-token-có-quyền-đọc-repo> \
+GITHUB_REPOSITORY=longvan-startup/component-marketplace \
+NOTION_API_TOKEN=<token-ở-bước-1> \
+NOTION_DATABASE_ID=<id-ở-bước-2> \
+bun scripts/notion-backfill.mjs
+```
+
+Thiếu 1 trong 4 biến ⇒ skip có ghi chú, không chạy nửa chừng. Test:
+`bun test scripts/notion-backfill.test.ts`.
