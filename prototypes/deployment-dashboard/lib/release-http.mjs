@@ -119,12 +119,26 @@ export async function handleRelease(req, res, dependencies = {}) {
     })
   }
   if (body?.confirmed !== true) return respond(res, 400, { error: 'CONFIRMATION_REQUIRED' })
+  if (
+    !/^[a-f0-9]{40}$/i.test(body.expectedSha || '') ||
+    !/^dpl_[\w-]+$/.test(body.expectedDeploymentId || '') ||
+    (body.expectedReleaseRunId != null && !/^\d{1,20}$/.test(String(body.expectedReleaseRunId)))
+  )
+    return respond(res, 400, { error: 'INVALID_RELEASE_CONFIRMATION' })
   if (dispatchInFlight) return respond(res, 409, { error: 'RELEASE_ALREADY_REQUESTED' })
 
   dispatchInFlight = true
   try {
-    const result = await start()
-    if (!result.started) return respond(res, 409, { error: 'RELEASE_NOT_READY' })
+    const result = await start({
+      expectedSha: body.expectedSha,
+      expectedDeploymentId: body.expectedDeploymentId,
+      expectedReleaseRunId: body.expectedReleaseRunId ?? null,
+    })
+    if (!result.started) {
+      const error =
+        result.reason === 'CANDIDATE_CHANGED' ? 'RELEASE_CANDIDATE_CHANGED' : 'RELEASE_NOT_READY'
+      return respond(res, 409, { error })
+    }
     return respond(res, 202, { release: result.release })
   } catch {
     return respond(res, 502, { error: 'RELEASE_REQUEST_FAILED' })

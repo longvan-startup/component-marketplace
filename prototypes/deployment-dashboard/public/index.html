@@ -166,7 +166,7 @@
       <p class="eyebrow">Xác nhận production</p>
       <h2 id="confirm-title">Triển khai bản đã kiểm tra?</h2>
       <p class="sub">Workflow sẽ kiểm tra lại CI và deployment staging, chờ phê duyệt production, chạy migration Neon rồi promote đúng deployment đã chuẩn bị.</p>
-      <div class="confirm-details"><strong>Target:</strong> Vercel project · Web + API<br><strong>Environment:</strong> Production<br><strong>Commit:</strong> <code id="confirm-sha"></code></div>
+      <div class="confirm-details"><strong>Target:</strong> Vercel project · Web + API<br><strong>Environment:</strong> Production<br><strong>Commit:</strong> <code id="confirm-sha"></code><br><strong>Staged deployment:</strong> <code id="confirm-deployment-id"></code><br><strong>Failed run to retry:</strong> <code id="confirm-failed-run-id"></code></div>
       <p class="error hidden" id="confirm-error" role="alert"></p>
       <div class="dialog-actions"><button class="action secondary" type="button" id="cancel-release">Quay lại</button><button class="action" type="button" id="confirm-release">Xác nhận deploy</button></div>
     </div>
@@ -189,6 +189,7 @@
     let localUrls = readLocalUrls()
     let legacyHistory = []
     let pendingRelease = null
+    let confirmationCandidate = null
     let statusRefreshTimer = null
 
     function isLoopbackUrl(value) {
@@ -433,14 +434,27 @@
       renderSnapshot()
     }
     function showConfirmation() {
-      if (!snapshot?.readyToRelease || !snapshot.ci?.latestVerified?.sha) return
-      el('confirm-sha').textContent = snapshot.ci.latestVerified.sha
+      if (!snapshot?.readyToRelease || !snapshot.ci?.latestVerified?.sha || !snapshot.stagedDeployment?.id) return
+      confirmationCandidate = {
+        expectedSha: snapshot.ci.latestVerified.sha,
+        expectedDeploymentId: snapshot.stagedDeployment.id,
+        expectedReleaseRunId:
+          snapshot.releaseRun?.status === 'FAILED' ? snapshot.releaseRun.id : null,
+      }
+      el('confirm-sha').textContent = confirmationCandidate.expectedSha
+      el('confirm-deployment-id').textContent = confirmationCandidate.expectedDeploymentId
+      el('confirm-failed-run-id').textContent =
+        confirmationCandidate.expectedReleaseRunId == null
+          ? 'Không có'
+          : String(confirmationCandidate.expectedReleaseRunId)
       el('confirm-error').textContent = ''
       el('confirm-error').classList.add('hidden')
       el('confirm-dialog').showModal()
     }
     async function submitRelease() {
       const button = el('confirm-release')
+      const candidate = confirmationCandidate
+      if (!candidate?.expectedSha || !candidate.expectedDeploymentId) return
       button.disabled = true
       el('confirm-error').classList.add('hidden')
       try {
@@ -452,16 +466,26 @@
           credentials: 'same-origin',
           cache: 'no-store',
           headers: { 'content-type': 'application/json', 'x-csrf-token': csrf.csrfToken },
-          body: JSON.stringify({ confirmed: true }),
+          body: JSON.stringify({
+            confirmed: true,
+            ...candidate,
+          }),
         })
         if (!response.ok) {
           const result = await response.json().catch(() => ({}))
-          throw new Error(result.error === 'RELEASE_NOT_READY' ? 'Điều kiện release đã thay đổi. Hãy làm mới trạng thái.' : 'GitHub Actions không nhận yêu cầu release.')
+          throw new Error(
+            result.error === 'RELEASE_CANDIDATE_CHANGED' || result.error === 'RELEASE_NOT_READY'
+              ? 'Commit hoặc deployment staging đã thay đổi. Hãy làm mới trạng thái rồi xác nhận lại.'
+              : result.error === 'RELEASE_ALREADY_REQUESTED'
+                ? 'Đã có một yêu cầu release đang được xử lý.'
+                : 'GitHub Actions không nhận yêu cầu release.',
+          )
         }
         const accepted = await response.json()
         el('confirm-dialog').close()
+        confirmationCandidate = null
         el('connection-status').textContent = 'Đang lấy trạng thái release'
-        pendingRelease = accepted.release ? { ...accepted.release, expiresAt: Date.now() + 60_000 } : null
+        pendingRelease = accepted.release ? { ...accepted.release, expiresAt: Date.now() + 300_000 } : null
         try {
           await loadSnapshot()
         } catch (error) {
@@ -480,9 +504,14 @@
       if (!response.ok) throw new Error('Không lấy được trạng thái GitHub Actions và Vercel.')
       const nextSnapshot = await response.json()
       if (pendingRelease) {
+        const hasRunId = Number.isSafeInteger(pendingRelease.id)
         const matchingRun = nextSnapshot.releaseRun && (
-          (pendingRelease.id && nextSnapshot.releaseRun.id === pendingRelease.id) ||
-          nextSnapshot.releaseRun.title === pendingRelease.title
+          hasRunId
+            ? nextSnapshot.releaseRun.id === pendingRelease.id
+            : nextSnapshot.releaseRun.title === pendingRelease.title &&
+              Number.isFinite(Date.parse(nextSnapshot.releaseRun.createdAt || '')) &&
+              Number.isFinite(Date.parse(pendingRelease.requestedAt || '')) &&
+              Date.parse(nextSnapshot.releaseRun.createdAt) >= Date.parse(pendingRelease.requestedAt)
         )
         if (matchingRun || Date.now() >= pendingRelease.expiresAt) pendingRelease = null
         else {
@@ -534,7 +563,13 @@
       }
     })
     el('deploy-production').addEventListener('click', showConfirmation)
-    el('cancel-release').addEventListener('click', () => el('confirm-dialog').close())
+    el('cancel-release').addEventListener('click', () => {
+      confirmationCandidate = null
+      el('confirm-dialog').close()
+    })
+    el('confirm-dialog').addEventListener('close', () => {
+      confirmationCandidate = null
+    })
     el('confirm-release').addEventListener('click', submitRelease)
 
     async function initialize() {
