@@ -71,6 +71,10 @@ chú (`::notice::`), không fail, không có hành vi "demo mode" nào thay th�
 - Mọi action của `issues`/`pull_request` trong `on:` của workflow đều đồng bộ
   1 row (tạo nếu chưa có row khớp `Repo`+`Number`+`Type`, update nếu đã có —
   không bao giờ tạo trùng).
+- Issue/PR **đóng hoặc merge** ⇒ row bị archive (vào thùng rác Notion) ngay sau
+  khi sync xong — database chỉ hiện đúng cái đang mở, không cần tự xoá tay.
+  Mở lại issue/PR đó sau này sẽ tạo row mới (không khôi phục row cũ đã archive
+  — API Notion không query ra page đã archive).
 - Chỉ 3 trường hợp có thêm comment @mention: `review_requested` (ping
   reviewer), `assigned` (ping assignee), PR đóng với `merged=true` (ping tác
   giả PR). Mọi action khác chỉ sync, không ping.
