@@ -74,6 +74,7 @@ export function parseGithubEvent(eventName, payload) {
       state: issue.state,
       labels: (issue.labels ?? []).map((label) => label.name).filter(Boolean),
       author: issue.user?.login ?? null,
+      assignees: loginNames(issue.assignees),
       updatedAt: issue.updated_at ?? null,
       notify: issueNotify(payload),
     }
@@ -91,6 +92,7 @@ export function parseGithubEvent(eventName, payload) {
       state,
       labels: (pr.labels ?? []).map((label) => label.name).filter(Boolean),
       author: pr.user?.login ?? null,
+      assignees: loginNames(pr.assignees),
       updatedAt: pr.updated_at ?? null,
       notify: pullRequestNotify(payload, pr),
     }
@@ -99,27 +101,41 @@ export function parseGithubEvent(eventName, payload) {
   return null
 }
 
-/** Only `assigned` pings — every other issue action still syncs, just quietly. */
+function loginNames(users) {
+  return (users ?? []).map((user) => user?.login).filter(Boolean)
+}
+
+/** "Bạn được phân công: ..." — same wording for issue/PR assignment so the
+ * mention reads like an actual task, not a cryptic GitHub email subject
+ * line. `assigned` pings; every other issue action still syncs, just
+ * quietly. */
 function issueNotify(payload) {
   if (payload.action === 'assigned' && payload.assignee?.login) {
     return {
       githubLogin: payload.assignee.login,
-      message: `Issue #${payload.issue.number} assigned to you`,
+      message: `Bạn được phân công: Issue #${payload.issue.number} "${payload.issue.title ?? ''}" — cần xem/xử lý`,
     }
   }
   return null
 }
 
-/** Review requests and merges ping; every other PR action still syncs quietly. */
+/** Assignment, review requests and merges ping; every other PR action still
+ * syncs, just quietly. */
 function pullRequestNotify(payload, pr) {
+  if (payload.action === 'assigned' && payload.assignee?.login) {
+    return {
+      githubLogin: payload.assignee.login,
+      message: `Bạn được phân công: PR #${pr.number} "${pr.title ?? ''}" — cần xem/xử lý`,
+    }
+  }
   if (payload.action === 'review_requested' && payload.requested_reviewer?.login) {
     return {
       githubLogin: payload.requested_reviewer.login,
-      message: `Review requested on PR #${pr.number}`,
+      message: `Bạn được yêu cầu review: PR #${pr.number} "${pr.title ?? ''}"`,
     }
   }
   if (payload.action === 'closed' && pr.merged && pr.user?.login) {
-    return { githubLogin: pr.user.login, message: `PR #${pr.number} merged` }
+    return { githubLogin: pr.user.login, message: `PR #${pr.number} "${pr.title ?? ''}" đã merge` }
   }
   return null
 }
@@ -136,6 +152,11 @@ export function buildNotionProperties(record) {
     URL: { url: record.url },
     Labels: { multi_select: record.labels.map((name) => ({ name })) },
     Author: { rich_text: [{ text: { content: record.author ?? 'unknown' } }] },
+    Assignee: {
+      rich_text: [
+        { text: { content: record.assignees?.length ? record.assignees.join(', ') : '—' } },
+      ],
+    },
     'Updated At': record.updatedAt ? { date: { start: record.updatedAt } } : undefined,
   })
 }

@@ -51,6 +51,7 @@ function pullRequestPayload(action, overrides = {}) {
       ...overrides.pull_request,
     },
     ...(overrides.requested_reviewer ? { requested_reviewer: overrides.requested_reviewer } : {}),
+    ...(overrides.assignee ? { assignee: overrides.assignee } : {}),
   }
 }
 
@@ -97,14 +98,33 @@ describe('parseGithubEvent', () => {
     expect(record?.notify).toBeNull()
   })
 
-  test('issues/assigned sets notify to the new assignee', () => {
+  test('issues/assigned sets notify to the new assignee, with title in the message', () => {
     const record = parseGithubEvent(
       'issues',
       issuesPayload('assigned', { assignee: { login: 'NguyenTuMinhLong' } }),
     )
     expect(record?.notify).toEqual({
       githubLogin: 'NguyenTuMinhLong',
-      message: 'Issue #68 assigned to you',
+      message: 'Bạn được phân công: Issue #68 "review: Duyệt RFC" — cần xem/xử lý',
+    })
+  })
+
+  test('issues/opened carries the current assignees list', () => {
+    const record = parseGithubEvent(
+      'issues',
+      issuesPayload('opened', { issue: { assignees: [{ login: 'NguyenTuMinhLong' }] } }),
+    )
+    expect(record?.assignees).toEqual(['NguyenTuMinhLong'])
+  })
+
+  test('pull_request/assigned sets notify to the new assignee', () => {
+    const record = parseGithubEvent(
+      'pull_request',
+      pullRequestPayload('assigned', { assignee: { login: 'NguyenTuMinhLong' } }),
+    )
+    expect(record?.notify).toEqual({
+      githubLogin: 'NguyenTuMinhLong',
+      message: 'Bạn được phân công: PR #117 "feat(api): admin catalog CRUD" — cần xem/xử lý',
     })
   })
 
@@ -115,7 +135,7 @@ describe('parseGithubEvent', () => {
     )
     expect(record?.notify).toEqual({
       githubLogin: 'NguyenTuMinhLong',
-      message: 'Review requested on PR #117',
+      message: 'Bạn được yêu cầu review: PR #117 "feat(api): admin catalog CRUD"',
     })
   })
 
@@ -125,7 +145,10 @@ describe('parseGithubEvent', () => {
       pullRequestPayload('closed', { pull_request: { merged: true, state: 'closed' } }),
     )
     expect(record?.state).toBe('merged')
-    expect(record?.notify).toEqual({ githubLogin: 'DaoDungVan', message: 'PR #117 merged' })
+    expect(record?.notify).toEqual({
+      githubLogin: 'DaoDungVan',
+      message: 'PR #117 "feat(api): admin catalog CRUD" đã merge',
+    })
   })
 
   test('pull_request/closed without merge has no notify and state="closed"', () => {
@@ -156,6 +179,17 @@ describe('buildNotionProperties / buildQueryFilter', () => {
     expect(properties.Repo).toEqual({ rich_text: [{ text: { content: REPO } }] })
     expect(properties.Number).toEqual({ number: 117 })
     expect(properties.State).toEqual({ select: { name: 'open' } })
+    expect(properties.Assignee).toEqual({ rich_text: [{ text: { content: '—' } }] })
+  })
+
+  test('Assignee joins multiple GitHub logins with a comma', () => {
+    const properties = buildNotionProperties({
+      ...record,
+      assignees: ['DaoDungVan', 'NguyenTuMinhLong'],
+    })
+    expect(properties.Assignee).toEqual({
+      rich_text: [{ text: { content: 'DaoDungVan, NguyenTuMinhLong' } }],
+    })
   })
 
   test('a missing updatedAt omits the "Updated At" property instead of sending null', () => {
