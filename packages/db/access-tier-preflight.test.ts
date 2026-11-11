@@ -54,10 +54,15 @@ describeIntegration('access_tier migration preflight (requires TEST_DATABASE_URL
     await admin.unsafe(`CREATE DATABASE ${SCRATCH_DB}`)
 
     sql = postgres(withDatabase(TEST_DB_URL, SCRATCH_DB), { max: 1 })
+    // drizzle-kit migrate bọc mỗi file trong một transaction. 0004 mở đầu
+    // bằng LOCK TABLE, lệnh đó lỗi nếu chạy autocommit từng statement.
     for (const name of priorFiles) {
-      for (const statement of sqlStatements(readFileSync(join(drizzleDir, name), 'utf8'))) {
-        await sql.unsafe(statement)
-      }
+      const statements = sqlStatements(readFileSync(join(drizzleDir, name), 'utf8'))
+      await sql.begin(async (tx) => {
+        for (const statement of statements) {
+          await tx.unsafe(statement)
+        }
+      })
     }
   })
 
