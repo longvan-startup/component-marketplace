@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant DB as PostgreSQL
+
+    Note over U,DB: CM-02 · DỰ KIẾN theo RFC-02 membership, chưa có code
+    U->>W: Mở trang tài khoản, mục Gói của tôi
+    W->>A: GET /me/membership (kèm cookie phiên)
+    A->>A: requireAuth
+    A->>DB: Tìm subscription chưa expired của user
+    DB-->>A: Một dòng hoặc rỗng
+    alt Không có, hoặc current_period_end đã qua
+        A-->>W: 200 plan=free
+        W-->>U: Hiện gói Free + lối nâng cấp
+    else Còn hiệu lực (status active hoặc canceled)
+        A-->>W: 200 plan=pro, status, currentPeriodEnd
+        W-->>U: Hiện gói Pro và ngày hết hạn
+    end
+
+    opt Tắt gia hạn
+        U->>W: Bấm Huỷ gia hạn
+        W->>A: POST /membership/cancel
+        A->>DB: UPDATE subscriptions SET status=canceled
+        A-->>W: 200
+        W-->>U: Báo vẫn dùng Pro tới hết kỳ đã trả
+    end

@@ -1,0 +1,17 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant BA as Better Auth
+    participant DB as PostgreSQL
+
+    Note over W,BA: AU-03 · Backend đã chạy. Nút Đăng xuất trên web đang làm
+    U->>W: Bấm Đăng xuất
+    W->>A: POST /api/auth/sign-out (kèm cookie phiên)
+    A->>BA: authHandler chuyển nguyên request
+    BA->>DB: Thu hồi phiên hiện tại
+    DB-->>BA: Xong
+    BA-->>W: 200 + xoá cookie phiên
+    W->>W: Xoá thông tin user đang giữ trong bộ nhớ
+    W-->>U: Giao diện về trạng thái khách

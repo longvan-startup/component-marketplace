@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant C as CLI (npx luva-ui add)
+    participant A as API (Express)
+    participant DB as PostgreSQL
+
+    Note over U,DB: CM-03 · DỰ KIẾN theo RFC-02 membership, chưa có code
+    U->>C: Chạy lệnh cài một component
+    C->>A: GET /components/:slug/install (cách CLI chứng minh danh tính còn mở)
+    A->>DB: Tìm component đã publish theo slug
+    DB-->>A: Dòng dữ liệu hoặc rỗng
+    alt Không tồn tại hoặc chưa publish
+        A-->>C: 404 NOT_FOUND
+        C-->>U: Báo không tìm thấy
+    else access_tier = free
+        A-->>C: 200 dữ liệu cài đặt
+        C-->>U: Chép mã nguồn vào dự án
+    else access_tier = pro
+        A->>A: Xác định người gọi
+        alt Chưa xác thực
+            A-->>C: 401 UNAUTHENTICATED
+            C-->>U: Hướng dẫn đăng nhập
+        else Đã xác thực
+            A->>DB: Tìm subscription Pro còn hiệu lực của user
+            DB-->>A: Một dòng hoặc rỗng
+            alt Không có gói Pro còn hiệu lực và không phải admin
+                A-->>C: 403 MEMBERSHIP_REQUIRED
+                C-->>U: Hướng dẫn nâng cấp gói
+            else Pro còn hiệu lực, hoặc là admin
+                A-->>C: 200 dữ liệu cài đặt bản mới nhất
+                C-->>U: Chép mã nguồn vào dự án
+            end
+        end
+    end
+    Note over U,C: Code đã cài nằm trong dự án người dùng, vẫn dùng được sau khi gói hết hạn (MIT)

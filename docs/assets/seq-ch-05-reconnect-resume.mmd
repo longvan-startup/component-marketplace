@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor U as Thành viên
+    participant W as Web (Next.js)
+    participant WS as API WebSocket /ws/chat
+    participant DB as PostgreSQL
+
+    Note over U,DB: CH-05 · DỰ KIẾN theo COMMUNITY_ARCHITECTURE + RFC-01, chưa có code
+    Note over W,WS: Server ping/pong mỗi 30 giây để phát hiện rớt kết nối
+    WS--xW: Mất kết nối
+    W-->>U: Báo đang kết nối lại
+    loop Thử lại với khoảng chờ 1s, 2s, ... tối đa 30s, có jitter
+        W->>WS: Upgrade /ws/chat (kèm cookie phiên)
+    end
+    WS-->>W: Kết nối lại thành công
+    W->>WS: resume (afterSeq = seq lớn nhất đã nhận)
+    WS->>DB: Lấy chat_messages có seq lớn hơn afterSeq, xếp theo seq
+    DB-->>WS: Các tin đã lỡ
+    loop Từng tin đã lỡ
+        WS-->>W: message.created
+    end
+    Note over WS: Phát lại xong mới chuyển sang luồng trực tiếp, seq bảo đảm không trùng và đúng thứ tự
+    W->>W: Bỏ trùng theo message.id
+
+    opt Có tin đang gửi dở lúc rớt mạng
+        W->>WS: send với đúng clientMessageId cũ
+        WS->>DB: INSERT bị bỏ qua vì trùng, đọc tin đã lưu
+        WS-->>W: ack trả về tin đã lưu, không tạo bản ghi mới
+    end
+    W-->>U: Lịch sử liền mạch, không thiếu, không trùng

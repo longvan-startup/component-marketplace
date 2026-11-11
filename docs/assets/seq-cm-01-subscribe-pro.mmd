@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant P as Cổng thanh toán (dự kiến: mock)
+    participant DB as PostgreSQL
+
+    Note over U,DB: CM-01 · DỰ KIẾN theo RFC-02 membership, chưa có code
+    U->>W: Mở trang Bảng giá, chọn Pro theo tháng hoặc năm
+    W->>A: POST /membership/checkout (interval)
+    A->>A: requireAuth
+    alt Chưa đăng nhập
+        A-->>W: 401 UNAUTHENTICATED
+        W-->>U: Chuyển tới trang đăng nhập
+    else Đã đăng nhập
+        A->>P: Tạo phiên thanh toán
+        P-->>A: checkoutUrl + mã tham chiếu
+        A-->>W: 200 checkoutUrl
+        W-->>U: Chuyển sang trang thanh toán
+        U->>P: Xác nhận thanh toán
+        P->>A: POST /membership/webhook (có chữ ký)
+        A->>A: Xác thực chữ ký webhook
+        A->>DB: Ghi subscriptions (plan=pro, status=active, current_period_end)
+        DB-->>A: Xong
+        A-->>P: 200
+        P-->>U: Chuyển về web
+        U->>W: Trang xác nhận đăng ký thành công
+    end
+    Note over A,DB: Quyền Pro chỉ bật khi webhook ghi xong, không dựa vào redirect của trình duyệt

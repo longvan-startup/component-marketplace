@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor U as Người gửi
+    participant W1 as Web người gửi
+    participant WS as API WebSocket /ws/chat
+    participant DB as PostgreSQL
+    participant W2 as Web người xem khác
+
+    Note over U,W2: CH-03 · DỰ KIẾN theo COMMUNITY_ARCHITECTURE + RFC-01, chưa có code
+    W1->>WS: Upgrade /ws/chat (kèm cookie phiên)
+    WS->>WS: Kiểm tra phiên Better Auth lúc upgrade, khách chỉ được đọc
+    W2->>WS: Upgrade /ws/chat, theo dõi cùng channel
+    U->>W1: Gõ tin nhắn rồi gửi
+    W1->>W1: Sinh clientMessageId, hiện tin ở trạng thái đang gửi
+    W1->>WS: send (channelId, body tối đa 2000 ký tự, clientMessageId)
+    alt Người gửi là khách
+        WS-->>W1: error UNAUTHENTICATED
+    else Vượt giới hạn 20 tin trong 10 giây
+        WS-->>W1: error RATE_LIMITED
+    else Được phép gửi
+        WS->>DB: INSERT chat_messages, bỏ qua nếu trùng (channel_id, client_message_id)
+        opt Không có dòng mới vì đây là lần gửi lại
+            WS->>DB: Đọc tin đã lưu trước đó
+        end
+        DB-->>WS: message kèm id và seq
+        WS-->>W1: ack (refClientMessageId, message)
+        WS-->>W2: message.created (message)
+        W1-->>U: Tin chuyển sang đã gửi
+        W2->>W2: Bỏ trùng theo message.id, xếp theo seq
+    end
+    Note over WS,DB: PostgreSQL là nguồn chân lý, WebSocket chỉ là kênh phát

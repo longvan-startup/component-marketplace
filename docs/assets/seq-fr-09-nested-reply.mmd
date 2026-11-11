@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor U as Thành viên
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant BA as Better Auth
+    participant DB as PostgreSQL
+
+    Note over U,DB: FR-09 · DỰ KIẾN theo COMMUNITY_ARCHITECTURE + RFC-01, chưa có code
+    U->>W: Viết trả lời cho thread hoặc cho một reply khác
+    W->>W: Sinh clientMessageId cho lần gửi này
+    W->>A: POST /community/threads/:id/replies (body, parentReplyId, clientMessageId)
+    A->>BA: requireAuth gọi getSession
+    BA-->>A: session hoặc null
+    alt Chưa đăng nhập
+        A-->>W: 401 UNAUTHENTICATED
+    else Vượt giới hạn 15 reply trong 10 phút
+        A-->>W: 429 RATE_LIMITED
+    else Được phép ghi
+        A->>DB: BEGIN
+        opt Có parentReplyId
+            A->>DB: Đọc reply cha: thread_id và depth
+            DB-->>A: Reply cha
+        end
+        alt Reply cha thuộc thread khác, hoặc depth cha lớn hơn 3
+            A->>DB: ROLLBACK
+            A-->>W: 400 VALIDATION_ERROR
+            W-->>U: Báo không thể trả lời sâu hơn 4 cấp
+        else Hợp lệ
+            A->>DB: INSERT forum_replies (depth = depth cha + 1, tối đa 4)
+            A->>DB: UPDATE forum_threads: reply_cache + 1, last_activity_at = now()
+            A->>DB: COMMIT
+            A-->>W: 201 reply
+            W-->>U: Chèn reply vào đúng nhánh
+        end
+    end
+    Note over A,DB: Ghi reply và tăng bộ đếm nằm chung một transaction, không dùng trigger

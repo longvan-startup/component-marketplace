@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant BA as Better Auth
+    participant DB as PostgreSQL
+    participant M as Email (dev: console.log)
+
+    Note over W,BA: AU-02 · Backend đã chạy. Màn Đăng nhập trên web đang làm
+    U->>W: Nhập email, mật khẩu
+    W->>A: POST /api/auth/sign-in/email (credentials include)
+    A->>BA: authHandler chuyển nguyên request
+    BA->>DB: Tìm users + accounts theo email, so khớp hash mật khẩu
+    DB-->>BA: Kết quả
+    alt Sai email hoặc mật khẩu
+        BA-->>W: Lỗi theo định dạng Better Auth
+        W-->>U: Báo sai thông tin đăng nhập
+    else Đúng mật khẩu nhưng email chưa xác minh
+        BA->>M: Gửi lại link xác minh (sendOnSignIn)
+        BA-->>W: 403 EMAIL_NOT_VERIFIED
+        W-->>U: Nhắc mở email, kèm lối gửi lại link
+    else Hợp lệ
+        BA->>DB: INSERT sessions
+        BA-->>W: 200 user + Set-Cookie phiên (HTTP-only)
+        W-->>U: Về trang trước đó (URL đã qua kiểm tra cùng origin)
+    end
+    Note over A: Auth chưa cấu hình hoặc mất DB thì trả 503 AUTH_UNAVAILABLE

@@ -1,0 +1,34 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant BA as Better Auth
+    participant DB as PostgreSQL
+    participant M as Email (dev: console.log)
+
+    Note over W,BA: AU-01 · Backend đã chạy. Màn Đăng ký trên web đang làm
+    U->>W: Nhập tên, email, mật khẩu
+    W->>A: POST /api/auth/sign-up/email (credentials include)
+    A->>BA: authHandler chuyển nguyên request
+    alt Dữ liệu không hợp lệ (vd mật khẩu ngoài 8–128 ký tự)
+        BA-->>W: Lỗi theo định dạng Better Auth
+        W-->>U: Hiện lỗi ngay trên form
+    else Hợp lệ
+        BA->>DB: Một transaction: INSERT users (role=user, email_verified=false) + INSERT accounts
+        DB-->>BA: Commit
+        BA->>M: sendVerificationEmail(url), link sống 15 phút
+        BA-->>W: 200 token=null + user (chưa có cookie phiên)
+        W-->>U: Nhắc mở email để xác minh
+    end
+
+    U->>A: Mở link GET /api/auth/verify-email (token, callbackURL)
+    A->>BA: authHandler
+    alt Token sai hoặc hết hạn
+        BA-->>U: 302 về callbackURL kèm error=INVALID_TOKEN hoặc TOKEN_EXPIRED
+    else Token hợp lệ
+        BA->>DB: UPDATE users SET email_verified=true, tạo phiên
+        BA-->>U: 302 về callbackURL + Set-Cookie phiên (tự đăng nhập)
+    end
+    U->>W: GET /verify-email
+    W-->>U: Trang kết quả, kèm form gửi lại link
