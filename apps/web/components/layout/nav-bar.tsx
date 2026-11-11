@@ -3,12 +3,12 @@
  * 1440. Server Component; the only client part is the mobile menu island.
  * Below `md` the links, search and actions collapse into that menu.
  */
-import Link from 'next/link'
-import { buttonClasses } from '../ui/button'
+import { resolveApiMode } from '../../features/auth/auth-source'
 import { NavLink } from '../ui/nav-link'
 import { Logo } from './logo'
 import { MobileMenu } from './mobile-menu'
-import { NAV_ACTIONS, NAV_LINKS } from './nav-items'
+import { NavAuth } from './nav-auth'
+import { NAV_LINKS } from './nav-items'
 import { SearchForm } from './search-form'
 
 export function NavBar() {
@@ -28,17 +28,7 @@ export function NavBar() {
 
         <div className="hidden items-center gap-4 md:flex">
           <SearchForm className="hidden w-80 lg:flex" />
-          <div className="flex items-center gap-3">
-            <Link
-              href={NAV_ACTIONS.login.href}
-              className={buttonClasses({ variant: 'ghost', size: 'sm' })}
-            >
-              {NAV_ACTIONS.login.label}
-            </Link>
-            <Link href={NAV_ACTIONS.register.href} className={buttonClasses({ size: 'sm' })}>
-              {NAV_ACTIONS.register.label}
-            </Link>
-          </div>
+          <NavAuth apiMode={resolveApiMode()} />
         </div>
 
         <MobileMenu />

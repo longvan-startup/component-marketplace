@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { SiteShell } from '@/components/layout/site-shell'
 import './globals.css'
 
 /* Server Component by default — the root layout NEVER becomes a client
@@ -24,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi" className={inter.variable}>
       <body className="min-h-screen" data-smoke="web">
-        <SiteShell>{children}</SiteShell>
+        {children}
       </body>
     </html>
   )
