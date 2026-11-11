@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant DB as PostgreSQL
+
+    Note over U,DB: FR-06 · DỰ KIẾN theo COMMUNITY_ARCHITECTURE + RFC-01, chưa có code
+    U->>W: Mở một thread trong Cộng đồng
+    W->>A: GET /community/threads/:id
+    A->>A: threadIdParamSchema kiểm tra id là uuid
+    A->>DB: Lấy forum_threads kèm tác giả công khai và category
+    DB-->>A: Thread hoặc rỗng
+    alt Không tồn tại
+        A-->>W: 404 NOT_FOUND (khung lỗi chung)
+        W-->>U: Trang không tìm thấy
+    else Có thread
+        A->>DB: Lấy forum_replies theo thread_id, cũ trước, tối đa 50 dòng
+        DB-->>A: Danh sách reply
+        A-->>W: 200 thread + replies (reply được chấp nhận luôn có mặt)
+        W->>W: Render Markdown qua bộ lọc an toàn, dựng cây reply tới 4 cấp
+        W-->>U: Trang thread và các trả lời
+        opt Thread có hơn 50 reply
+            W->>A: GET /community/threads/:id/replies (page, pageSize, sort)
+            A->>DB: Lấy trang reply kế tiếp
+            A-->>W: 200 trang reply
+            W-->>U: Nối thêm reply
+        end
+    end
+    Note over A: Công khai, khách cũng đọc được

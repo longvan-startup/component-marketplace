@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant DB as PostgreSQL
+
+    Note over W,A: CT-07 · Đã chạy. Công khai, không cần đăng nhập
+    U->>W: GET /components/:slug
+    W->>W: getCatalogSource() chọn nguồn theo API_MODE
+    alt API_MODE=mock (mặc định)
+        W-->>U: Trang chi tiết dựng từ dữ liệu mock
+    else API_MODE=live
+        W->>A: GET /components/:slug
+        A->>A: parseSlugParam kiểm tra slug kebab-case
+        A->>DB: getComponentBySlug: chỉ lấy dòng is_published=true, kèm tên tác giả
+        DB-->>A: Dòng dữ liệu hoặc rỗng
+        alt Slug sai, không tồn tại, hoặc chưa publish
+            A-->>W: 404 NOT_FOUND (khung lỗi chung, không phân biệt lý do)
+            W-->>U: Trang không tìm thấy
+        else Có component đã publish
+            A->>A: toCatalogComponent bỏ field nội bộ (authorId, timestamps)
+            A-->>W: 200 bọc trong khung item
+            W-->>U: Trang chi tiết + khung xem trước animation
+        end
+    end
+    Note over W: Lỗi đã biết: web chưa bóc khung item nên chế độ live đang hỏng
+    Note over A: Chưa cấu hình DATABASE_URL thì trả 503 DATABASE_UNCONFIGURED

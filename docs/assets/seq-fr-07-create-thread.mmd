@@ -1,0 +1,34 @@
+sequenceDiagram
+    autonumber
+    actor U as Thành viên
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant BA as Better Auth
+    participant DB as PostgreSQL
+
+    Note over U,DB: FR-07 · DỰ KIẾN theo COMMUNITY_ARCHITECTURE + RFC-01, chưa có code
+    U->>W: Nhập tiêu đề, nội dung, chọn category và loại thread
+    W->>A: POST /community/threads (title, body, categorySlug, threadType, componentSlug, tags)
+    A->>BA: requireAuth gọi getSession
+    BA-->>A: session hoặc null
+    alt Chưa đăng nhập
+        A-->>W: 401 UNAUTHENTICATED
+        W-->>U: Chuyển tới trang đăng nhập
+    else Vượt giới hạn 5 thread trong 10 phút
+        A-->>W: 429 RATE_LIMITED
+        W-->>U: Báo thử lại sau
+    else Được phép ghi
+        A->>A: createThreadSchema: title 8–160, body 20–20000, tối đa 2 link
+        A->>DB: Tìm forum_categories theo categorySlug
+        DB-->>A: Category hoặc rỗng
+        alt Body sai, hoặc threadType không khớp category
+            A-->>W: 400 VALIDATION_ERROR
+            W-->>U: Chỉ ra trường sai
+        else Hợp lệ
+            A->>DB: INSERT forum_threads (slug do server sinh, author_id từ phiên)
+            DB-->>A: Thread mới
+            A-->>W: 201 thread
+            W-->>U: Chuyển tới trang thread vừa tạo
+        end
+    end
+    Note over A: Quy tắc khớp: help=question, ideas=idea, showcase=showcase, feedback=feedback, announcements=announcement
