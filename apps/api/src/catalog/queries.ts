@@ -43,6 +43,7 @@ export const rowShape = {
   priceAmountMinor: components.priceAmountMinor,
   priceCurrency: components.priceCurrency,
   requiresPaymentForUpdate: components.requiresPaymentForUpdate,
+  accessTier: components.accessTier,
   authorName: users.name,
 }
 

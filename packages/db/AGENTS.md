@@ -50,6 +50,13 @@ API/domain contract). Backend owner: @NguyenTuMinhLong.
   currency code. `NULL` price means no configured charge; a component marked
   as requiring paid updates must have a price. This metadata does not represent
   a purchase, payment, or entitlement.
+- `components.access_tier` is `free` or `pro`, `NOT NULL`, default `free`.
+  Migration `0006` counts rows that have `price_amount_minor` set
+  while `requires_payment_for_update` is false, and it does that before any
+  DDL. A non-zero count stops the migration and assigns no tier. Rows with
+  `requires_payment_for_update = true` become `pro`. Every other row stays
+  `free` via the column default. Later writes may set `pro` while the legacy
+  price columns stay null.
 - `components.latest_version` is the current catalog value, not release
   history. Add release/artifact tables only with an approved version-delivery
   task; payment gating must not be inferred from this field.

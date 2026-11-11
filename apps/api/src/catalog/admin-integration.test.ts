@@ -7,7 +7,12 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { createDbHandle, type DatabaseHandle, schema } from '@marketplace/db'
-import { apiErrorSchema, componentSchema, detailResponseSchema } from '@marketplace/shared'
+import {
+  apiErrorSchema,
+  componentSchema,
+  detailResponseSchema,
+  listResponseSchema,
+} from '@marketplace/shared'
 import { eq, inArray } from 'drizzle-orm'
 import { registerVerifiedUser } from '../auth/test-helpers'
 import { createServer, shutdown } from '../index'
@@ -301,6 +306,38 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
       requiresPaymentForUpdate: true,
     })
     expect(goodPatch.status).toBe(200)
+  })
+
+  test('accessTier defaults to free and patches without a price', async () => {
+    const draft = await createDraft({ name: 'Tier Default Component' })
+    expect(draft.accessTier).toBe('free')
+    expect(draft.price).toBeNull()
+
+    const createdPro = await createDraft({ name: 'Tier Pro Component', accessTier: 'pro' })
+    expect(createdPro.accessTier).toBe('pro')
+    expect(createdPro.price).toBeNull()
+
+    const patched = await patch(`/admin/components/${draft.slug}`, adminCookie, {
+      accessTier: 'pro',
+    })
+    expect(patched.status).toBe(200)
+    expect((patched.body as ItemEnvelope).item.accessTier).toBe('pro')
+    expect((patched.body as ItemEnvelope).item.price).toBeNull()
+    expect((patched.body as ItemEnvelope).item.requiresPaymentForUpdate).toBe(false)
+
+    const hidden = await get(`/components/${draft.slug}`)
+    expect(hidden.status).toBe(404)
+
+    const published = await post(`/admin/components/${draft.slug}/publish`, adminCookie)
+    expect(published.status).toBe(200)
+
+    const detail = await get(`/components/${draft.slug}`)
+    expect(detail.status).toBe(200)
+    expect(detailResponseSchema.parse(detail.body).item.accessTier).toBe('pro')
+
+    const list = await get('/components')
+    const items = listResponseSchema.parse(list.body).items
+    expect(items.find((item) => item.slug === draft.slug)?.accessTier).toBe('pro')
   })
 
   test('Duplicate component name — slug gets a numeric suffix', async () => {
