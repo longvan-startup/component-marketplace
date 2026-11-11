@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor AD as Admin
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant BA as Better Auth
+    participant DB as PostgreSQL
+
+    Note over W,A: SE-01 · API đã chạy, chỉ admin được đăng. Màn Admin trên web chưa có
+    AD->>W: Nhập tên, mô tả, category, tags, version
+    W->>A: POST /admin/components (kèm cookie phiên)
+    A->>BA: requireAuth gọi auth.api.getSession
+    BA->>DB: Tìm sessions + users theo cookie
+    DB-->>BA: Kết quả
+    BA-->>A: session hoặc null
+    alt Không có phiên
+        A-->>W: 401 UNAUTHENTICATED
+    else Có phiên nhưng role khác admin
+        A-->>W: 403 FORBIDDEN (requireRole so khớp chính xác, không kế thừa)
+    else role = admin
+        A->>A: parseCreateComponentRequest
+        alt Body sai hợp đồng
+            A-->>W: 422 VALIDATION_BODY
+        else Body hợp lệ
+            A->>DB: findUniqueSlug: thử slug, rồi slug-2, slug-3 khi trùng
+            A->>DB: INSERT components (is_published=false, author_id = admin)
+            alt Trùng slug do hai request cùng lúc
+                DB-->>A: Lỗi unique 23505
+                A-->>W: 409 SLUG_CONFLICT
+            else Ghi thành công
+                A->>DB: getComponentAnyStatus đọc lại dòng vừa tạo
+                DB-->>A: Dòng dữ liệu
+                A-->>W: 201 item ở trạng thái nháp
+                W-->>AD: Hiện listing nháp
+            end
+        end
+    end
+    Note over A,DB: Publish là bước riêng: POST /admin/components/:slug/publish

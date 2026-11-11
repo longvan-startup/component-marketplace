@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant BA as Better Auth
+    participant DB as PostgreSQL
+
+    Note over W,BA: AU-04 · Backend đã chạy. Trang tài khoản trên web chưa có
+    U->>W: Mở trang tài khoản
+    W->>A: GET /api/auth/get-session (chuyển tiếp cookie)
+    A->>BA: authHandler chuyển nguyên request
+    BA->>DB: Tìm sessions + users theo token trong cookie
+    DB-->>BA: Kết quả
+    alt Không có phiên, hoặc phiên hết hạn
+        BA-->>W: 200 null
+        W-->>U: Chuyển tới trang đăng nhập
+    else Có phiên
+        BA-->>W: 200 session + user (id, name, email, image, emailVerified, role)
+        W-->>U: Hiện thông tin tài khoản và phiên đăng nhập
+    end
+
+    opt Sửa tên hoặc ảnh đại diện
+        U->>W: Gửi form hồ sơ
+        W->>A: POST /api/auth/update-user (name, image)
+        A->>BA: Hook before: name 1–100 ký tự, image là URL https hoặc null
+        BA->>DB: UPDATE users
+        BA-->>W: 200 status true
+        W->>A: GET /api/auth/get-session
+        A-->>W: user đã cập nhật
+        W-->>U: Hiện thông tin mới
+    end
