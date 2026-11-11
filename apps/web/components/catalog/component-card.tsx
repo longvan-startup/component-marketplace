@@ -29,7 +29,7 @@ export function ComponentCard({ item }: { item: CatalogItem }) {
       <p className="text-sm text-muted-foreground">{item.summary}</p>
 
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
-        <Badge variant={item.category === 'animation' ? 'brand' : 'neutral'}>
+        <Badge variant={item.category === 'animation' ? 'accent' : 'neutral'}>
           {CATEGORY_LABELS[item.category]}
         </Badge>
         {item.isPublished ? null : <Badge variant="success">preview</Badge>}

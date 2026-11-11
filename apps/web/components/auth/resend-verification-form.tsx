@@ -10,6 +10,8 @@ import { useId, useState } from 'react'
 import { type ApiMode, getAuthSource } from '../../features/auth/auth-source'
 import { verifyEmailCallbackUrl } from '../../features/auth/safe-callback-url'
 import { Button } from '../ui/button'
+import { Field } from '../ui/field'
+import { Input } from '../ui/input'
 import { AuthStatusBanner } from './auth-status-banner'
 
 type FormState = { kind: 'idle' | 'submitting' | 'done' | 'error'; message?: string }
@@ -41,20 +43,16 @@ export function ResendVerificationForm({ apiMode }: { apiMode: ApiMode }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={emailId} className="text-sm font-medium">
-          Email
-        </label>
-        <input
+      <Field label="Email" htmlFor={emailId}>
+        <Input
           id={emailId}
           type="email"
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="ban@vidu.com"
-          className="min-h-11 w-full rounded-card border border-border bg-card px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-      </div>
+      </Field>
       {state.kind === 'error' && (
         <AuthStatusBanner variant="error">{state.message}</AuthStatusBanner>
       )}
