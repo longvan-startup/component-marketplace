@@ -73,6 +73,9 @@ interface FetchJsonOptions {
   timeoutMs?: number
   publicApiUrl?: string
   internalApiUrl?: string
+  /** Send the session cookie on a GET (Better Auth `get-session`). Catalog
+   * reads leave this unset. */
+  credentials?: RequestCredentials
 }
 
 /** Typed JSON GET with normalized errors. See `apiMutateJson` below for POST. */
@@ -92,6 +95,7 @@ export async function apiFetchJson<T>(path: string, options: FetchJsonOptions = 
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       cache: 'no-store',
+      ...(options.credentials ? { credentials: options.credentials } : {}),
     })
   } catch (error) {
     throw new ApiClientError(path, 0, error instanceof Error ? error.message : 'network error')

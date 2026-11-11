@@ -11,16 +11,32 @@
  */
 
 import {
+  type GetSessionResponse,
+  getSessionResponseSchema,
   type RequestPasswordResetResponse,
   type ResendVerificationEmailResponse,
   type ResetPasswordResponse,
   requestPasswordResetResponseSchema,
   resendVerificationEmailResponseSchema,
   resetPasswordResponseSchema,
+  type SignInEmailResponse,
+  type SignOutResponse,
+  type SignUpEmailResponse,
+  signInEmailResponseSchema,
+  signOutResponseSchema,
+  signUpEmailResponseSchema,
 } from '@marketplace/shared'
-import { ApiClientError, apiMutateJson } from '../../lib/api-client'
+import { ApiClientError, apiFetchJson, apiMutateJson } from '../../lib/api-client'
 
 export interface AuthSource {
+  signIn(email: string, password: string): Promise<SignInEmailResponse>
+  signUp(
+    input: { name: string; email: string; password: string },
+    callbackURL: string,
+  ): Promise<SignUpEmailResponse>
+  /** Resolves `null` when nobody is signed in. */
+  getSession(): Promise<GetSessionResponse>
+  signOut(): Promise<SignOutResponse>
   requestPasswordReset(email: string, redirectTo: string): Promise<RequestPasswordResetResponse>
   resetPassword(token: string, newPassword: string): Promise<ResetPasswordResponse>
   resendVerificationEmail(
@@ -44,15 +60,53 @@ export class ResetPasswordError extends Error {
   }
 }
 
+/** Error thrown by `signIn` / `signUp` when Better Auth rejects the request.
+ * `code` is one of `authFormErrorCodeSchema` in `@marketplace/shared` when
+ * the backend sent one — match on `code`, never on `message`. */
+export class AuthRequestError extends Error {
+  readonly status: number
+  readonly code?: string
+  constructor(status: number, message: string, code?: string) {
+    super(message)
+    this.name = 'AuthRequestError'
+    this.status = status
+    this.code = code
+  }
+}
+
+function toAuthRequestError(error: unknown): unknown {
+  return error instanceof ApiClientError
+    ? new AuthRequestError(error.status, error.message, error.code)
+    : error
+}
+
 /* ------------------------------------------------------------------ */
 /* Mock source — the default until a real backend is reachable.        */
 /* ------------------------------------------------------------------ */
+
+function mockUser(email: string, name = 'Người dùng thử') {
+  return { id: 'mock-user', email, name, image: null, emailVerified: true }
+}
 
 const GENERIC_REQUEST_MESSAGE =
   'If this email exists in our system, check your email for the reset link'
 
 export function createMockAuthSource(): AuthSource {
   return {
+    // Mock mode keeps no session: `signIn` succeeds (except the sentinel
+    // password 'wrong') but `getSession` stays signed-out.
+    signIn: async (email, password) => {
+      if (password === 'wrong') {
+        throw new AuthRequestError(401, 'Invalid email or password', 'INVALID_EMAIL_OR_PASSWORD')
+      }
+      return { redirect: false, token: 'mock-token', user: mockUser(email) }
+    },
+    signUp: async ({ name, email }) => ({
+      token: null,
+      user: { ...mockUser(email, name), emailVerified: false },
+    }),
+    getSession: async () => null,
+    signOut: async () => ({ success: true }),
     requestPasswordReset: async () => ({ status: true, message: GENERIC_REQUEST_MESSAGE }),
     resetPassword: async (token) => {
       if (token === 'expired' || token === 'invalid') {
@@ -102,6 +156,41 @@ export function createHttpAuthSource(deps: HttpDeps = {}): AuthSource {
   const authDeps = { ...deps, publicApiUrl: base, internalApiUrl: base }
 
   return {
+    signIn: async (email, password) => {
+      try {
+        const payload = await apiMutateJson<unknown>(
+          '/api/auth/sign-in/email',
+          { email, password },
+          authDeps,
+        )
+        return signInEmailResponseSchema.parse(payload)
+      } catch (error) {
+        throw toAuthRequestError(error)
+      }
+    },
+    signUp: async (input, callbackURL) => {
+      try {
+        const payload = await apiMutateJson<unknown>(
+          '/api/auth/sign-up/email',
+          { ...input, callbackURL },
+          authDeps,
+        )
+        return signUpEmailResponseSchema.parse(payload)
+      } catch (error) {
+        throw toAuthRequestError(error)
+      }
+    },
+    getSession: async () => {
+      const payload = await apiFetchJson<unknown>('/api/auth/get-session', {
+        ...authDeps,
+        credentials: 'include',
+      })
+      return getSessionResponseSchema.parse(payload)
+    },
+    signOut: async () => {
+      const payload = await apiMutateJson<unknown>('/api/auth/sign-out', {}, authDeps)
+      return signOutResponseSchema.parse(payload)
+    },
     requestPasswordReset: async (email, redirectTo) => {
       const payload = await apiMutateJson<unknown>(
         '/api/auth/request-password-reset',
