@@ -67,6 +67,9 @@ test('production release is manual, protected, immutable, verified and serialize
   assert.match(release, /already_released/)
   assert.match(release, /completed.*success/s)
   assert.match(release, /db:migrate/)
+  assert.match(release, /Skipping production migrations so the frontend release can continue/)
+  assert.match(release, /steps\.release_config\.outputs\.migrate == 'true'/)
+  assert.doesNotMatch(release, /PROD_DATABASE_URL is required/)
   assert.doesNotMatch(release, /cmp-api:latest|:latest/)
 
   const actionRefs = [...release.matchAll(/^\s+uses:\s+[^@\s]+@([^\s]+)/gm)].map(
