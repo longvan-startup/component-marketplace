@@ -43,6 +43,7 @@ export interface CatalogRow {
   priceAmountMinor: number | null
   priceCurrency: string | null
   requiresPaymentForUpdate: boolean
+  accessTier: 'free' | 'pro'
   /** Tên hiển thị từ LEFT JOIN users — null khi component không có author. */
   authorName: string | null
 }
@@ -73,5 +74,6 @@ export function toCatalogComponent(row: CatalogRow): CatalogComponent {
         ? null
         : { amountMinor: row.priceAmountMinor, currency: row.priceCurrency },
     requiresPaymentForUpdate: row.requiresPaymentForUpdate,
+    accessTier: row.accessTier,
   })
 }

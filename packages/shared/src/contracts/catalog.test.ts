@@ -4,9 +4,11 @@ import {
   type CatalogComponent,
   type CatalogListResponse,
   componentSchema,
+  createComponentRequestSchema,
   detailResponseSchema,
   listRequestSchema,
   listResponseSchema,
+  updateComponentRequestSchema,
 } from './catalog'
 
 /** Valid public DTO fixture — mirrors what the api row mapper must emit. */
@@ -133,6 +135,43 @@ describe('detailResponseSchema — single-item envelope', () => {
 
   test('bare unwrapped entity FAILS (envelope is required)', () => {
     expect(detailResponseSchema.safeParse(VALID_COMPONENT).success).toBe(false)
+  })
+})
+
+const createBody = {
+  name: 'Spring Card Stack',
+  description: 'Long-form description of the spring card stack behavior.',
+  category: 'animation' as const,
+}
+
+describe('accessTier — additive contract', () => {
+  test('public DTO may omit accessTier', () => {
+    expect(componentSchema.parse(VALID_COMPONENT).accessTier).toBeUndefined()
+  })
+
+  test('omitted accessTier on create defaults to free', () => {
+    expect(createComponentRequestSchema.parse(createBody).accessTier).toBe('free')
+  })
+
+  test('unknown accessTier fails', () => {
+    expect(
+      createComponentRequestSchema.safeParse({ ...createBody, accessTier: 'team' }).success,
+    ).toBe(false)
+  })
+
+  test('pro does not require a price', () => {
+    const parsed = createComponentRequestSchema.parse({ ...createBody, accessTier: 'pro' })
+    expect(parsed.accessTier).toBe('pro')
+    expect(parsed.price).toBeNull()
+    expect(parsed.requiresPaymentForUpdate).toBe(false)
+  })
+
+  test('patch without accessTier leaves it undefined', () => {
+    expect(updateComponentRequestSchema.parse({ name: 'Renamed' }).accessTier).toBeUndefined()
+  })
+
+  test('patch may set pro without a price', () => {
+    expect(updateComponentRequestSchema.parse({ accessTier: 'pro' }).accessTier).toBe('pro')
   })
 })
 

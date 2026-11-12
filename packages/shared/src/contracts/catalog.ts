@@ -38,6 +38,8 @@ const authorDisplayNameSchema = z.string().min(1).max(100)
 
 const semverSchema = z.string().regex(/^\d+\.\d+\.\d+$/, 'version must be semantic (x.y.z)')
 
+export const componentAccessTierSchema = z.enum(['free', 'pro'])
+
 /** Monetary values use the currency's minor unit and an uppercase 3-letter code. */
 export const catalogPriceSchema = z.object({
   amountMinor: z.number().int().positive(),
@@ -63,6 +65,8 @@ export const componentSchema = z
     /** Optional during the additive rollout; the API emits both fields. */
     price: catalogPriceSchema.nullable().optional(),
     requiresPaymentForUpdate: z.boolean().optional(),
+    /** Optional during the additive rollout; the API always emits it. */
+    accessTier: componentAccessTierSchema.optional(),
   })
   .superRefine((component, context) => {
     if (component.requiresPaymentForUpdate === true && component.price == null) {
@@ -157,6 +161,8 @@ export const createComponentRequestSchema = z
     latestVersion: semverSchema.default('0.0.0'),
     price: catalogPriceSchema.nullable().default(null),
     requiresPaymentForUpdate: z.boolean().default(false),
+    /** Omitted creates stay `free`. Not tied to the price pair. */
+    accessTier: componentAccessTierSchema.default('free'),
   })
   .superRefine((input, context) => {
     if (!isValidPriceFlagCombo(input.price, input.requiresPaymentForUpdate)) {
@@ -183,6 +189,8 @@ export const updateComponentRequestSchema = z.object({
   latestVersion: z.optional(semverSchema),
   price: catalogPriceSchema.nullable().optional(),
   requiresPaymentForUpdate: z.boolean().optional(),
+  // No `.default()` — same Zod 4 optional-default trap as `tags` above.
+  accessTier: componentAccessTierSchema.optional(),
 })
 
 export type CreateComponentRequest = z.infer<typeof createComponentRequestSchema>

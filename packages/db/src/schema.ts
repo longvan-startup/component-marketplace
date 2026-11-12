@@ -21,6 +21,7 @@ import {
 
 export const userRole = pgEnum('user_role', ['user', 'seller', 'admin'])
 export const catalogCategory = pgEnum('catalog_category', ['animation', 'react-component', 'tool'])
+export const componentAccessTier = pgEnum('component_access_tier', ['free', 'pro'])
 
 export const users = pgTable(
   'users',
@@ -115,6 +116,8 @@ export const components = pgTable(
     priceAmountMinor: integer('price_amount_minor'),
     priceCurrency: varchar('price_currency', { length: 3 }),
     requiresPaymentForUpdate: boolean('requires_payment_for_update').notNull().default(false),
+    // Membership label. Independent of the legacy price columns.
+    accessTier: componentAccessTier('access_tier').notNull().default('free'),
     authorId: uuid('author_id').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

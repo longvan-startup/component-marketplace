@@ -20,6 +20,7 @@ const BASE_ROW: CatalogRow = {
   priceAmountMinor: null,
   priceCurrency: null,
   requiresPaymentForUpdate: false,
+  accessTier: 'free',
   authorName: 'van-dev',
 }
 
@@ -39,7 +40,12 @@ describe('toCatalogComponent', () => {
       isPublished: true,
       price: null,
       requiresPaymentForUpdate: false,
+      accessTier: 'free',
     })
+  })
+
+  test('passes accessTier through unchanged', () => {
+    expect(toCatalogComponent({ ...BASE_ROW, accessTier: 'pro' }).accessTier).toBe('pro')
   })
 
   test('derives summary from description (interim Option A of #41)', () => {
@@ -86,6 +92,7 @@ describe('toCatalogComponent', () => {
     const dto = toCatalogComponent(BASE_ROW) as Record<string, unknown>
     expect(Object.keys(dto).sort()).toEqual(
       [
+        'accessTier',
         'author',
         'category',
         'description',

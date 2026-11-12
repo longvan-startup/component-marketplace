@@ -89,6 +89,7 @@ export async function insertComponent(
       priceAmountMinor: input.price?.amountMinor ?? null,
       priceCurrency: input.price?.currency ?? null,
       requiresPaymentForUpdate: input.requiresPaymentForUpdate,
+      accessTier: input.accessTier,
       authorId,
     })
   } catch (error) {
@@ -139,6 +140,7 @@ export async function updateComponent(
       priceAmountMinor: mergedPrice?.amountMinor ?? null,
       priceCurrency: mergedPrice?.currency ?? null,
       requiresPaymentForUpdate: mergedFlag,
+      accessTier: patch.accessTier ?? row.accessTier,
       updatedAt: new Date(),
     })
     .where(eq(components.slug, slug))

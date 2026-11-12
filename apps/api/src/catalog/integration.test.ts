@@ -167,6 +167,7 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     for (const item of parsed.items) {
       // Contrast: parse từ response THẬT (không phải fixture) — contract sống.
       void componentSchema.parse(item)
+      expect(item.accessTier).toBe('free')
       expect(Object.keys(item as Record<string, unknown>).some((k) => k === 'createdAt')).toBe(
         false,
       )
