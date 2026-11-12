@@ -2,7 +2,10 @@ import Link from 'next/link'
 import { getCatalogSource } from '@/features/catalog/catalog-source'
 
 /* Landing page — Server Component reading the catalog data layer directly.
-   Mock by default (API_MODE), same code path the live adapter will use. */
+   Mock by default (API_MODE), same code path the live adapter will use.
+   Live mode fetches the API. That service is not up during `next build` on
+   Vercel, and `cache: 'no-store'` cannot be prerendered, so render per request. */
+export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
   const source = getCatalogSource()
