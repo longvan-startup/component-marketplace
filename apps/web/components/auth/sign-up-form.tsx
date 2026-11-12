@@ -53,8 +53,9 @@ export function SignUpForm({ apiMode }: { apiMode: ApiMode }) {
   if (state.kind === 'done') {
     return (
       <AuthStatusBanner variant="success">
-        Tài khoản đã được tạo. Kiểm tra hộp thư {email.trim()} để xác minh email trước khi đăng
-        nhập.
+        {apiMode === 'live'
+          ? `Tài khoản đã được tạo. Kiểm tra hộp thư ${email.trim()} để xác minh email trước khi đăng nhập.`
+          : 'Chế độ demo: chưa có tài khoản thật và không có email nào được gửi đi.'}
       </AuthStatusBanner>
     )
   }
