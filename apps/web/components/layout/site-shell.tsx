@@ -1,42 +1,17 @@
 /**
- * Site shell — header + footer around every page. Server Component on
- * purpose: no state, no browser APIs. APP_NAME comes from @marketplace/shared
- * (the only internal dependency the web app is allowed to have).
+ * Site shell — NavBar + Footer around every page. Server Component on
+ * purpose: no state, no browser APIs (the mobile menu is its own island).
  */
-
-import { APP_NAME, APP_VERSION } from '@marketplace/shared'
-import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { Footer } from './footer'
+import { NavBar } from './nav-bar'
 
 export function SiteShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
-          <Link href="/" className="text-sm font-semibold tracking-tight">
-            {APP_NAME}
-          </Link>
-          <nav className="flex items-center gap-4 text-sm">
-            <Link
-              href="/components"
-              className="inline-flex min-h-11 items-center rounded-badge px-3 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Components
-            </Link>
-          </nav>
-        </div>
-      </header>
-
+      <NavBar />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
-
-      <footer className="border-t border-border bg-card">
-        <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-2 px-4 py-4 text-center text-xs text-muted-foreground sm:flex-row sm:justify-between sm:text-left">
-          <span>
-            {APP_NAME} <code>v{APP_VERSION}</code> — marketplace for UI components & animations
-          </span>
-          <span>@NguyenTuMinhLong · @DaoDungVan</span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

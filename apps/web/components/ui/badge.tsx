@@ -1,13 +1,15 @@
 /**
- * Badge primitive — single implementation for every status/content badge.
+ * Badge primitive — Figma component set `Badge` (8:51), prop `Tone`.
  * Variants are semantic, not decorative; do not add one-off colors per page.
+ * Tinted tones use the tone color on a 12% tint of itself.
  */
 import type { ReactNode } from 'react'
 
 const BADGE_VARIANTS = {
   neutral: 'bg-muted text-muted-foreground',
-  brand: 'bg-primary text-primary-foreground',
-  success: 'bg-accent text-primary-foreground',
+  success: 'bg-accent/12 text-accent',
+  accent: 'bg-accent-2/12 text-accent-2',
+  danger: 'bg-danger/12 text-danger',
 } as const
 
 export function Badge({
@@ -19,7 +21,7 @@ export function Badge({
 }) {
   return (
     <span
-      className={`inline-flex items-center rounded-badge px-2.5 py-0.5 text-xs font-medium ${BADGE_VARIANTS[variant]}`}
+      className={`inline-flex h-6 items-center gap-1.5 rounded-badge px-2.5 text-xs font-medium ${BADGE_VARIANTS[variant]}`}
     >
       {children}
     </span>

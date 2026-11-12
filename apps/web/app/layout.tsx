@@ -1,9 +1,18 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import { SiteShell } from '@/components/layout/site-shell'
 import './globals.css'
 
 /* Server Component by default — the root layout NEVER becomes a client
    component; client islands opt in per leaf component (`'use client'`). */
+
+/* Inter is the Figma typeface; the `vietnamese` subset covers UI copy. The
+   variable feeds --font-sans in globals.css. */
+const inter = Inter({
+  subsets: ['latin', 'vietnamese'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'component-marketplace',
@@ -13,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi">
+    <html lang="vi" className={inter.variable}>
       <body className="min-h-screen" data-smoke="web">
         <SiteShell>{children}</SiteShell>
       </body>

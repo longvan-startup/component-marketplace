@@ -49,7 +49,7 @@ export default async function ComponentDetailPage({ params }: ComponentDetailPro
           <p className="mt-1 font-mono text-sm text-muted-foreground">/{item.slug}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={item.category === 'animation' ? 'brand' : 'neutral'}>
+          <Badge variant={item.category === 'animation' ? 'accent' : 'neutral'}>
             {item.category}
           </Badge>
           {item.isPublished ? <Badge variant="success">published</Badge> : null}
