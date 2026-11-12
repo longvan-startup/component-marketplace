@@ -62,6 +62,8 @@ describe('mock catalog source', () => {
 
 describe('source selection + query parsing', () => {
   test('API_MODE defaults to mock even for unknown values', () => {
+    // Pin the default: a local .env may set API_MODE=live for manual testing.
+    delete process.env.API_MODE
     expect(resolveApiMode(undefined)).toBe('mock')
     expect(resolveApiMode('')).toBe('mock')
     expect(resolveApiMode('nonsense' as string | undefined)).toBe('mock')

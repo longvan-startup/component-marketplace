@@ -5,7 +5,10 @@
  * requires email verification, so a successful sign-up never signs the user
  * in: we show a "check your inbox" banner instead of redirecting.
  */
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
+
+const RESEND_COOLDOWN_SECONDS = 30
+
 import { type ApiMode, AuthRequestError, getAuthSource } from '../../features/auth/auth-source'
 import { verifyEmailCallbackUrl } from '../../features/auth/safe-callback-url'
 import { Button } from '../ui/button'
@@ -35,6 +38,26 @@ export function SignUpForm({ apiMode }: { apiMode: ApiMode }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [state, setState] = useState<FormState>({ kind: 'idle' })
+  const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [cooldown, setCooldown] = useState(0)
+
+  // Đếm ngược 30 giây sau mỗi lần bấm gửi lại, để tránh spam email.
+  useEffect(() => {
+    if (cooldown === 0) return
+    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
+
+  async function resendLink() {
+    setCooldown(RESEND_COOLDOWN_SECONDS)
+    setResend('sending')
+    try {
+      await getAuthSource(apiMode).resendVerificationEmail(email.trim(), verifyEmailCallbackUrl())
+      setResend('sent')
+    } catch {
+      setResend('error')
+    }
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -52,10 +75,33 @@ export function SignUpForm({ apiMode }: { apiMode: ApiMode }) {
 
   if (state.kind === 'done') {
     return (
-      <AuthStatusBanner variant="success">
-        Tài khoản đã được tạo. Kiểm tra hộp thư {email.trim()} để xác minh email trước khi đăng
-        nhập.
-      </AuthStatusBanner>
+      <div className="flex flex-col gap-4">
+        <AuthStatusBanner variant="success">
+          {apiMode === 'live'
+            ? `Tài khoản đã được tạo. Kiểm tra hộp thư ${email.trim()} và bấm link xác minh trước khi đăng nhập.`
+            : 'Chế độ demo: chưa có tài khoản thật và không có email nào được gửi đi.'}
+        </AuthStatusBanner>
+        {apiMode === 'live' && (
+          <>
+            <Button
+              variant="secondary"
+              loading={resend === 'sending'}
+              disabled={cooldown > 0}
+              onClick={resendLink}
+            >
+              {cooldown > 0 ? `Gửi lại sau ${cooldown} giây` : 'Gửi lại email xác minh'}
+            </Button>
+            {resend === 'sent' && (
+              <p className="text-center text-xs text-muted-foreground">
+                Đã gửi lại (nếu email chưa xác minh).
+              </p>
+            )}
+            {resend === 'error' && (
+              <AuthStatusBanner variant="error">Có lỗi xảy ra, thử lại sau.</AuthStatusBanner>
+            )}
+          </>
+        )}
+      </div>
     )
   }
 
