@@ -135,8 +135,10 @@ jobs:
             .target == "production" and
             ((.readyState // .state) == "READY") and
             ((.meta.githubCommitSha | ascii_downcase) == $sha) and
-            .aliasAssigned == false
-          ' <<< "$response" >/dev/null || { echo "::error::Staged deployment is not READY for the exact verified SHA, or has already been promoted."; exit 1; }
+            ((.aliasAssigned == false) or (.aliasAssigned == true) or ((.aliasAssigned | type) == "number"))
+          ' <<< "$response" >/dev/null || { echo "::error::Deployment is not READY for the exact verified SHA."; exit 1; }
+          assigned="$(jq -r 'if .aliasAssigned == false or .aliasAssigned == null then "false" else "true" end' <<< "$response")"
+          echo "already_live=$assigned" >> "$GITHUB_OUTPUT"
           deployment_url="$(jq -r '.url // empty' <<< "$response")"
           [[ "$deployment_url" =~ ^[A-Za-z0-9.-]+\.vercel\.app$ ]] || { echo "::error::Vercel returned an invalid staged deployment URL."; exit 1; }
           echo "url=https://$deployment_url" >> "$GITHUB_OUTPUT"
@@ -163,7 +165,7 @@ jobs:
           bun run --cwd packages/db db:migrate
 
       - name: Recheck immutable deployment before promotion
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_RELEASE_TOKEN }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
@@ -182,17 +184,17 @@ jobs:
           ' <<< "$response" >/dev/null || { echo "::error::Staged deployment changed or was promoted before this release."; exit 1; }
 
       - name: Promote the exact staged Vercel build
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
       - name: Install pinned Vercel CLI
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
         run: npm install --global vercel@65.12.1
 
       - name: Promote Vercel deployment without rebuilding
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_RELEASE_TOKEN }}
           DEPLOYMENT_URL: ${{ steps.staged.outputs.url }}

@@ -205,15 +205,17 @@ export async function getReleaseSnapshot(
   }
   let stagedDeployment = null
   if (latestVerifiedSha) {
-    const stagedCandidate = sortedNewest(
-      vercelDeployments.filter(
-        (deployment) =>
-          deployment.target === 'production' &&
-          deployment.status === 'READY' &&
-          deployment.commitSha === latestVerifiedSha &&
-          deployment.aliasAssigned === false,
-      ),
-    )[0]
+    const matchesVerifiedSha = (deployment) =>
+      deployment.target === 'production' &&
+      deployment.status === 'READY' &&
+      deployment.commitSha === latestVerifiedSha
+    const stagedCandidate =
+      sortedNewest(
+        vercelDeployments.filter(
+          (deployment) => matchesVerifiedSha(deployment) && deployment.aliasAssigned === false,
+        ),
+      )[0] ||
+      sortedNewest(vercelDeployments.filter((deployment) => matchesVerifiedSha(deployment)))[0]
     if (stagedCandidate) {
       try {
         const detail = await getDeploymentDetails(
@@ -225,8 +227,7 @@ export async function getReleaseSnapshot(
         if (
           detail.status === 'READY' &&
           detail.target === 'production' &&
-          detail.commitSha === latestVerifiedSha &&
-          detail.aliasAssigned === false
+          detail.commitSha === latestVerifiedSha
         ) {
           stagedDeployment = deploymentSummary(detail)
         }
@@ -251,10 +252,7 @@ export async function getReleaseSnapshot(
     }
   }
 
-  const alreadyReleased = Boolean(
-    latestVerifiedSha &&
-      (releaseRun?.status === 'SUCCESS' || productionDeployment?.commitSha === latestVerifiedSha),
-  )
+  const alreadyReleased = releaseRun?.status === 'SUCCESS'
   const readyToRelease = Boolean(
     configuration.productionEnabled &&
       configuration.githubAppConfigured &&
