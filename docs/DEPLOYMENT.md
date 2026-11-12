@@ -45,8 +45,8 @@ Do not set the enable flags until all required steps below are complete and a st
 
 1. Create the GitHub Environment named `production`; add Long and Văn as required reviewers. Keep branch restrictions limited to `main`.
 2. Add environment variables `PRODUCTION_RELEASE_ENABLED=true`, `VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID` after confirming Vercel setup.
-3. Add environment secrets `VERCEL_RELEASE_TOKEN` and `PROD_DATABASE_URL`. The database URL must point at the intended Neon production database, never a local/test database.
-4. Confirm the first release can run migrations successfully and the Neon project's backup/restore recovery path is known before enabling the dashboard action.
+3. Add the environment secret `VERCEL_RELEASE_TOKEN`. Leave `PROD_DATABASE_URL` unset until the production database exists. While it is unset, the release workflow skips migrations and still promotes the staged Web + API deployment. When the secret is set, it must be the Neon production URL, never a local or test database, and a failed migration stops promotion.
+4. Confirm a staged deployment exists before enabling the dashboard action. Confirm the first migration and the Neon backup/restore path only before setting `PROD_DATABASE_URL`.
 
 GitHub documents environment protection and required reviewers at <https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments>.
 
@@ -72,6 +72,6 @@ Old `component-marketplace-control-room:deployment-history:v1` localStorage data
 
 - CI and the CD preparation build remain separate from promotion. Docker runtime smoke tests stay in `CI`.
 - `workflow_dispatch` receives the expected SHA and Vercel deployment ID from the confirmation. When retrying a failure it also receives the failed run ID. The server checks the expected candidate and failed run against fresh GitHub/Vercel state; the workflow independently validates the SHA and deployment and rejects duplicate or unconfirmed retries.
-- Failed releases keep their GitHub Actions conclusion and Vercel deployment state visible. Retry only after inspecting the failed workflow logs and confirming whether the migration completed.
+- Failed releases keep their GitHub Actions conclusion and Vercel deployment state visible. Retry only after inspecting the failed workflow logs and confirming whether the migration completed. An unset `PROD_DATABASE_URL` skips that step; the frontend promotion does not wait for a database connection.
 - Vercel promotion uses the staged deployment and does not rebuild it. Vercel rollback remains an owner action from the Vercel deployment dashboard or CLI.
 - If a database migration has applied but Vercel promotion fails, do not blindly rerun or roll back the database. Inspect the migration journal and apply a compatible follow-up or restore plan with the database owner.

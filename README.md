@@ -228,8 +228,9 @@ chạy sau job quality)
 `.github/workflows/cd.yml` — chạy sau CI xanh trên `main`:
 
 1. **GHCR**: publish image API (`ghcr.io/...`) — tự động qua `GITHUB_TOKEN`.
-2. **DB migrate (production)**: chỉ chạy khi secret `PROD_DATABASE_URL`
-   (Neon) tồn tại; **deploy không bao giờ chạy khi migrate đỏ**.
+2. **DB migrate (production)**: workflow release chỉ migrate khi secret
+   `PROD_DATABASE_URL` (Neon) tồn tại. Khi secret chưa có, bước này bị bỏ
+   qua và frontend vẫn được promote. **Promote không chạy khi migrate đỏ**.
 3. **Vercel Services**: cấu hình ở repo (`vercel.json`) — kích hoạt =
    import project 1 lần trên dashboard (runbook + trạng thái:
    `docs/DEPLOYMENT.md`); mỗi PR có preview deployment.
