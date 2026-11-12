@@ -39,6 +39,8 @@ export interface CatalogListResult {
   page: number
   pageSize: number
   total: number
+  /** True when the live API cannot serve the catalog (no database, or unreachable). */
+  unavailable?: boolean
 }
 
 export interface CatalogSource {
@@ -112,6 +114,23 @@ interface HttpDeps {
   runtime?: 'browser' | 'server'
 }
 
+/** Matches `PAGINATION_LIMITS.maxPageSize` in `@marketplace/shared`. */
+const MAX_PAGE_SIZE = 48
+
+function emptyCatalog(query: CatalogListQuery): CatalogListResult {
+  return {
+    items: [],
+    page: Math.max(1, query.page ?? 1),
+    pageSize: Math.min(MAX_PAGE_SIZE, Math.max(1, query.pageSize ?? 12)),
+    total: 0,
+    unavailable: true,
+  }
+}
+
+function isCatalogUnavailable(error: unknown): boolean {
+  return error instanceof ApiClientError && (error.status === 503 || error.status === 0)
+}
+
 export function createHttpCatalogSource(deps: HttpDeps = {}): CatalogSource {
   return {
     list: async (query = {}) => {
@@ -119,14 +138,20 @@ export function createHttpCatalogSource(deps: HttpDeps = {}): CatalogSource {
       if (query.q) params.set('q', query.q)
       if (query.category) params.set('category', query.category)
       params.set('page', String(Math.max(1, query.page ?? 1)))
-      params.set('pageSize', String(Math.max(1, query.pageSize ?? 12)))
+      params.set('pageSize', String(Math.min(MAX_PAGE_SIZE, Math.max(1, query.pageSize ?? 12))))
       const path = `/components?${params.toString()}`
-      const payload = await apiFetchJson<CatalogListResult>(path, {
-        runtime: deps.runtime,
-        fetchImpl: deps.fetchImpl,
-        publicApiUrl: deps.publicApiUrl,
-        internalApiUrl: deps.internalApiUrl,
-      })
+      let payload: CatalogListResult
+      try {
+        payload = await apiFetchJson<CatalogListResult>(path, {
+          runtime: deps.runtime,
+          fetchImpl: deps.fetchImpl,
+          publicApiUrl: deps.publicApiUrl,
+          internalApiUrl: deps.internalApiUrl,
+        })
+      } catch (error) {
+        if (isCatalogUnavailable(error)) return emptyCatalog(query)
+        throw error
+      }
       // Minimal presence checks until the real contract is validated in
       // `packages/shared` (contract issue pending Long's review).
       const items = Array.isArray(payload.items) ? payload.items : []
@@ -149,6 +174,7 @@ export function createHttpCatalogSource(deps: HttpDeps = {}): CatalogSource {
         return item ?? null
       } catch (error) {
         if (error instanceof ApiClientError && error.status === 404) return null
+        if (isCatalogUnavailable(error)) return null
         throw error
       }
     },

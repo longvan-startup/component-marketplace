@@ -95,12 +95,41 @@ describe('http catalog source (pre-contract, API_MODE=live only)', () => {
     expect(result.items.length).toBe(1)
   })
 
-  test('detail maps 404 to null instead of throwing', async () => {
+  test('list clamps pageSize to the API maximum', async () => {
+    let requested = ''
+    const source = createHttpCatalogSource({
+      fetchImpl: async (input) => {
+        requested = String(input)
+        return jsonResponse(200, { items: [], page: 1, pageSize: 48, total: 0 })
+      },
+      publicApiUrl: 'https://api.example.test',
+    })
+    await source.list({ pageSize: 99 })
+    expect(requested).toContain('pageSize=48')
+  })
+
+  test('list turns a missing database into an empty unavailable catalog', async () => {
+    const source = createHttpCatalogSource({
+      fetchImpl: async () =>
+        jsonResponse(503, { code: 'DATABASE_UNCONFIGURED', message: 'Database is not configured' }),
+      publicApiUrl: 'https://api.example.test',
+    })
+    const result = await source.list({ pageSize: 4 })
+    expect(result).toEqual({ items: [], page: 1, pageSize: 4, total: 0, unavailable: true })
+  })
+
+  test('detail maps 404 and a missing database to null', async () => {
     const source = createHttpCatalogSource({
       fetchImpl: async () => jsonResponse(404, { error: 'not found' }),
       publicApiUrl: 'https://api.example.test',
     })
     expect(await source.detail('missing-slug')).toBeNull()
+
+    const unconfigured = createHttpCatalogSource({
+      fetchImpl: async () => jsonResponse(503, { code: 'DATABASE_UNCONFIGURED' }),
+      publicApiUrl: 'https://api.example.test',
+    })
+    expect(await unconfigured.detail('spring-card-stack')).toBeNull()
   })
 
   test('detail surfaces non-404 failures as ApiClientError-ish throw', async () => {

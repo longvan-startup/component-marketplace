@@ -36,7 +36,11 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         <CatalogSearch initialQuery={query.q ?? ''} />
       </header>
 
-      {result.items.length === 0 ? (
+      {result.unavailable ? (
+        <p className="rounded-card border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          Catalog chưa kết nối database. Danh sách sẽ hiện khi database được cấu hình.
+        </p>
+      ) : result.items.length === 0 ? (
         <p className="rounded-card border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
           No components match this query yet — try a different keyword.
         </p>
