@@ -6,7 +6,8 @@
   "services": {
     "api": {
       "root": "apps/api",
-      "framework": "express"
+      "framework": "express",
+      "entrypoint": "index.mjs"
     },
     "web": {
       "root": "apps/web",
