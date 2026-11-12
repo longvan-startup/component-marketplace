@@ -5,8 +5,7 @@
   "description": "Component Marketplace — monorepo skeleton (Bun Workspaces + Next.js + Bun/Express)",
   "workspaces": [
     "apps/*",
-    "packages/*",
-    "prototypes/deployment-dashboard"
+    "packages/*"
   ],
   "scripts": {
     "prepare": "if [ -d .git ]; then lefthook install; fi",
