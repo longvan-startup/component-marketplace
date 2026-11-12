@@ -108,9 +108,12 @@ export async function getProjectProductionState(id, env = process.env, fetchImpl
   }
 }
 
-/** Vercel sends `true`/`false` or a timestamp once the production domain is assigned. */
+/** Vercel sends `true`/`false`, or a timestamp once the production domain is assigned. */
 export function isAliasAssigned(value) {
-  return value === true || (typeof value === 'number' && Number.isFinite(value) && value > 0)
+  if (value === true || (typeof value === 'number' && Number.isFinite(value) && value > 0))
+    return true
+  if (value === false) return false
+  return null
 }
 
 export async function listDeployments(id, env = process.env, fetchImpl = fetch) {
