@@ -10,7 +10,9 @@ describe('resetPasswordCallbackUrl', () => {
 })
 
 describe('verifyEmailCallbackUrl', () => {
-  test('appends the fixed /verify-email path to the given origin', () => {
-    expect(verifyEmailCallbackUrl('https://example.com')).toBe('https://example.com/verify-email')
+  test('appends the fixed /verify-email/success path to the given origin', () => {
+    expect(verifyEmailCallbackUrl('https://example.com')).toBe(
+      'https://example.com/verify-email/success',
+    )
   })
 })

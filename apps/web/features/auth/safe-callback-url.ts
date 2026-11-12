@@ -23,5 +23,5 @@ export function resetPasswordCallbackUrl(origin: string = window.location.origin
  * way rather than guessing.
  */
 export function verifyEmailCallbackUrl(origin: string = window.location.origin): string {
-  return `${origin}/verify-email`
+  return `${origin}/verify-email/success`
 }
