@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
   const source = getCatalogSource()
-  const { items, total } = await source.list({ pageSize: 99 })
+  const { items, total, unavailable } = await source.list({ pageSize: 4 })
   const highlights = items.slice(0, 4)
 
   return (
@@ -30,7 +30,7 @@ export default async function HomePage() {
             Browse components
           </Link>
           <span className="font-mono text-xs text-muted-foreground">
-            {total} catalog entries · mock data
+            {unavailable ? 'Catalog chưa kết nối database' : `${total} catalog entries`}
           </span>
         </div>
       </header>
