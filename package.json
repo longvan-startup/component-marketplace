@@ -5,8 +5,7 @@
   "description": "Component Marketplace — monorepo skeleton (Bun Workspaces + Next.js + Bun/Express)",
   "workspaces": [
     "apps/*",
-    "packages/*",
-    "prototypes/deployment-dashboard"
+    "packages/*"
   ],
   "scripts": {
     "prepare": "if [ -d .git ]; then lefthook install; fi",
@@ -32,6 +31,7 @@
     "db:studio": "bun run --cwd packages/db db:studio"
   },
   "devDependencies": {
+    "@auth/core": "0.41.3",
     "@biomejs/biome": "2.5.15",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
