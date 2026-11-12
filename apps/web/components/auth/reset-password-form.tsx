@@ -9,6 +9,8 @@
 import { useId, useState } from 'react'
 import { type ApiMode, getAuthSource, ResetPasswordError } from '../../features/auth/auth-source'
 import { Button } from '../ui/button'
+import { Field } from '../ui/field'
+import { Input } from '../ui/input'
 import { AuthStatusBanner } from './auth-status-banner'
 
 const MIN_PASSWORD_LENGTH = 8
@@ -60,11 +62,8 @@ export function ResetPasswordForm({ token, apiMode }: { token: string; apiMode: 
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={passwordId} className="text-sm font-medium">
-          Mật khẩu mới
-        </label>
-        <input
+      <Field label="Mật khẩu mới" htmlFor={passwordId}>
+        <Input
           id={passwordId}
           type="password"
           required
@@ -72,9 +71,8 @@ export function ResetPasswordForm({ token, apiMode }: { token: string; apiMode: 
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           placeholder="Ít nhất 8 ký tự"
-          className="min-h-11 w-full rounded-card border border-border bg-card px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-      </div>
+      </Field>
       {state.kind === 'error' && (
         <AuthStatusBanner variant="error">{state.message}</AuthStatusBanner>
       )}

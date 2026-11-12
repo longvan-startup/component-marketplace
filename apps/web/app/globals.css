@@ -6,16 +6,16 @@
 @import "tailwindcss";
 
 @theme {
-  /* Typography — system stack keeps builds offline-safe; adjust deliberately
-     when a brand font decision lands. */
+  /* Typography — Inter (Figma "Luva UI") is loaded with next/font in
+     app/layout.tsx and exposed as --font-inter; the system stack is the fallback. */
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    "Noto Sans", sans-serif;
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   --font-mono:
     ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Radius scale — card/panel corners stay consistent. */
-  --radius-card: 0.75rem;
+  --radius-card: 1rem;
   --radius-badge: 9999px;
 
   /* Surfaces. */
@@ -27,13 +27,28 @@
   --color-muted-foreground: #52525b;
   --color-border: #e4e4e7;
 
-  /* Brand + states (interactive tweaks live next to components as
-     bg-primary/90 + focus-visible:ring-2 ring-ring style utilities). */
-  --color-primary: #4f46e5;
+  /* Brand + states — names and values mirror the Figma variable collection
+     "Color/Light" (file U18wmk6ME8k4kWAYRZvkAX). */
+  --color-primary: #7c3aed;
   --color-primary-foreground: #ffffff;
   --color-accent: #047857;
-  --color-ring: #4f46e5;
+  --color-accent-foreground: #ffffff;
+  --color-accent-2: #7c3aed;
+  --color-accent-2-foreground: #ffffff;
+  --color-ring: #7c3aed;
   --color-danger: #b91c1c;
+  --color-danger-foreground: #ffffff;
+
+  /* Interaction shades — raw fills on the Figma Button variants (Hover /
+     Pressed) and the logo mark; Figma has no variables for them yet. */
+  --color-primary-hover: #6629db;
+  --color-primary-pressed: #4d1ca6;
+  --color-primary-light: #a78bfa;
+  --color-primary-dark: #5b21b6;
+  --color-muted-hover: #ebebed;
+  --color-muted-pressed: #dedee3;
+  --color-danger-hover: #991414;
+  --color-danger-pressed: #780f0f;
 }
 
 body {
@@ -44,7 +59,7 @@ body {
 }
 
 ::selection {
-  background-color: rgb(79 70 229 / 0.18);
+  background-color: rgb(124 58 237 / 0.18);
 }
 
 /* Page-level guard against stray horizontal overflow on small screens — the
