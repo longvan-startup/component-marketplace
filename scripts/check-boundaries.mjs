@@ -15,7 +15,7 @@
  */
 
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
-import { dirname, join, normalize } from 'node:path'
+import { join, posix } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /** Directories skipped while scanning. */
@@ -130,9 +130,9 @@ function classifySpecifier(spec) {
 
 /** Normalize a path-based specifier against the importing file's directory. */
 function resolveSpecifierPath(relFile, cls) {
-  if (cls.isRelative) return normalize(join(dirname(relFile), cls.spec))
+  if (cls.isRelative) return posix.normalize(posix.join(posix.dirname(relFile), cls.spec))
   if (cls.spec.startsWith('apps/') || cls.spec.startsWith('packages/')) {
-    return normalize(cls.spec)
+    return posix.normalize(cls.spec)
   }
   return null // external dependency, not a repo path
 }
