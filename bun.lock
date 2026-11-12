@@ -5,6 +5,7 @@
     "": {
       "name": "component-marketplace",
       "devDependencies": {
+        "@auth/core": "0.41.3",
         "@biomejs/biome": "2.5.15",
         "@commitlint/cli": "^21.2.4",
         "@commitlint/config-conventional": "^21.2.4",
@@ -69,12 +70,6 @@
       },
       "devDependencies": {
         "typescript": "^6.0.3",
-      },
-    },
-    "prototypes/deployment-dashboard": {
-      "name": "deployment-control-room",
-      "dependencies": {
-        "@auth/core": "0.41.3",
       },
     },
   },
@@ -438,8 +433,6 @@
     "defu": ["defu@6.1.7", "", {}, "sha512-7z22QmUWiQ/2d0KkdYmANbRUVABpZ9SNYyH5vx6PZ+nE5bcC0l7uFvEfHlyld/HcGBFTL536ClDt3DEcSlEJAQ=="],
 
     "depd": ["depd@2.0.0", "", {}, "sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw=="],
-
-    "deployment-control-room": ["deployment-control-room@workspace:prototypes/deployment-dashboard"],
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 

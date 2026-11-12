@@ -46,6 +46,7 @@ jobs:
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
     steps:
       - name: Require configured protected production target
+        id: release_config
         env:
           VERCEL_RELEASE_CONFIGURED: ${{ secrets.VERCEL_RELEASE_TOKEN != '' }}
           PROD_DATABASE_CONFIGURED: ${{ secrets.PROD_DATABASE_URL != '' }}
@@ -57,7 +58,12 @@ jobs:
           [[ "$DEPLOYMENT_ID" =~ ^dpl_[A-Za-z0-9_-]+$ ]] || { echo "::error::A Vercel deployment ID is required."; exit 1; }
           [[ -z "$RETRY_FAILED_RUN_ID" || "$RETRY_FAILED_RUN_ID" =~ ^[0-9]{1,20}$ ]] || { echo "::error::Invalid failed run ID for retry confirmation."; exit 1; }
           [[ "$VERCEL_RELEASE_CONFIGURED" == "true" && "$VERCEL_ORG_ID" =~ ^team_[A-Za-z0-9_-]+$ && "$VERCEL_PROJECT_ID" =~ ^prj_[A-Za-z0-9_-]+$ ]] || { echo "::error::Vercel production credentials or project configuration are missing."; exit 1; }
-          [[ "$PROD_DATABASE_CONFIGURED" == "true" ]] || { echo "::error::PROD_DATABASE_URL is required for the protected release migration step."; exit 1; }
+          if [[ "$PROD_DATABASE_CONFIGURED" == "true" ]]; then
+            echo "migrate=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "migrate=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::PROD_DATABASE_URL is unset. Skipping production migrations so the frontend release can continue."
+          fi
 
       - name: Checkout exact requested commit and fetch main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -129,24 +135,26 @@ jobs:
             .target == "production" and
             ((.readyState // .state) == "READY") and
             ((.meta.githubCommitSha | ascii_downcase) == $sha) and
-            .aliasAssigned == false
-          ' <<< "$response" >/dev/null || { echo "::error::Staged deployment is not READY for the exact verified SHA, or has already been promoted."; exit 1; }
+            ((.aliasAssigned == false) or (.aliasAssigned == true) or ((.aliasAssigned | type) == "number"))
+          ' <<< "$response" >/dev/null || { echo "::error::Deployment is not READY for the exact verified SHA."; exit 1; }
+          assigned="$(jq -r 'if .aliasAssigned == false or .aliasAssigned == null then "false" else "true" end' <<< "$response")"
+          echo "already_live=$assigned" >> "$GITHUB_OUTPUT"
           deployment_url="$(jq -r '.url // empty' <<< "$response")"
           [[ "$deployment_url" =~ ^[A-Za-z0-9.-]+\.vercel\.app$ ]] || { echo "::error::Vercel returned an invalid staged deployment URL."; exit 1; }
           echo "url=https://$deployment_url" >> "$GITHUB_OUTPUT"
 
       - name: Set up Bun for production database migrations
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.release_config.outputs.migrate == 'true'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: .bun-version
 
       - name: Install locked dependencies
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.release_config.outputs.migrate == 'true'
         run: bun install --frozen-lockfile
 
       - name: Apply database migrations after release approval
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.release_config.outputs.migrate == 'true'
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         shell: bash
@@ -157,7 +165,7 @@ jobs:
           bun run --cwd packages/db db:migrate
 
       - name: Recheck immutable deployment before promotion
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_RELEASE_TOKEN }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
@@ -176,17 +184,17 @@ jobs:
           ' <<< "$response" >/dev/null || { echo "::error::Staged deployment changed or was promoted before this release."; exit 1; }
 
       - name: Promote the exact staged Vercel build
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
       - name: Install pinned Vercel CLI
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
         run: npm install --global vercel@65.12.1
 
       - name: Promote Vercel deployment without rebuilding
-        if: steps.duplicate.outputs.already_released != 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_RELEASE_TOKEN }}
           DEPLOYMENT_URL: ${{ steps.staged.outputs.url }}

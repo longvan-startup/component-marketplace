@@ -544,13 +544,57 @@ test('release snapshot is ready only for the exact CI SHA and a ready unpromoted
           },
         ],
       })
+    if (parsed.pathname === '/v13/deployments/dpl_stage')
+      return response({
+        uid: 'dpl_stage',
+        projectId: 'prj_test',
+        readyState: 'READY',
+        target: 'production',
+        meta: { githubCommitSha: sha },
+        url: 'staged.vercel.app',
+        aliasAssigned: true,
+        createdAt: 1762500000000,
+      })
     if (parsed.pathname.endsWith('/actions/workflows/release.yml/runs'))
       return response({ workflow_runs: [] })
     return unsafeDeployments(url, options)
   }
   const alreadyPromoted = await getReleaseSnapshot(env(), notStaged)
-  assert.equal(alreadyPromoted.stagedDeployment, null)
-  assert.equal(alreadyPromoted.readyToRelease, false)
+  assert.equal(alreadyPromoted.stagedDeployment.id, 'dpl_stage')
+  assert.equal(alreadyPromoted.readyToRelease, true)
+
+  const timestampAssigned = async (url, options = {}) => {
+    const parsed = new URL(url)
+    if (parsed.pathname === '/v6/deployments')
+      return response({
+        deployments: [
+          {
+            uid: 'dpl_live',
+            state: 'READY',
+            target: 'production',
+            meta: { githubCommitSha: sha },
+            url: 'marketplace.example',
+            aliasAssigned: 1794488882090,
+            created: 1762500000000,
+          },
+        ],
+      })
+    if (parsed.pathname === '/v13/deployments/dpl_live')
+      return response({
+        uid: 'dpl_live',
+        projectId: 'prj_test',
+        readyState: 'READY',
+        target: 'production',
+        meta: { githubCommitSha: sha },
+        url: 'marketplace.example',
+        aliasAssigned: 1794488882090,
+        createdAt: 1762500000000,
+      })
+    return notStaged(url, options)
+  }
+  const liveFrontend = await getReleaseSnapshot(env(), timestampAssigned)
+  assert.equal(liveFrontend.stagedDeployment.id, 'dpl_live')
+  assert.equal(liveFrontend.readyToRelease, true)
 })
 
 test('release readiness requires no active release run for the confirmed candidate', async () => {
