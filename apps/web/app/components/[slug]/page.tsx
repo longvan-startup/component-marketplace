@@ -26,7 +26,10 @@ export async function generateMetadata({ params }: ComponentDetailProps): Promis
 }
 
 /* Component detail — Server Component. Unknown/unpublished slugs → 404 via
-   notFound(); renders mock data until API_MODE=live flips the data source. */
+   notFound(); renders mock data until API_MODE=live flips the data source.
+   Live fetches happen per request; the API is not reachable at build time. */
+export const dynamic = 'force-dynamic'
+
 export default async function ComponentDetailPage({ params }: ComponentDetailProps) {
   const { slug } = await params
   const item = await loadComponent(slug)

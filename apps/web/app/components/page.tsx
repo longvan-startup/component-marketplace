@@ -13,7 +13,10 @@ export const metadata: Metadata = {
 }
 
 /* Catalog listing — Server Component. Data is read ONLY through the catalog
-   data layer; the page never imports the mock array or the fetch client. */
+   data layer; the page never imports the mock array or the fetch client.
+   Live fetches happen per request; the API is not reachable at build time. */
+export const dynamic = 'force-dynamic'
+
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const params = await searchParams
   const query = parseCatalogQuery(params)
