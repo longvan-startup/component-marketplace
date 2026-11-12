@@ -108,6 +108,11 @@ export async function getProjectProductionState(id, env = process.env, fetchImpl
   }
 }
 
+/** Vercel sends `true`/`false` or a timestamp once the production domain is assigned. */
+export function isAliasAssigned(value) {
+  return value === true || (typeof value === 'number' && Number.isFinite(value) && value > 0)
+}
+
 export async function listDeployments(id, env = process.env, fetchImpl = fetch) {
   if (typeof id !== 'string' || !/^prj_[\w-]+$/.test(id)) throw new ProviderError('INVALID_ID')
   const config = configuration(env)
@@ -135,7 +140,7 @@ export async function listDeployments(id, env = process.env, fetchImpl = fetch) 
             ? item.meta.githubCommitSha.toLowerCase()
             : null,
         url: typeof item.url === 'string' ? `https://${item.url}` : null,
-        aliasAssigned: typeof item.aliasAssigned === 'boolean' ? item.aliasAssigned : null,
+        aliasAssigned: isAliasAssigned(item.aliasAssigned),
         createdAt: Number.isFinite(created) && created > 0 ? new Date(created).toISOString() : null,
       }
     }),
@@ -172,7 +177,7 @@ export async function getDeploymentDetails(id, projectId, env = process.env, fet
         ? item.meta.githubCommitSha.toLowerCase()
         : null,
     url: rawUrl ? `https://${rawUrl}` : null,
-    aliasAssigned: typeof item.aliasAssigned === 'boolean' ? item.aliasAssigned : null,
+    aliasAssigned: isAliasAssigned(item.aliasAssigned),
     createdAt:
       Number.isFinite(Number(item.createdAt)) && Number(item.createdAt) > 0
         ? new Date(Number(item.createdAt)).toISOString()

@@ -505,7 +505,8 @@
       el('deploy-production').disabled = !snapshot.readyToRelease
       const deployedSha = snapshot.productionDeployment?.commitSha
       let help = 'Xác nhận sẽ gửi một yêu cầu release tới GitHub Actions. Workflow tự kiểm tra lại SHA và chờ duyệt môi trường production.'
-      if (!snapshot.configuration?.productionEnabled) help = 'Chưa bật cấu hình production đầy đủ. Nút deploy đang khóa.'
+      if (snapshot.readyToRelease) help = 'Frontend đã có bản production READY cho commit CI. Nút deploy mở để xác nhận release.'
+      else if (!snapshot.configuration?.productionEnabled) help = 'Chưa bật cấu hình production đầy đủ. Nút deploy đang khóa.'
       else if (!snapshot.configuration?.githubAppConfigured) help = 'GitHub App chưa sẵn sàng đọc CI và gửi yêu cầu release.'
       else if (!snapshot.configuration?.vercelProjectConfigured) help = 'Vercel project hoặc quyền đọc deployment chưa được cấu hình.'
       else if (!snapshot.ci?.latestVerified) help = 'Cần có một commit trên main đã qua CI thành công.'
