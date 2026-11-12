@@ -5,6 +5,7 @@
   "engines": {
     "node": ">=22"
   },
+  "packageManager": "bun@1.4.3",
   "scripts": {
     "dev": "node server.mjs",
     "test": "node --test"

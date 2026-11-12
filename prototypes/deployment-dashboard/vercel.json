@@ -2,7 +2,6 @@
   "git": {
     "deploymentEnabled": false
   },
-  "installCommand": "mkdir -p /tmp/cr && cp package.json /tmp/cr/package.json && npm install --prefix /tmp/cr --omit=dev && rm -rf node_modules && mv /tmp/cr/node_modules node_modules",
   "outputDirectory": "public",
   "headers": [
     {
