@@ -135,9 +135,9 @@ jobs:
             .target == "production" and
             ((.readyState // .state) == "READY") and
             ((.meta.githubCommitSha | ascii_downcase) == $sha) and
-            ((.aliasAssigned == false) or (.aliasAssigned == true) or ((.aliasAssigned | type) == "number"))
+            ((.alias | type) == "array")
           ' <<< "$response" >/dev/null || { echo "::error::Deployment is not READY for the exact verified SHA."; exit 1; }
-          assigned="$(jq -r 'if .aliasAssigned == false or .aliasAssigned == null then "false" else "true" end' <<< "$response")"
+          assigned="$(jq -r 'if (.alias | length) > 0 then "true" else "false" end' <<< "$response")"
           echo "already_live=$assigned" >> "$GITHUB_OUTPUT"
           deployment_url="$(jq -r '.url // empty' <<< "$response")"
           [[ "$deployment_url" =~ ^[A-Za-z0-9.-]+\.vercel\.app$ ]] || { echo "::error::Vercel returned an invalid staged deployment URL."; exit 1; }
@@ -180,7 +180,8 @@ jobs:
             .target == "production" and
             ((.readyState // .state) == "READY") and
             ((.meta.githubCommitSha | ascii_downcase) == $sha) and
-            .aliasAssigned == false
+            ((.alias | type) == "array") and
+            (.alias | length == 0)
           ' <<< "$response" >/dev/null || { echo "::error::Staged deployment changed or was promoted before this release."; exit 1; }
 
       - name: Promote the exact staged Vercel build
