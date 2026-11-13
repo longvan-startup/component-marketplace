@@ -11,6 +11,10 @@
  *     latestVersion/isPublished/updatedAt).
  *   - Chỉ dùng cột có sẵn trong schema hiện hành — KHÔNG cột `summary`
  *     (issue #41 chốt Option A: mapper derive server-side, không migration).
+ *   - MVC tạm (issue #151): giá legacy để null và
+ *     `requiresPaymentForUpdate=false`. Nhãn là `accessTier`. Hai row
+ *     published là `pro` (spring cards, CLI scaffold); phần còn lại `free`.
+ *     Không tạo subscription.
  *   - KHÔNG tạo user giả (auth #17 chưa ship): mọi row `authorId = null`
  *     → DTO `author` của mapper = 'anonymous' (fallback đã test ở #58).
  *   - Có fixture `description = null` (seed-legacy-tool) để demo fallback.
@@ -85,6 +89,7 @@ const PUBLISHED_SEEDS: ComponentSeed[] = [
     tags: ['gsap', 'cards', 'spring', 'micro-interaction'],
     latestVersion: '0.9.1',
     isPublished: true,
+    accessTier: 'pro',
   },
   {
     slug: 'seed-motion-timeline',
@@ -105,6 +110,7 @@ const PUBLISHED_SEEDS: ComponentSeed[] = [
     tags: ['cli', 'devtools', 'scaffold'],
     latestVersion: '0.5.0',
     isPublished: true,
+    accessTier: 'pro',
   },
   {
     slug: 'seed-image-optimizer',
@@ -244,6 +250,10 @@ async function run(): Promise<number> {
             tags: seed.tags,
             latestVersion: seed.latestVersion,
             isPublished: seed.isPublished,
+            accessTier: seed.accessTier ?? 'free',
+            priceAmountMinor: null,
+            priceCurrency: null,
+            requiresPaymentForUpdate: false,
             updatedAt: new Date(),
           },
         })
