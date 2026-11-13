@@ -38,7 +38,7 @@ Do not set the enable flags until all required steps below are complete and a st
    - <https://vercel.com/docs/project-configuration/git-configuration>
    - <https://vercel.com/docs/cli/deploying-from-cli>
 3. Create separate Vercel tokens for the Marketplace project if the account supports that scope: `VERCEL_PREPARATION_TOKEN` as a repository secret for staging and `VERCEL_RELEASE_TOKEN` as a `production` environment secret for promotion. Keep both server-side and limited to the Marketplace team/project. They are used in different workflows so either can be revoked independently.
-4. Add repository variables `VERCEL_TEAM_ID` (`team_…`) and `VERCEL_PROJECT_ID` (`prj_…`). Set `VERCEL_PREPARATION_ENABLED=true` only after a CI-green main commit can be staged with `aliasAssigned=false` and its deployment metadata contains the same full SHA.
+4. Add repository variables `VERCEL_TEAM_ID` (`team_…`) and `VERCEL_PROJECT_ID` (`prj_…`). Set `VERCEL_PREPARATION_ENABLED=true` only after a CI-green main commit can be staged with an empty `alias` list in its Vercel deployment details and metadata containing the same full SHA.
 5. Record the intended public Web URL and API health URL in the Control Room's server-side Vercel environment as `PRODUCTION_WEB_URL` and `PRODUCTION_API_URL`. Confirm the API path against the Vercel Services rewrites before enabling release.
 
 ### 2. Protected release workflow and Neon
