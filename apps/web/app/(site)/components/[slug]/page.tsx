@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { CardStackPreview } from '@/components/catalog/card-stack-preview'
 import { PreviewPanel } from '@/components/catalog/preview-panel'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -60,7 +61,11 @@ export default async function ComponentDetailPage({ params }: ComponentDetailPro
         </div>
       </header>
 
-      {item.category === 'animation' ? <PreviewPanel componentName={item.name} /> : null}
+      {item.slug === 'seed-spring-cards' ? (
+        <CardStackPreview componentName={item.name} />
+      ) : item.category === 'animation' ? (
+        <PreviewPanel componentName={item.name} />
+      ) : null}
 
       <Card className="flex flex-col gap-4 p-6">
         <p className="text-sm leading-6">{item.description}</p>
