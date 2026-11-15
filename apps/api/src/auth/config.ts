@@ -4,8 +4,17 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { createAuthMiddleware } from 'better-auth/api'
 
 import type { ApiEnv } from '../env'
+import { createAuthEmailSender } from './email'
 
-type AuthEnvironment = Pick<ApiEnv, 'BETTER_AUTH_SECRET' | 'BETTER_AUTH_URL' | 'CORS_ORIGINS'>
+type AuthEnvironment = Pick<
+  ApiEnv,
+  | 'NODE_ENV'
+  | 'BETTER_AUTH_SECRET'
+  | 'BETTER_AUTH_URL'
+  | 'CORS_ORIGINS'
+  | 'RESEND_API_KEY'
+  | 'AUTH_EMAIL_FROM'
+>
 
 export function createAuth(db: Database, env: AuthEnvironment) {
   if (!env.BETTER_AUTH_SECRET || !env.BETTER_AUTH_URL) {
@@ -13,6 +22,7 @@ export function createAuth(db: Database, env: AuthEnvironment) {
   }
 
   const trustedOrigins = [new URL(env.BETTER_AUTH_URL).origin, ...(env.CORS_ORIGINS ?? [])]
+  const sendAuthEmail = createAuthEmailSender(env)
 
   return betterAuth({
     appName: 'Component Marketplace',
@@ -55,18 +65,12 @@ export function createAuth(db: Database, env: AuthEnvironment) {
       // Old password stops working everywhere the moment a reset succeeds.
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        // Dev-only transport (issue #92 decision: fake email, no provider
-        // chosen yet — that's a follow-up task for Long). Never log the
-        // raw token separately; the URL already contains it and this path
-        // only runs outside production email delivery.
-        console.log(`[dev] password reset link for ${user.email}: ${url}`)
+        await sendAuthEmail({ kind: 'password-reset', user, url })
       },
     },
     emailVerification: {
-      // Same dev-only transport as sendResetPassword — no production
-      // provider chosen yet (follow-up task for Long).
       sendVerificationEmail: async ({ user, url }) => {
-        console.log(`[dev] verification link for ${user.email}: ${url}`)
+        await sendAuthEmail({ kind: 'verification', user, url })
       },
       sendOnSignUp: true,
       // A failed sign-in due to an unverified email quietly sends a fresh
