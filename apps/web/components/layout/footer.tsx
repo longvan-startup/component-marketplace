@@ -5,8 +5,8 @@
  * the same hover colour, never as dead anchors. The newsletter form is shown but
  * disabled until its backend exists, and the mail icon has no address yet.
  */
-import Link from 'next/link'
 import { IconSocialGitHub, IconSocialMail } from '../ui/icons'
+import { NAV_LINK_BASE, NavLink } from '../ui/nav-link'
 import { FooterDotField } from './footer-dot-field'
 import { BRAND_NAME, Logo } from './logo'
 import { NAV_LINKS } from './nav-items'
@@ -22,11 +22,8 @@ const COLUMNS = [
 
 const LEGAL_LINKS = ['Bảo mật', 'Điều khoản', 'Giấy phép'] as const
 
-/* No horizontal padding, so every item lines up with its column heading. */
-const LINK_CLASS =
-  'block rounded-sm text-[13px] font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-const PLANNED_CLASS =
-  'block text-[13px] font-medium text-muted-foreground transition-colors hover:text-primary'
+/* Planned items use the shared NavLink look so their hover matches live links. */
+const PLANNED_CLASS = `${NAV_LINK_BASE} cursor-default text-[13px]`
 
 export function Footer() {
   return (
@@ -69,13 +66,13 @@ export function Footer() {
                 aria-label={column.title}
                 className="flex flex-col items-start gap-4"
               >
-                <p className="text-[13px] font-semibold text-foreground">{column.title}</p>
+                <p className="px-0.5 text-[13px] font-semibold text-foreground">{column.title}</p>
                 {column.items.map((label) => {
                   const live = NAV_LINKS.find((link) => link.label === label)
                   return live ? (
-                    <Link key={label} href={live.href} className={LINK_CLASS}>
+                    <NavLink key={label} href={live.href} className="text-[13px]">
                       {label}
-                    </Link>
+                    </NavLink>
                   ) : (
                     <span key={label} className={PLANNED_CLASS}>
                       {label}
