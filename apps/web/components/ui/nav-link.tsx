@@ -5,6 +5,11 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+/* Shared by every nav item, including planned ones that are not links yet, so
+   hover looks identical everywhere. */
+export const NAV_LINK_BASE =
+  'inline-flex items-center rounded-sm px-0.5 py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+
 export function NavLink({
   href,
   children,
@@ -15,10 +20,7 @@ export function NavLink({
   className?: string
 }) {
   return (
-    <Link
-      href={href}
-      className={`inline-flex items-center rounded-sm px-0.5 py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
-    >
+    <Link href={href} className={`${NAV_LINK_BASE} ${className}`}>
       {children}
     </Link>
   )
