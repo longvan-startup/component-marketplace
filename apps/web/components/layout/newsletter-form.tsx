@@ -32,7 +32,7 @@ export function NewsletterForm() {
             name="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="ban@email.com"
+            placeholder="Điền email của bạn"
             autoComplete="email"
             className="min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none"
           />

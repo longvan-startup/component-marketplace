@@ -2,24 +2,33 @@
 
 /**
  * Footer "Dot Mountain". The Figma artwork is 642 purple circles (SVG). This
- * component reads those circles and paints them on a canvas, so the effect acts
- * on the mountain's own dots: where the pointer moves, the dots under it grow
- * and go fully opaque, then cool back to their drawn size over TRAIL_S seconds.
- * A resting pointer keeps the dots under it lit. The SVG image is only a
- * fallback until the circles are read; motion is off under
- * prefers-reduced-motion, and the loop sleeps when nothing is warm.
+ * component reads those circles and paints them on a canvas. At rest each one
+ * is its drawn dot. Where the pointer moves, the dots under it change into
+ * characters from a density ramp (" .:-=+*#%@"): the densest character sits
+ * right under the hand, the ramp thins out along the path, and each character
+ * leans a little toward the pointer. Hot characters flicker between neighbouring
+ * glyphs, then cool back to dots over TRAIL_S seconds. This follows the
+ * ASCII-wake technique of bencho.dev (MIT), applied to the mountain's own dots,
+ * not to a copied shape. The SVG image is only a fallback until the circles are
+ * read. Motion is off under prefers-reduced-motion, and the loop sleeps when
+ * nothing is warm.
  */
 import { useEffect, useRef } from 'react'
 
 const VIEW_W = 1440
 const VIEW_H = 350
-const TRAIL_S = 1.4
-const WAKE = 70
+const TRAIL_S = 0.7
+const WAKE = 60
 const WARM = 0.01
 const RGB = '124, 58, 237'
+/* lightest to densest, the same ramp bencho's "Classic" glyphs use */
+const RAMP = [' ', '.', ':', '-', '=', '+', '*', '#', '%', '@']
+const FONT_FAMILY = `ui-monospace, "SF Mono", Menlo, Consolas, monospace`
+const LEAN_PX = 1.5
+/* resting dots are drawn a little larger than the artwork so they read as dots */
+const DOT_SCALE = 1.5
 
-type Dot = { x: number; y: number; r: number; a: number; heat: number }
-
+type Dot = { x: number; y: number; r: number; a: number; heat: number; seed: number }
 export function FooterDotField({ src }: { src: string }) {
   const wrap = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -37,6 +46,7 @@ export function FooterDotField({ src }: { src: string }) {
     let dots: Dot[] = []
     let frame = 0
     let last = 0
+    let tickCount = 0
     let pointer: { x: number; y: number } | null = null
     let dead = false
 
@@ -74,18 +84,47 @@ export function FooterDotField({ src }: { src: string }) {
       const ky = s.h / VIEW_H
       const k = Math.min(kx, ky)
       const decay = Math.exp(-dt / TRAIL_S)
+      tickCount += 1
       if (pointer) stamp(pointer.x, pointer.y)
       ctx.clearRect(0, 0, s.w, s.h)
+      ctx.font = `700 ${Math.max(8, 10 * k).toFixed(1)}px ${FONT_FAMILY}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
       let warm = false
       for (const d of dots) {
         d.heat *= decay
         if (d.heat > WARM) warm = true
         const e = Math.min(1, d.heat)
-        const alpha = d.a + (1 - d.a) * e
-        ctx.beginPath()
-        ctx.arc(d.x * kx, d.y * ky, d.r * k * (1 + 1.4 * e), 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(${RGB}, ${alpha})`
-        ctx.fill()
+        const px = d.x * kx
+        const py = d.y * ky
+        /* a cold dot is drawn as the artwork has it, a hot one becomes its glyph in place */
+        let index = 0
+        if (e > 0.02) {
+          index = Math.round(e * (RAMP.length - 1))
+          /* the glyph flickers a step up or down now and then */
+          if ((tickCount + d.seed) % 3 === 0 && e > 0.25) {
+            index = Math.min(RAMP.length - 1, Math.max(0, index + (d.seed % 2 ? 1 : -1)))
+          }
+        }
+        if (index < 3) {
+          ctx.beginPath()
+          ctx.arc(px, py, d.r * k * DOT_SCALE, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(${RGB}, ${d.a})`
+          ctx.fill()
+          continue
+        }
+        let lx = 0
+        let ly = 0
+        if (pointer) {
+          const dx = pointer.x - px
+          const dy = pointer.y - py
+          const dist = Math.hypot(dx, dy) || 1
+          const pull = LEAN_PX * e * Math.min(1, (WAKE * k) / dist)
+          lx = (dx / dist) * pull
+          ly = (dy / dist) * pull
+        }
+        ctx.fillStyle = `rgba(${RGB}, ${Math.min(1, 0.55 + 0.45 * e)})`
+        ctx.fillText(RAMP[index], px + lx, py + ly)
       }
       if (warm || pointer) {
         frame = requestAnimationFrame(tick)
@@ -135,12 +174,14 @@ export function FooterDotField({ src }: { src: string }) {
       .then((text) => {
         if (dead) return
         const doc = new DOMParser().parseFromString(text, 'image/svg+xml')
-        dots = Array.from(doc.querySelectorAll('circle')).map((el) => ({
+        /* the artwork's own 642 dots, with their drawn size and opacity */
+        dots = Array.from(doc.querySelectorAll('circle')).map((el, i) => ({
           x: Number(el.getAttribute('cx')),
           y: Number(el.getAttribute('cy')),
           r: Number(el.getAttribute('r')),
           a: Number(el.getAttribute('opacity') ?? 1),
           heat: 0,
+          seed: i,
         }))
         img.style.visibility = 'hidden'
         draw(0)
