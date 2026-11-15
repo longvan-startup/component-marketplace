@@ -5,8 +5,7 @@
  * as dead anchors. The newsletter form is shown but disabled until its backend
  * exists, and the X and mail icons have no link target yet.
  */
-import Image from 'next/image'
-import { IconSocialGitHub } from '../ui/icons'
+import { IconSearch, IconSocialGitHub, IconSocialGmail, IconSocialX } from '../ui/icons'
 import { NavLink } from '../ui/nav-link'
 import { FooterDotField } from './footer-dot-field'
 import { BRAND_NAME, Logo } from './logo'
@@ -39,7 +38,7 @@ export function Footer() {
               bạn.
             </p>
             <div className="flex items-center gap-4">
-              <Image src="/footer/7a2f5.svg" alt="" width={16} height={16} unoptimized />
+              <IconSocialX className="text-foreground" />
               <a
                 href={REPO_URL}
                 target="_blank"
@@ -49,7 +48,7 @@ export function Footer() {
               >
                 <IconSocialGitHub />
               </a>
-              <Image src="/footer/053d6.svg" alt="" width={16} height={16} unoptimized />
+              <IconSocialGmail />
             </div>
 
             <p className="text-xs font-medium text-muted-foreground">
@@ -57,7 +56,7 @@ export function Footer() {
             </p>
             <form className="flex w-full max-w-[340px] items-center gap-2">
               <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-card px-3.5 focus-within:ring-2 focus-within:ring-ring">
-                <Image src="/footer/53432.svg" alt="" width={18} height={18} unoptimized />
+                <IconSearch className="shrink-0 text-muted-foreground" />
                 <input
                   type="email"
                   name="email"
