@@ -1,23 +1,24 @@
 'use client'
 
 /**
- * Footer dot field — a halftone of dots over the Figma "Dot Mountain" band.
- * At rest every cell is a dot, and the mountain's own cells are larger and
- * denser. The pointer drags a heat wake through the grid: the cells under the
- * hand thicken and brighten, then cool back to the resting field over
- * TRAIL_S seconds. Motion is off under prefers-reduced-motion, and the loop
- * sleeps when nothing is warm, so an idle footer costs no frames.
+ * Footer dot field. The Figma "Dot Mountain" (purple #7C3AED dots) is the base
+ * layer, exactly as designed. A canvas sits over it with a faint grid of resting
+ * dots. The pointer drags a heat wake through that grid: cells under the hand
+ * brighten to the brand purple and cool back over TRAIL_S seconds. Motion is off
+ * under prefers-reduced-motion, and the loop sleeps when nothing is warm.
  */
+import Image from 'next/image'
 import { useEffect, useRef } from 'react'
 
 const CELL = 10
 const TRAIL_S = 1.4
 const WAKE_CELLS = 2.4
 const WARM = 0.01
+const HEAT_RGB = '124, 58, 237'
 
-type Grid = { cols: number; rows: number; mask: Float32Array; heat: Float32Array }
+type Grid = { cols: number; rows: number; heat: Float32Array }
 
-export function FooterDotField({ src, className = '' }: { src: string; className?: string }) {
+export function FooterDotField({ src }: { src: string }) {
   const wrap = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const grid = useRef<Grid | null>(null)
@@ -33,66 +34,49 @@ export function FooterDotField({ src, className = '' }: { src: string; className
     if (!ctx) return
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    const build = (image: HTMLImageElement) => {
+    const size = () => {
       const w = host.clientWidth
       const h = host.clientHeight
-      if (!w || !h) return
+      if (!w || !h) return null
       const dpr = Math.min(2, window.devicePixelRatio || 1)
-      cv.width = Math.round(w * dpr)
-      cv.height = Math.round(h * dpr)
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      const cols = Math.floor(w / CELL)
-      const rows = Math.floor(h / CELL)
-      const sample = document.createElement('canvas')
-      sample.width = cols
-      sample.height = rows
-      const sctx = sample.getContext('2d')
-      if (!sctx) return
-      sctx.drawImage(image, 0, 0, cols, rows)
-      const alpha = sctx.getImageData(0, 0, cols, rows).data
-      const mask = new Float32Array(cols * rows)
-      for (let k = 0; k < mask.length; k++) mask[k] = alpha[k * 4 + 3] / 255
-      const heat =
-        grid.current && grid.current.cols === cols
-          ? grid.current.heat
-          : new Float32Array(cols * rows)
-      grid.current = {
-        cols,
-        rows,
-        mask,
-        heat: heat.length === cols * rows ? heat : new Float32Array(cols * rows),
+      if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+        cv.width = Math.round(w * dpr)
+        cv.height = Math.round(h * dpr)
       }
-      draw(0)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      return { w, h, cols: Math.floor(w / CELL), rows: Math.floor(h / CELL) }
     }
 
     const draw = (dt: number) => {
+      const s = size()
+      if (!s) return
+      const { w, h } = s
+      const cols = s.cols
+      const rows = s.rows
+      if (!grid.current || grid.current.cols !== cols || grid.current.rows !== rows) {
+        grid.current = { cols, rows, heat: new Float32Array(cols * rows) }
+      }
       const g = grid.current
-      if (!g) return
-      const w = host.clientWidth
-      const h = host.clientHeight
       const decay = Math.exp(-dt / TRAIL_S)
       ctx.clearRect(0, 0, w, h)
-      const ink = getComputedStyle(cv).color
-      const left = (w - g.cols * CELL) / 2
-      const top = (h - g.rows * CELL) / 2
+      const left = (w - cols * CELL) / 2
+      const top = (h - rows * CELL) / 2
       let warm = false
-      for (let j = 0; j < g.rows; j++) {
-        for (let i = 0; i < g.cols; i++) {
-          const k = j * g.cols + i
+      for (let j = 0; j < rows; j++) {
+        for (let i = 0; i < cols; i++) {
+          const k = j * cols + i
           g.heat[k] *= decay
-          const e = g.heat[k]
-          if (e > WARM) warm = true
-          const m = g.mask[k]
+          const e = Math.min(1, g.heat[k])
+          if (g.heat[k] > WARM) warm = true
           const x = left + (i + 0.5 + (j & 1) * 0.5) * CELL
           const y = top + (j + 0.5) * CELL
-          ctx.globalAlpha = Math.min(1, 0.16 + 0.22 * m + 0.7 * Math.min(1, e))
-          ctx.fillStyle = ink
           ctx.beginPath()
-          ctx.arc(x, y, 0.9 + 2.6 * m + 2.2 * Math.min(1, e), 0, Math.PI * 2)
+          ctx.arc(x, y, 0.8 + 1.8 * e, 0, Math.PI * 2)
+          ctx.fillStyle =
+            e > 0.02 ? `rgba(${HEAT_RGB}, ${0.25 + 0.75 * e})` : 'rgba(113, 113, 122, 0.22)'
           ctx.fill()
         }
       }
-      ctx.globalAlpha = 1
       if (warm || pointer.current) {
         frame.current = requestAnimationFrame(tick)
       } else {
@@ -154,20 +138,16 @@ export function FooterDotField({ src, className = '' }: { src: string; className
       pointer.current = null
     }
 
-    const image = new Image()
-    image.src = src
-    image.onload = () => {
-      build(image)
-      if (!reduce) {
-        host.addEventListener('pointermove', onMove)
-        host.addEventListener('pointerleave', onLeave)
-      }
+    if (!reduce) {
+      host.addEventListener('pointermove', onMove)
+      host.addEventListener('pointerleave', onLeave)
     }
-
     const ro = new ResizeObserver(() => {
-      if (image.complete && image.naturalWidth) build(image)
+      grid.current = null
+      draw(0)
     })
     ro.observe(host)
+    draw(0)
 
     return () => {
       ro.disconnect()
@@ -177,13 +157,11 @@ export function FooterDotField({ src, className = '' }: { src: string; className
       frame.current = 0
       grid.current = null
     }
-  }, [src])
+  }, [])
 
   return (
-    <div
-      ref={wrap}
-      className={`relative h-[240px] w-full text-muted-foreground md:h-[350px] ${className}`}
-    >
+    <div ref={wrap} className="relative aspect-[1440/350] w-full">
+      <Image src={src} alt="" fill unoptimized sizes="100vw" className="object-fill" />
       <canvas ref={canvas} className="absolute inset-0 size-full" />
     </div>
   )
