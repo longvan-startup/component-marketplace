@@ -1,25 +1,21 @@
-/**
- * Mock fixture for the catalog — mirrors the contract PROPOSED for
- * `packages/shared` (see the `shared: catalog contract proposal` issue for
- * Long's review). While that contract is pending this stays the default data
- * source; swap is a one-env-var change (API_MODE=live), no UI rewrite.
- */
+/** Mock catalog items kept compatible with the shared catalog contract. */
 
 import type { CatalogItem } from '../features/catalog/catalog-source'
 
 export const MOCK_COMPONENTS: CatalogItem[] = [
   {
     id: '0d8f55a7-0c1f-4c2f-98a2-0fbb5f0f5ad1',
-    slug: 'spring-card-stack',
-    name: 'Spring Card Stack',
-    summary: 'Stacked cards with spring stagger on hover and focus.',
+    slug: 'seed-spring-cards',
+    name: 'Card Stack',
+    summary: 'Bộ thẻ xòe khi rê chuột; chọn thẻ để đưa ra giữa.',
     description:
-      'A small stack of cards that spreads with a spring easing using CSS transforms only. Keyboard focus triggers the same spread. Reduced motion falls back to a static stack.',
+      'Bộ thẻ xòe ra khi rê chuột. Chọn một thẻ để đưa ra giữa; bấm ngoài hoặc nhấn Escape để thu lại.',
     category: 'animation',
-    tags: ['motion', 'hover', 'spring', 'accessible'],
-    latestVersion: '1.2.0',
-    author: 'van',
+    tags: ['card-stack', 'hover', 'interaction', 'preview'],
+    latestVersion: '0.9.1',
+    author: 'anonymous',
     isPublished: true,
+    accessTier: 'free',
   },
   {
     id: '5bfbe3a3-c6df-47bb-8eb5-31d0884b9ec9',

@@ -25,8 +25,8 @@ describe('mock catalog source', () => {
   })
 
   test('filters by q across name, summary and tags (case-insensitive)', async () => {
-    const byName = await mockSource.list({ q: 'SPRING' })
-    expect(byName.items.map((item) => item.slug)).toEqual(['spring-card-stack'])
+    const byName = await mockSource.list({ q: 'CARD' })
+    expect(byName.items.map((item) => item.slug)).toEqual(['seed-spring-cards'])
 
     const byTag = await mockSource.list({ q: 'skeleton' })
     expect(byTag.items.length).toBe(1)
@@ -50,8 +50,9 @@ describe('mock catalog source', () => {
   })
 
   test('detail returns published item by slug and null for unknown', async () => {
-    const found = await mockSource.detail('spring-card-stack')
-    expect(found?.name).toBe('Spring Card Stack')
+    const found = await mockSource.detail('seed-spring-cards')
+    expect(found?.name).toBe('Card Stack')
+    expect(found?.accessTier).toBe('free')
 
     const unpublished = await mockSource.detail('version-diff-previewer')
     expect(unpublished).toBeNull()
@@ -80,7 +81,7 @@ describe('source selection + query parsing', () => {
   })
 })
 
-describe('http catalog source (pre-contract, API_MODE=live only)', () => {
+describe('http catalog source (API_MODE=live only)', () => {
   test('list maps pinged payloads into the local shape', async () => {
     const source = createHttpCatalogSource({
       fetchImpl: async () =>
@@ -131,7 +132,19 @@ describe('http catalog source (pre-contract, API_MODE=live only)', () => {
       fetchImpl: async () => jsonResponse(503, { code: 'DATABASE_UNCONFIGURED' }),
       publicApiUrl: 'https://api.example.test',
     })
-    expect(await unconfigured.detail('spring-card-stack')).toBeNull()
+    expect(await unconfigured.detail('seed-spring-cards')).toBeNull()
+  })
+
+  test('detail unwraps the shared API envelope and returns the component row', async () => {
+    const expected = MOCK_COMPONENTS.find((item) => item.slug === 'seed-spring-cards')
+    if (!expected) throw new Error('seed-spring-cards fixture is required')
+
+    const source = createHttpCatalogSource({
+      fetchImpl: async () => jsonResponse(200, { item: expected }),
+      publicApiUrl: 'https://api.example.test',
+    })
+
+    expect(await source.detail(expected.slug)).toEqual(expected)
   })
 
   test('detail surfaces non-404 failures as ApiClientError-ish throw', async () => {
