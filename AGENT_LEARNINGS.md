@@ -51,3 +51,10 @@ Log kèm theo (append-only) các sai lầm THẬT của AI agent khi làm việc
 - **Điều gì sai:** tưởng web app repo có i18n middleware rồi đi soi nhầm cấu hình.
 - **Fix:** probe từ trong container (`docker compose exec web wget -qO- http://127.0.0.1:3000/`) — web trả đúng nội dung "Component Marketplace". Port 3000 phía host bị một process bên Windows chiếm (mirrored networking). `scripts/verify.sh --docker` dùng exec-based probe chính vì lý do này.
 - **Phòng:** khi nghĩ app lỗi qua "localhost", xác minh process bằng probe trong container trước; không dùng host port để chẩn đoán app của repo.
+
+### 2026-11-12 — Nhánh chồng nhánh và PR không nhắm main
+
+- **Pattern:** làm một chức năng nhiều phần (C1, C2, ...), mỗi phần tạo nhánh từ nhánh phần trước, rồi PR của phần sau nhắm vào nhánh phần trước. Mục đích là gom để test toàn bộ trước khi đưa lên main.
+- **Điều gì sai:** PR #139 của C2 nhắm vào nhánh C1 (`feat/van-web-ui-foundation`) thay vì `main`. Khi merge, code C2 chỉ vào nhánh C1, không lên `main`. Phải đối chiếu `baseRefName` của PR mới phát hiện. Cùng lúc, nhánh C2 được tạo từ C1 chứ không từ `origin/main` mới nhất, trái với AGENTS.md bước 2.
+- **Fix:** tạo nhánh mới từ `origin/main`, cherry-pick các commit C2, chạy verify, mở PR mới nhắm `main`. PR thay thế đầu tiên là #144 (đã đóng); phần xác minh email được đưa qua #145 (đã merge vào `main`).
+- **Phòng:** mỗi PR phải nhắm `main` và lấy từ `origin/main` mới nhất. Muốn test chung nhiều phần thì test trên `main` sau mỗi lần merge, hoặc trên một nhánh tích hợp tạm không phải base của PR nào. Đọc CONTRIBUTING.md trước khi tạo nhánh.
