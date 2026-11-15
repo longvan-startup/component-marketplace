@@ -79,8 +79,27 @@ const envConfigSchema = z
         },
         { message: 'BETTER_AUTH_URL must be an http(s) URL without credentials' },
       ),
+    RESEND_API_KEY: z
+      .string()
+      .optional()
+      .transform((raw) => (raw && raw.trim() !== '' ? raw.trim() : undefined)),
+    AUTH_EMAIL_FROM: z
+      .string()
+      .optional()
+      .transform((raw) => (raw && raw.trim() !== '' ? raw.trim() : undefined))
+      .refine((address) => address === undefined || z.email().safeParse(address).success, {
+        message: 'AUTH_EMAIL_FROM must be an email address',
+      }),
   })
   .superRefine((env, ctx) => {
+    if (Boolean(env.RESEND_API_KEY) !== Boolean(env.AUTH_EMAIL_FROM)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['RESEND_API_KEY'],
+        message: 'RESEND_API_KEY and AUTH_EMAIL_FROM must be configured together',
+      })
+    }
+
     if (env.NODE_ENV === 'production' && env.DATABASE_URL) {
       if (!env.BETTER_AUTH_SECRET) {
         ctx.addIssue({

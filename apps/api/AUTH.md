@@ -12,6 +12,12 @@ Set these API environment variables when the API has a production database:
 - `BETTER_AUTH_URL`: public API base URL, such as `https://api.example.com`.
 - `CORS_ORIGINS`: comma-separated exact frontend origins when the browser and
   API use different origins. Each origin must be trusted by Better Auth too.
+- `RESEND_API_KEY` and `AUTH_EMAIL_FROM`: configure together to send verification
+  and password-reset email through Resend. The sender must be on a domain
+  verified in Resend. Leaving both unset keeps the API available; when an
+  eligible account triggers delivery, Better Auth receives a generic delivery
+  error. Production never logs tokenized links. Non-production uses the local
+  console transport for development.
 
 The browser must send requests with credentials so the HTTP-only session cookie
 is set and sent back. Auth routes use the Better Auth response contract. Other
@@ -30,15 +36,15 @@ Request and error shapes are therefore Better Auth's own contract.
 
 | Method and path | Purpose | Success behavior |
 |---|---|---|
-| `POST /api/auth/sign-up/email` | Register with `name`, `email`, `password` | Creates a user with `role: "user"` and `emailVerified: false`, sends a verification email (dev: `console.log`), and returns `{ token: null, user }` — **no session cookie** until the email is verified. |
+| `POST /api/auth/sign-up/email` | Register with `name`, `email`, `password` | Creates a user with `role: "user"` and `emailVerified: false`, sends a verification email, and returns `{ token: null, user }` — **no session cookie** until the email is verified. |
 | `POST /api/auth/sign-in/email` | Sign in with `email`, `password` | If `emailVerified` is `false`: `403 FORBIDDEN` (`EMAIL_NOT_VERIFIED`) and a fresh verification email is sent. Otherwise sets a session cookie and returns Better Auth's signin response. |
 | `POST /api/auth/sign-out` | End the current session | Revokes the session and clears the session cookie. |
 | `GET /api/auth/get-session` | Read current session | Returns `null` when unauthenticated or expired; otherwise returns `{ session, user }`. |
 | `POST /api/auth/update-user` | Update the signed-in user's name or image | Returns Better Auth's `{ "status": true }`; fetch the session again to read the updated user. |
-| `POST /api/auth/request-password-reset` | Request a reset email with `email`, `redirectTo` | Always returns `{ "status": true, "message": "..." }`, whether or not the email exists (timing-safe, does not leak account existence). `redirectTo` must be a trusted origin (see Configuration) or the request is rejected before any lookup. |
+| `POST /api/auth/request-password-reset` | Request a reset email with `email`, `redirectTo` | On successful delivery (or when the email is unknown), returns `{ "status": true, "message": "..." }` without revealing account existence. A provider failure can fail delivery. `redirectTo` must be a trusted origin (see Configuration) or the request is rejected before any lookup. |
 | `GET /api/auth/reset-password/:token` | The link the reset email points to | Handled entirely by Better Auth: redirects to `redirectTo` with `?token=<raw>` on a valid token, or `?error=INVALID_TOKEN` if invalid or expired. The frontend never calls this directly — it's the email link's destination. |
 | `POST /api/auth/reset-password` | Set a new password with `token`, `newPassword` | Returns `{ "status": true }` on success. `newPassword` must be 8–128 characters (Better Auth's `minPasswordLength`/`maxPasswordLength` defaults — not overridden in this config). On success, every other session for that user is revoked (`revokeSessionsOnPasswordReset: true`) — the user must sign in again on other devices. |
-| `POST /api/auth/send-verification-email` | (Re)send a verification email with `email`, `callbackURL` | Always returns `{ "status": true }`, whether or not the email exists or is already verified (same non-leaking pattern as password reset). Also fires automatically on a failed sign-in caused by an unverified email (`sendOnSignIn: true`) — the frontend does not need a separate "resend" trigger for that path. |
+| `POST /api/auth/send-verification-email` | (Re)send a verification email with `email`, `callbackURL` | Returns `{ "status": true }` without revealing whether the email exists or is verified when delivery succeeds or no email is needed. A provider failure can fail delivery. Also fires automatically on a failed sign-in caused by an unverified email (`sendOnSignIn: true`) — the frontend does not need a separate "resend" trigger for that path. |
 | `GET /api/auth/verify-email` | The link the verification email points to, `token` + optional `callbackURL` | Handled entirely by Better Auth. With `callbackURL`: redirects there on success (no extra query params — see below), or with `?error=INVALID_TOKEN\|TOKEN_EXPIRED\|USER_NOT_FOUND` on failure. Without `callbackURL`: returns `{ "status": true, "user": null }` as JSON directly (used by integration tests, not the frontend). On success, sets a session cookie (`autoSignInAfterVerification: true`) — verifying logs the user in. |
 
 Profile updates require a valid session cookie. Send at least one of `name` or
@@ -77,10 +83,8 @@ until the link in the verification email is followed.
 
 Password reset links expire after 15 minutes
 (`resetPasswordTokenExpiresIn: 15 * 60`); verification links also expire after
-15 minutes (`emailVerification.expiresIn: 15 * 60`). Both the reset email and
-the verification email are only ever sent to a `console.log` dev transport
-right now — no production email provider is wired up yet (follow-up task, not
-part of issue #92).
+15 minutes (`emailVerification.expiresIn: 15 * 60`). In production, both email
+types use Resend when configured. The API does not log tokenized URLs.
 
 **Frontend quirk**: on a successful `GET /verify-email?...&callbackURL=X`, Better
 Auth redirects to exactly `X` with no extra query params — unlike the error
@@ -110,9 +114,7 @@ every allowed role.
 
 ## Out of scope
 
-Login/register UI, production email delivery for either flow (a provider
-still needs to be chosen — dev uses a `console.log` transport, see above),
-grandfathering any pre-existing unverified accounts (none exist yet — no
-production users have signed up), social login (Google/GitHub), rate
-limiting on auth endpoints, seller onboarding/approval, admin dashboard,
+Login/register UI, grandfathering any pre-existing unverified accounts (none
+exist yet — no production users have signed up), social login (Google/GitHub),
+rate limiting on auth endpoints, seller onboarding/approval, admin dashboard,
 image uploads, payments, and purchase history require separate tasks.

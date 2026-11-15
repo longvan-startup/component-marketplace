@@ -11,12 +11,14 @@ import { useEffect, useId, useState } from 'react'
 import { buttonClasses } from '../ui/button'
 import { IconClose, IconMenu } from '../ui/icons'
 import { NAV_ACTIONS, NAV_LINKS } from './nav-items'
+import { useNavSession } from './nav-session'
 import { SearchForm } from './search-form'
 
 export function MobileMenu() {
   const panelId = useId()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const { user, signOut } = useNavSession()
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger — navigating closes the panel.
   useEffect(() => {
@@ -62,14 +64,29 @@ export function MobileMenu() {
             </Link>
           ))}
         </nav>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <Link href={NAV_ACTIONS.login.href} className={buttonClasses({ variant: 'secondary' })}>
-            {NAV_ACTIONS.login.label}
-          </Link>
-          <Link href={NAV_ACTIONS.register.href} className={buttonClasses()}>
-            {NAV_ACTIONS.register.label}
-          </Link>
-        </div>
+        {user ? (
+          <div className="mt-3 flex min-h-11 items-center justify-between gap-3 border-t border-border pt-3">
+            <span className="min-w-0 truncate text-sm font-medium text-foreground">
+              {user.name || user.email}
+            </span>
+            <button
+              type="button"
+              onClick={signOut}
+              className={buttonClasses({ variant: 'ghost', size: 'md', className: 'min-h-11' })}
+            >
+              Đăng xuất
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Link href={NAV_ACTIONS.login.href} className={buttonClasses({ variant: 'secondary' })}>
+              {NAV_ACTIONS.login.label}
+            </Link>
+            <Link href={NAV_ACTIONS.register.href} className={buttonClasses()}>
+              {NAV_ACTIONS.register.label}
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   )
