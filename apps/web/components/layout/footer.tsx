@@ -25,7 +25,7 @@ const PLANNED_CLASS =
 
 export function Footer() {
   return (
-    <footer className="bg-card">
+    <footer className="overflow-x-clip bg-card">
       <div className="mx-auto w-full max-w-[1440px]">
         <div className="mx-4 h-px bg-border md:mx-8 xl:mx-[120px]" />
 
@@ -72,7 +72,9 @@ export function Footer() {
           </div>
         </div>
 
-        <FooterDotField src="/footer/9aa6b.svg" />
+        <div className="relative left-1/2 w-screen -translate-x-1/2">
+          <FooterDotField src="/footer/9aa6b.svg" />
+        </div>
 
         <div className="flex flex-col gap-3 px-4 py-5 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8 xl:px-[120px]">
           <p>© 2026 {BRAND_NAME}</p>

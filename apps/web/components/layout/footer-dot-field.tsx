@@ -1,44 +1,46 @@
 'use client'
 
 /**
- * Footer dot field. The Figma "Dot Mountain" (purple #7C3AED dots) is the base
- * layer, exactly as designed. Only the mountain reacts: the pointer drags a
- * heat wake through the mountain's own cells, which brighten to the brand
- * purple and cool back over TRAIL_S seconds. The rest of the band keeps its
- * quiet resting grid. Motion is off under prefers-reduced-motion, and the loop
- * sleeps when nothing is warm.
+ * Footer "Dot Mountain". The Figma artwork is 642 purple circles (SVG). This
+ * component reads those circles and paints them on a canvas, so the effect acts
+ * on the mountain's own dots: where the pointer moves, the dots under it grow
+ * and go fully opaque, then cool back to their drawn size over TRAIL_S seconds.
+ * A resting pointer keeps the dots under it lit. The SVG image is only a
+ * fallback until the circles are read; motion is off under
+ * prefers-reduced-motion, and the loop sleeps when nothing is warm.
  */
-import Image from 'next/image'
 import { useEffect, useRef } from 'react'
 
-const CELL = 10
+const VIEW_W = 1440
+const VIEW_H = 350
 const TRAIL_S = 1.4
-const WAKE_CELLS = 3.2
+const WAKE = 70
 const WARM = 0.01
-/* SVG alpha at or above this marks a cell as part of the mountain (0-255) */
-const MOUNTAIN_ALPHA = 5
-const HEAT_RGB = '124, 58, 237'
+const RGB = '124, 58, 237'
 
-type Grid = { cols: number; rows: number; mask: Uint8Array; heat: Float32Array }
+type Dot = { x: number; y: number; r: number; a: number; heat: number }
 
 export function FooterDotField({ src }: { src: string }) {
   const wrap = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
-  const grid = useRef<Grid | null>(null)
-  const art = useRef<HTMLImageElement | null>(null)
-  const frame = useRef(0)
-  const last = useRef(0)
-  const pointer = useRef<{ x: number; y: number } | null>(null)
+  const art = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
     const host = wrap.current
     const cv = canvas.current
-    if (!host || !cv) return
+    const img = art.current
+    if (!host || !cv || !img) return
     const ctx = cv.getContext('2d')
     if (!ctx) return
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    const size = () => {
+    let dots: Dot[] = []
+    let frame = 0
+    let last = 0
+    let pointer: { x: number; y: number } | null = null
+    let dead = false
+
+    const fit = () => {
       const w = host.clientWidth
       const h = host.clientHeight
       if (!w || !h) return null
@@ -48,133 +50,78 @@ export function FooterDotField({ src }: { src: string }) {
         cv.height = Math.round(h * dpr)
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      return { w, h, cols: Math.floor(w / CELL), rows: Math.floor(h / CELL) }
+      return { w, h }
     }
 
-    /* Which cells the mountain covers, read from the SVG's own alpha. */
-    const buildGrid = (cols: number, rows: number): Grid => {
-      const mask = new Uint8Array(cols * rows)
-      const img = art.current
-      if (img?.naturalWidth) {
-        /* the band's faint field is low alpha; the mountain is the dense part */
-        const SS = 4
-        const off = document.createElement('canvas')
-        off.width = cols * SS
-        off.height = rows * SS
-        const octx = off.getContext('2d')
-        if (octx) {
-          octx.drawImage(img, 0, 0, cols * SS, rows * SS)
-          const data = octx.getImageData(0, 0, cols * SS, rows * SS).data
-          const W = cols * SS
-          for (let j = 0; j < rows; j++) {
-            for (let i = 0; i < cols; i++) {
-              let peak = 0
-              for (let y = 0; y < SS; y++) {
-                for (let x = 0; x < SS; x++) {
-                  const a = data[((j * SS + y) * W + (i * SS + x)) * 4 + 3]
-                  if (a > peak) peak = a
-                }
-              }
-              mask[j * cols + i] = peak >= MOUNTAIN_ALPHA ? 1 : 0
-            }
-          }
-        }
+    /* Add heat to the dots within WAKE of a point (CSS px, host space). */
+    const stamp = (px: number, py: number) => {
+      const size = host.getBoundingClientRect()
+      const x = (px / size.width) * VIEW_W
+      const y = (py / size.height) * VIEW_H
+      const r2 = WAKE * WAKE
+      for (const d of dots) {
+        const d2 = (d.x - x) ** 2 + (d.y - y) ** 2
+        if (d2 >= r2) continue
+        const t = 1 - d2 / r2
+        d.heat = Math.min(1, d.heat + t * t)
       }
-      return { cols, rows, mask, heat: new Float32Array(cols * rows) }
     }
 
     const draw = (dt: number) => {
-      const s = size()
-      if (!s) return
-      const { w, h, cols, rows } = s
-      if (!grid.current || grid.current.cols !== cols || grid.current.rows !== rows) {
-        grid.current = buildGrid(cols, rows)
-      }
-      const g = grid.current
+      const s = fit()
+      if (!s || dead) return
+      const kx = s.w / VIEW_W
+      const ky = s.h / VIEW_H
+      const k = Math.min(kx, ky)
       const decay = Math.exp(-dt / TRAIL_S)
-      /* a resting hand keeps the mountain cells under it at full heat */
-      if (pointer.current) stamp(pointer.current.x, pointer.current.y)
-      ctx.clearRect(0, 0, w, h)
-      const left = (w - cols * CELL) / 2
-      const top = (h - rows * CELL) / 2
+      if (pointer) stamp(pointer.x, pointer.y)
+      ctx.clearRect(0, 0, s.w, s.h)
       let warm = false
-      for (let j = 0; j < rows; j++) {
-        for (let i = 0; i < cols; i++) {
-          const k = j * cols + i
-          g.heat[k] *= decay
-          const e = Math.min(1, g.heat[k])
-          if (g.heat[k] > WARM) warm = true
-          const x = left + (i + 0.5 + (j & 1) * 0.5) * CELL
-          const y = top + (j + 0.5) * CELL
-          /* only the mountain's cells that are warm get drawn; the rest of the band stays as the SVG */
-          if (!g.mask[k] || e <= 0.02) continue
-          ctx.beginPath()
-          ctx.arc(x, y, 0.9 + 3.4 * e, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(${HEAT_RGB}, ${0.2 + 0.8 * e})`
-          ctx.fill()
-        }
+      for (const d of dots) {
+        d.heat *= decay
+        if (d.heat > WARM) warm = true
+        const e = Math.min(1, d.heat)
+        const alpha = d.a + (1 - d.a) * e
+        ctx.beginPath()
+        ctx.arc(d.x * kx, d.y * ky, d.r * k * (1 + 1.4 * e), 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(${RGB}, ${alpha})`
+        ctx.fill()
       }
-      if (warm || pointer.current) {
-        frame.current = requestAnimationFrame(tick)
+      if (warm || pointer) {
+        frame = requestAnimationFrame(tick)
       } else {
-        frame.current = 0
+        frame = 0
       }
     }
 
     const tick = (now: number) => {
-      const dt = last.current ? (now - last.current) / 1000 : 0
-      last.current = now
+      const dt = last ? (now - last) / 1000 : 0
+      last = now
       draw(dt)
-    }
-
-    /* Heat only lands on cells the mountain covers. */
-    const stamp = (x: number, y: number) => {
-      const g = grid.current
-      if (!g) return
-      const w = host.clientWidth
-      const h = host.clientHeight
-      const cx = (x - (w - g.cols * CELL) / 2) / CELL
-      const cy = (y - (h - g.rows * CELL) / 2) / CELL
-      const r = WAKE_CELLS
-      for (
-        let j = Math.max(0, Math.floor(cy - r));
-        j <= Math.min(g.rows - 1, Math.ceil(cy + r));
-        j++
-      ) {
-        for (
-          let i = Math.max(0, Math.floor(cx - r));
-          i <= Math.min(g.cols - 1, Math.ceil(cx + r));
-          i++
-        ) {
-          const k = j * g.cols + i
-          if (!g.mask[k]) continue
-          const d2 = (i + 0.5 - cx) ** 2 + (j + 0.5 - cy) ** 2
-          if (d2 >= r * r) continue
-          const t = 1 - d2 / (r * r)
-          g.heat[k] = Math.min(1, g.heat[k] + t * t)
-        }
-      }
     }
 
     const onMove = (event: PointerEvent) => {
       const rect = host.getBoundingClientRect()
       const x = event.clientX - rect.left
       const y = event.clientY - rect.top
-      const prev = pointer.current
-      pointer.current = { x, y }
+      const prev = pointer
+      pointer = { x, y }
       if (prev) {
-        const steps = Math.max(1, Math.ceil(Math.hypot(x - prev.x, y - prev.y) / CELL))
+        const steps = Math.max(1, Math.ceil(Math.hypot(x - prev.x, y - prev.y) / 6))
         for (let s = 1; s <= steps; s++) {
           stamp(prev.x + ((x - prev.x) * s) / steps, prev.y + ((y - prev.y) * s) / steps)
         }
       } else {
         stamp(x, y)
       }
-      if (!frame.current) frame.current = requestAnimationFrame(tick)
+      if (!frame) {
+        last = 0
+        frame = requestAnimationFrame(tick)
+      }
     }
 
     const onLeave = () => {
-      pointer.current = null
+      pointer = null
     }
 
     if (!reduce) {
@@ -182,36 +129,43 @@ export function FooterDotField({ src }: { src: string }) {
       host.addEventListener('pointerleave', onLeave)
     }
 
-    /* The SVG is the same file the base layer shows, so its alpha is the mask. */
-    const artImage = new window.Image()
-    artImage.src = src
-    artImage.onload = () => {
-      art.current = artImage
-      grid.current = null
-      draw(0)
-    }
+    /* Read the artwork's own circles: position, radius and resting opacity. */
+    fetch(src)
+      .then((response) => response.text())
+      .then((text) => {
+        if (dead) return
+        const doc = new DOMParser().parseFromString(text, 'image/svg+xml')
+        dots = Array.from(doc.querySelectorAll('circle')).map((el) => ({
+          x: Number(el.getAttribute('cx')),
+          y: Number(el.getAttribute('cy')),
+          r: Number(el.getAttribute('r')),
+          a: Number(el.getAttribute('opacity') ?? 1),
+          heat: 0,
+        }))
+        img.style.visibility = 'hidden'
+        draw(0)
+      })
+      .catch(() => {
+        /* keep the static SVG image visible when the artwork cannot be read */
+      })
 
-    const ro = new ResizeObserver(() => {
-      grid.current = null
-      draw(0)
-    })
+    const ro = new ResizeObserver(() => draw(0))
     ro.observe(host)
-    draw(0)
 
     return () => {
+      dead = true
       ro.disconnect()
       host.removeEventListener('pointermove', onMove)
       host.removeEventListener('pointerleave', onLeave)
-      cancelAnimationFrame(frame.current)
-      frame.current = 0
-      grid.current = null
-      art.current = null
+      cancelAnimationFrame(frame)
+      frame = 0
     }
   }, [src])
 
   return (
     <div ref={wrap} className="relative aspect-[1440/350] w-full">
-      <Image src={src} alt="" fill unoptimized sizes="100vw" className="object-fill" />
+      {/* biome-ignore lint/performance/noImgElement: static SVG artwork fallback, not a Next-optimised raster */}
+      <img ref={art} src={src} alt="" className="absolute inset-0 size-full" draggable={false} />
       <canvas ref={canvas} className="absolute inset-0 size-full" />
     </div>
   )
