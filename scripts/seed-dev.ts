@@ -12,9 +12,8 @@
  *   - Chỉ dùng cột có sẵn trong schema hiện hành — KHÔNG cột `summary`
  *     (issue #41 chốt Option A: mapper derive server-side, không migration).
  *   - MVC tạm (issue #151): giá legacy để null và
- *     `requiresPaymentForUpdate=false`. Nhãn là `accessTier`. Hai row
- *     published là `pro` (spring cards, CLI scaffold); phần còn lại `free`.
- *     Không tạo subscription.
+ *     `requiresPaymentForUpdate=false`. Card Stack là `free` để preview;
+ *     CLI Scaffold là `pro`. Không tạo subscription.
  *   - KHÔNG tạo user giả (auth #17 chưa ship): mọi row `authorId = null`
  *     → DTO `author` của mapper = 'anonymous' (fallback đã test ở #58).
  *   - Có fixture `description = null` (seed-legacy-tool) để demo fallback.
@@ -82,14 +81,14 @@ const PUBLISHED_SEEDS: ComponentSeed[] = [
   },
   {
     slug: 'seed-spring-cards',
-    name: 'Seed Spring Cards',
+    name: 'Card Stack',
     description:
-      'Card grid entrances driven by spring physics: staggered rise, hover lift and press feedback. Honors prefers-reduced-motion and degrades to static layout, matching the GSAP island conventions of apps/web.',
+      'Bộ thẻ xòe ra khi rê chuột. Chọn một thẻ để đưa ra giữa; bấm ngoài hoặc nhấn Escape để thu lại.',
     category: 'animation',
-    tags: ['gsap', 'cards', 'spring', 'micro-interaction'],
+    tags: ['card-stack', 'hover', 'interaction', 'preview'],
     latestVersion: '0.9.1',
     isPublished: true,
-    accessTier: 'pro',
+    accessTier: 'free',
   },
   {
     slug: 'seed-motion-timeline',

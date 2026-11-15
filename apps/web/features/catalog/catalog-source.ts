@@ -1,31 +1,14 @@
-/**
- * Catalog data layer — the ONLY module allowed to know where catalog data
- * comes from. Pages/components receive results and stay transport-agnostic,
- * so the mock source can be swapped for the HTTP source without touching UI.
- *
- * Status: the catalog contract is STILL A PROPOSAL (see the shared-contract
- * issue); no types were added to `packages/shared` without Long's review.
- * The local shapes below mirror that proposal exactly so migration later is
- * mechanical: move types to shared, re-point imports, done.
- */
+/** The catalog data layer is the only web module that selects its data source. */
 
+import {
+  type CatalogCategory,
+  type CatalogComponent,
+  detailResponseSchema,
+} from '@marketplace/shared'
 import { ApiClientError, apiFetchJson } from '../../lib/api-client'
 import { MOCK_COMPONENTS } from '../../mocks/components'
 
-export type CatalogCategory = 'animation' | 'react-component' | 'tool'
-
-export interface CatalogItem {
-  id: string
-  slug: string
-  name: string
-  summary: string
-  description: string
-  category: CatalogCategory
-  tags: string[]
-  latestVersion: string
-  author: string
-  isPublished: boolean
-}
+export type CatalogItem = CatalogComponent
 
 export interface CatalogListQuery {
   q?: string
@@ -49,7 +32,7 @@ export interface CatalogSource {
 }
 
 /* ------------------------------------------------------------------ */
-/* Mock source — the default while the backend contract is pending.    */
+/* Mock source — the safe default for local development.                */
 /* ------------------------------------------------------------------ */
 
 interface MockFilterSpec {
@@ -104,7 +87,7 @@ export function createMockCatalogSource(): CatalogSource {
 }
 
 /* ------------------------------------------------------------------ */
-/* HTTP source — typed against the proposed contract; not default.     */
+/* HTTP source — validates API envelopes with the shared contract.     */
 /* ------------------------------------------------------------------ */
 
 interface HttpDeps {
@@ -152,8 +135,8 @@ export function createHttpCatalogSource(deps: HttpDeps = {}): CatalogSource {
         if (isCatalogUnavailable(error)) return emptyCatalog(query)
         throw error
       }
-      // Minimal presence checks until the real contract is validated in
-      // `packages/shared` (contract issue pending Long's review).
+      // Keep list rendering resilient when an API deployment returns an
+      // incomplete payload. Detail responses use the shared envelope schema.
       const items = Array.isArray(payload.items) ? payload.items : []
       return {
         items,
@@ -165,13 +148,13 @@ export function createHttpCatalogSource(deps: HttpDeps = {}): CatalogSource {
     detail: async (slug) => {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return null
       try {
-        const item = await apiFetchJson<CatalogItem | null>(`/components/${slug}`, {
+        const payload = await apiFetchJson<unknown>(`/components/${slug}`, {
           runtime: deps.runtime,
           fetchImpl: deps.fetchImpl,
           publicApiUrl: deps.publicApiUrl,
           internalApiUrl: deps.internalApiUrl,
         })
-        return item ?? null
+        return detailResponseSchema.parse(payload).item
       } catch (error) {
         if (error instanceof ApiClientError && error.status === 404) return null
         if (isCatalogUnavailable(error)) return null
