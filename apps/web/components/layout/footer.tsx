@@ -4,9 +4,9 @@
  * routes not built yet render as plain text, never as dead anchors. The
  * newsletter field and the X/mail icons wait for their backend and URLs.
  */
-import Image from 'next/image'
 import { IconSocialGitHub } from '../ui/icons'
 import { NavLink } from '../ui/nav-link'
+import { FooterDotField } from './footer-dot-field'
 import { BRAND_NAME, Logo } from './logo'
 import { NAV_LINKS } from './nav-items'
 
@@ -72,15 +72,7 @@ export function Footer() {
           </div>
         </div>
 
-        <Image
-          src="/footer/9aa6b.svg"
-          alt=""
-          aria-hidden="true"
-          className="block h-auto w-full"
-          width={1440}
-          height={350}
-          unoptimized
-        />
+        <FooterDotField src="/footer/9aa6b.svg" />
 
         <div className="flex flex-col gap-3 px-4 py-5 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8 xl:px-[120px]">
           <p>© 2026 {BRAND_NAME}</p>
