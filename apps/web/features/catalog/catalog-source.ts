@@ -115,6 +115,11 @@ function isCatalogUnavailable(error: unknown): boolean {
   return error instanceof ApiClientError && (error.status === 503 || error.status === 0)
 }
 
+/** List pages degrade to an empty catalog on any server or network failure. */
+function isCatalogListUnavailable(error: unknown): boolean {
+  return error instanceof ApiClientError && (error.status === 0 || error.status >= 500)
+}
+
 export function createHttpCatalogSource(deps: HttpDeps = {}): CatalogSource {
   return {
     list: async (query = {}) => {
@@ -133,7 +138,7 @@ export function createHttpCatalogSource(deps: HttpDeps = {}): CatalogSource {
           internalApiUrl: deps.internalApiUrl,
         })
       } catch (error) {
-        if (isCatalogUnavailable(error)) return emptyCatalog(query)
+        if (isCatalogListUnavailable(error)) return emptyCatalog(query)
         throw error
       }
       // Keep list rendering resilient when an API deployment returns an

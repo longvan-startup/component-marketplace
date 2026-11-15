@@ -123,6 +123,15 @@ describe('http catalog source (API_MODE=live only)', () => {
     expect(result).toEqual({ items: [], page: 1, pageSize: 4, total: 0, unavailable: true })
   })
 
+  test('list turns a server error into an empty unavailable catalog instead of throwing', async () => {
+    const source = createHttpCatalogSource({
+      fetchImpl: async () => jsonResponse(500, { message: 'Internal Server Error' }),
+      publicApiUrl: 'https://api.example.test',
+    })
+    const result = await source.list({ pageSize: 4 })
+    expect(result).toEqual({ items: [], page: 1, pageSize: 4, total: 0, unavailable: true })
+  })
+
   test('detail maps 404 and a missing database to null', async () => {
     const source = createHttpCatalogSource({
       fetchImpl: async () => jsonResponse(404, { error: 'not found' }),
