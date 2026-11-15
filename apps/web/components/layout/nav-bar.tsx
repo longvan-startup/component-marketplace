@@ -9,6 +9,7 @@ import { Logo } from './logo'
 import { MobileMenu } from './mobile-menu'
 import { NavAuth } from './nav-auth'
 import { NAV_LINKS } from './nav-items'
+import { NavSessionProvider } from './nav-session'
 import { SearchForm } from './search-form'
 
 export function NavBar() {
@@ -26,12 +27,13 @@ export function NavBar() {
           </nav>
         </div>
 
-        <div className="hidden items-center gap-4 md:flex">
-          <SearchForm className="hidden w-80 lg:flex" />
-          <NavAuth apiMode={resolveApiMode()} />
-        </div>
-
-        <MobileMenu />
+        <NavSessionProvider apiMode={resolveApiMode()}>
+          <div className="hidden items-center gap-4 md:flex">
+            <SearchForm className="hidden w-80 lg:flex" />
+            <NavAuth />
+          </div>
+          <MobileMenu />
+        </NavSessionProvider>
       </div>
     </header>
   )

@@ -7,41 +7,13 @@
  * for the user's name + Đăng xuất. Signed-out is the render before the
  * session resolves, so there is no layout jump for anonymous visitors.
  */
-import type { AuthUser } from '@marketplace/shared'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { type ApiMode, getAuthSource } from '../../features/auth/auth-source'
 import { Button, buttonClasses } from '../ui/button'
 import { NAV_ACTIONS } from './nav-items'
+import { useNavSession } from './nav-session'
 
-export function NavAuth({ apiMode }: { apiMode: ApiMode }) {
-  const router = useRouter()
-  const [user, setUser] = useState<AuthUser | null>(null)
-
-  useEffect(() => {
-    let active = true
-    getAuthSource(apiMode)
-      .getSession()
-      .then((session) => {
-        if (active) setUser(session?.user ?? null)
-      })
-      .catch(() => {
-        // Unreachable API or bad payload: stay on the signed-out links.
-      })
-    return () => {
-      active = false
-    }
-  }, [apiMode])
-
-  async function signOut() {
-    try {
-      await getAuthSource(apiMode).signOut()
-    } finally {
-      setUser(null)
-      router.refresh()
-    }
-  }
+export function NavAuth() {
+  const { user, signOut } = useNavSession()
 
   if (user) {
     return (
