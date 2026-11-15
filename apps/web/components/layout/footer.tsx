@@ -44,7 +44,7 @@ export function Footer() {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="GitHub"
-                className="inline-flex rounded-badge p-2 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex cursor-default rounded-badge p-2 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <IconSocialGitHub />
               </a>
@@ -70,7 +70,7 @@ export function Footer() {
                 {column.items.map((label) => {
                   const live = NAV_LINKS.find((link) => link.label === label)
                   return live ? (
-                    <NavLink key={label} href={live.href} className="text-[13px]">
+                    <NavLink key={label} href={live.href} className="cursor-default text-[13px]">
                       {label}
                     </NavLink>
                   ) : (
