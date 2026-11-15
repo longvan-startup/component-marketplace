@@ -29,7 +29,7 @@ describe('createAuthEmailSender', () => {
     expect(new Headers(requestInit?.headers).get('authorization')).toBe('Bearer re_test_secret')
     expect(new Headers(requestInit?.headers).get('content-type')).toBe('application/json')
     expect(JSON.parse(String(requestInit?.body))).toEqual({
-      from: 'Component Marketplace <accounts@example.test>',
+      from: 'Marketplace <accounts@example.test>',
       to: ['person@example.test'],
       subject: 'Verify your Component Marketplace email',
       text: 'Hi <A & B>,\n\nVerify your email address: https://marketplace.test/verify?token=a&b\n\nIf you did not request this, you can ignore this email.',

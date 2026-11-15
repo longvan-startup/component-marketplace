@@ -77,7 +77,7 @@ export function createAuthEmailSender(
 
     const content = emailContent({ kind, user, url })
     const payload: ResendEmail = {
-      from: `Component Marketplace <${fromAddress}>`,
+      from: `Marketplace <${fromAddress}>`,
       to: [user.email],
       ...content,
     }
