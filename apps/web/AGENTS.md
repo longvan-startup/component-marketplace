@@ -70,6 +70,20 @@ animation stack** (owner decision — installed `^3.15.0`): use it ONLY through
 (framer-motion/Motion), state stores, UX/UI kits (shadcn/ui), or Storybook
 without a task that proves the use case.
 
+## Shared client state (added 2026-11-15)
+
+- When two or more client components need the same data (for example, the
+  session for the desktop and mobile nav), fetch it once in a `'use client'`
+  provider placed in the nearest shared parent, and expose it through a hook.
+  Reference: `components/layout/nav-session.tsx`.
+- Do not let sibling components each call the same data source on mount.
+- The hook must throw when used outside its provider. Fail loudly instead of
+  returning empty data.
+- State with a single consumer stays local (`useState`). Do not add a provider
+  for one component.
+- Exported provider and hook functions carry JSDoc with `@param`, `@returns`
+  and `@throws`, matching `nav-session.tsx`.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know
