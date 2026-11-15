@@ -1,9 +1,11 @@
 /**
- * Footer — Figma `Footer` (64:134, master 10:67): brand block, three link
- * columns, decorative "Dot Mountain" band and the legal row. Links that go to
- * routes not built yet render as plain text, never as dead anchors. The
- * newsletter field and the X/mail icons wait for their backend and URLs.
+ * Footer — Figma `Footer` (134:3645, master 10:67): brand block with social
+ * icons and the newsletter field, three link columns, the "Dot Mountain" band
+ * and the legal row. Links to routes not built yet render as plain text, never
+ * as dead anchors. The newsletter form is shown but disabled until its backend
+ * exists, and the X and mail icons have no link target yet.
  */
+import Image from 'next/image'
 import { IconSocialGitHub } from '../ui/icons'
 import { NavLink } from '../ui/nav-link'
 import { FooterDotField } from './footer-dot-field'
@@ -36,15 +38,45 @@ export function Footer() {
               Thư viện UI component sẵn dùng, xem trước animation trước khi tải — cho mọi dự án của
               bạn.
             </p>
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="GitHub"
-              className="-ml-3.5 inline-flex size-11 items-center justify-center rounded-badge text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <IconSocialGitHub />
-            </a>
+            <div className="flex items-center gap-4">
+              <Image src="/footer/7a2f5.svg" alt="" width={16} height={16} unoptimized />
+              <a
+                href={REPO_URL}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="GitHub"
+                className="-ml-3.5 inline-flex size-11 items-center justify-center rounded-badge text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <IconSocialGitHub />
+              </a>
+              <Image src="/footer/053d6.svg" alt="" width={16} height={16} unoptimized />
+            </div>
+
+            <p className="text-xs font-medium text-muted-foreground">
+              Nhận component mới hàng tuần
+            </p>
+            <form className="flex w-full max-w-[340px] items-center gap-2">
+              <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-card px-3.5 focus-within:ring-2 focus-within:ring-ring">
+                <Image src="/footer/53432.svg" alt="" width={18} height={18} unoptimized />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  disabled
+                  className="min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                />
+                <kbd className="rounded-md bg-muted px-1.5 py-0.5 font-sans text-[11px] font-medium text-muted-foreground">
+                  ⌘K
+                </kbd>
+              </label>
+              <button
+                type="submit"
+                disabled
+                className="h-10 shrink-0 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Đăng ký
+              </button>
+            </form>
           </div>
 
           <div className="grid flex-1 grid-cols-2 gap-10 sm:grid-cols-3">
