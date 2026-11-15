@@ -6,10 +6,11 @@
  * disabled until its backend exists, and the mail icon has no address yet.
  */
 import Link from 'next/link'
-import { IconSearch, IconSocialGitHub, IconSocialMail } from '../ui/icons'
+import { IconSocialGitHub, IconSocialMail } from '../ui/icons'
 import { FooterDotField } from './footer-dot-field'
 import { BRAND_NAME, Logo } from './logo'
 import { NAV_LINKS } from './nav-items'
+import { NewsletterForm } from './newsletter-form'
 
 const REPO_URL = 'https://github.com/longvan-startup/component-marketplace'
 
@@ -34,7 +35,7 @@ export function Footer() {
         <div className="mx-4 h-px bg-border md:mx-8 xl:mx-[120px]" />
 
         <div className="flex flex-col gap-10 px-4 pb-8 pt-14 md:flex-row md:gap-20 md:px-8 xl:px-[120px]">
-          <div className="flex w-full max-w-[280px] shrink-0 flex-col items-start gap-3">
+          <div className="flex w-full max-w-[400px] shrink-0 flex-col items-start gap-3">
             <Logo className="text-[15px] font-bold" />
             <p className="text-[13px] text-muted-foreground">
               Thư viện UI component sẵn dùng, xem trước animation trước khi tải — cho mọi dự án của
@@ -58,28 +59,7 @@ export function Footer() {
             <p className="text-xs font-medium text-muted-foreground">
               Nhận component mới hàng tuần
             </p>
-            <form className="flex w-full max-w-[340px] items-center gap-2">
-              <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-card px-3.5 focus-within:ring-2 focus-within:ring-ring">
-                <IconSearch className="shrink-0 text-muted-foreground" />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Email"
-                  disabled
-                  className="min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed"
-                />
-                <kbd className="rounded-md bg-muted px-1.5 py-0.5 font-sans text-[11px] font-medium text-muted-foreground">
-                  ⌘K
-                </kbd>
-              </label>
-              <button
-                type="submit"
-                disabled
-                className="h-10 shrink-0 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Đăng ký
-              </button>
-            </form>
+            <NewsletterForm />
           </div>
 
           <div className="grid flex-1 grid-cols-2 gap-10 sm:grid-cols-3">
