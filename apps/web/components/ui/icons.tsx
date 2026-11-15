@@ -75,29 +75,6 @@ export function IconSocialGitHub({ className = '' }: IconProps) {
   )
 }
 
-/* Gmail mark in its brand colours, as drawn in the Figma footer. */
-export function IconSocialGmail({ className = '' }: IconProps) {
-  return (
-    <svg
-      width="16"
-      height="12"
-      viewBox="0 0 16 12"
-      fill="none"
-      aria-hidden="true"
-      className={className}
-    >
-      <path d="M1.09 12H3.64V5.82L0 3.09V10.91C0 11.51 0.49 12 1.09 12Z" fill="#4285F4" />
-      <path d="M12.36 12H14.91C15.51 12 16 11.51 16 10.91V3.09L12.36 5.82V12Z" fill="#34A853" />
-      <path
-        d="M12.36 1.09V5.82L16 3.09V1.64C16 0.29 14.46 -0.48 13.38 0.33L12.36 1.09Z"
-        fill="#FBBC04"
-      />
-      <path d="M3.64 5.82V1.09L8 4.37L12.36 1.09V5.82L8 9.09L3.64 5.82Z" fill="#EA4335" />
-      <path d="M0 1.64V3.09L3.64 5.82V1.09L2.62 0.33C1.54 -0.48 0 0.29 0 1.64Z" fill="#C5221F" />
-    </svg>
-  )
-}
-
 export function IconSocialMail({ className = '' }: IconProps) {
   return (
     <svg

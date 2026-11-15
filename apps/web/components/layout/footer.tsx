@@ -1,12 +1,12 @@
 /**
  * Footer — Figma `Footer` (134:3645, master 10:67): brand block with social
  * icons and the newsletter field, three link columns, the "Dot Mountain" band
- * and the legal row. Links to routes not built yet render as plain text, never
- * as dead anchors. The newsletter form is shown but disabled until its backend
- * exists, and the X and mail icons have no link target yet.
+ * and the legal row. Links to routes not built yet render as plain text with
+ * the same hover colour, never as dead anchors. The newsletter form is shown but
+ * disabled until its backend exists, and the mail icon has no address yet.
  */
-import { IconSearch, IconSocialGitHub, IconSocialGmail, IconSocialX } from '../ui/icons'
-import { NavLink } from '../ui/nav-link'
+import Link from 'next/link'
+import { IconSearch, IconSocialGitHub, IconSocialMail } from '../ui/icons'
 import { FooterDotField } from './footer-dot-field'
 import { BRAND_NAME, Logo } from './logo'
 import { NAV_LINKS } from './nav-items'
@@ -21,8 +21,11 @@ const COLUMNS = [
 
 const LEGAL_LINKS = ['Bảo mật', 'Điều khoản', 'Giấy phép'] as const
 
+/* No horizontal padding, so every item lines up with its column heading. */
+const LINK_CLASS =
+  'block rounded-sm text-[13px] font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 const PLANNED_CLASS =
-  'inline-flex items-center px-0.5 py-1 text-[13px] font-medium text-muted-foreground'
+  'block text-[13px] font-medium text-muted-foreground transition-colors hover:text-primary'
 
 export function Footer() {
   return (
@@ -37,18 +40,19 @@ export function Footer() {
               Thư viện UI component sẵn dùng, xem trước animation trước khi tải — cho mọi dự án của
               bạn.
             </p>
-            <div className="flex items-center gap-4">
-              <IconSocialX className="text-foreground" />
+            <div className="-ml-2 flex items-center gap-2 text-muted-foreground">
               <a
                 href={REPO_URL}
                 target="_blank"
                 rel="noreferrer"
                 aria-label="GitHub"
-                className="-ml-3.5 inline-flex size-11 items-center justify-center rounded-badge text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex rounded-badge p-2 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <IconSocialGitHub />
               </a>
-              <IconSocialGmail />
+              <span className="inline-flex p-2 transition-colors hover:text-primary">
+                <IconSocialMail />
+              </span>
             </div>
 
             <p className="text-xs font-medium text-muted-foreground">
@@ -83,15 +87,15 @@ export function Footer() {
               <nav
                 key={column.title}
                 aria-label={column.title}
-                className="flex flex-col items-start gap-3"
+                className="flex flex-col items-start gap-4"
               >
                 <p className="text-[13px] font-semibold text-foreground">{column.title}</p>
                 {column.items.map((label) => {
                   const live = NAV_LINKS.find((link) => link.label === label)
                   return live ? (
-                    <NavLink key={label} href={live.href} className="text-[13px]">
+                    <Link key={label} href={live.href} className={LINK_CLASS}>
                       {label}
-                    </NavLink>
+                    </Link>
                   ) : (
                     <span key={label} className={PLANNED_CLASS}>
                       {label}
@@ -111,7 +115,9 @@ export function Footer() {
           <p>© 2026 {BRAND_NAME}</p>
           <div className="flex flex-wrap gap-6">
             {LEGAL_LINKS.map((label) => (
-              <span key={label}>{label}</span>
+              <span key={label} className="transition-colors hover:text-primary">
+                {label}
+              </span>
             ))}
           </div>
         </div>
