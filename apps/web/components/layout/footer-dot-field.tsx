@@ -12,7 +12,7 @@ import { useEffect, useRef } from 'react'
 
 const CELL = 10
 const TRAIL_S = 1.4
-const WAKE_CELLS = 2.4
+const WAKE_CELLS = 3.6
 const WARM = 0.01
 const HEAT_RGB = '124, 58, 237'
 
@@ -58,6 +58,8 @@ export function FooterDotField({ src }: { src: string }) {
       }
       const g = grid.current
       const decay = Math.exp(-dt / TRAIL_S)
+      /* a resting hand keeps the cells under it at full heat */
+      if (pointer.current) stamp(pointer.current.x, pointer.current.y)
       ctx.clearRect(0, 0, w, h)
       const left = (w - cols * CELL) / 2
       const top = (h - rows * CELL) / 2
@@ -71,9 +73,9 @@ export function FooterDotField({ src }: { src: string }) {
           const x = left + (i + 0.5 + (j & 1) * 0.5) * CELL
           const y = top + (j + 0.5) * CELL
           ctx.beginPath()
-          ctx.arc(x, y, 0.8 + 1.8 * e, 0, Math.PI * 2)
+          ctx.arc(x, y, 0.9 + 3.4 * e, 0, Math.PI * 2)
           ctx.fillStyle =
-            e > 0.02 ? `rgba(${HEAT_RGB}, ${0.25 + 0.75 * e})` : 'rgba(113, 113, 122, 0.22)'
+            e > 0.02 ? `rgba(${HEAT_RGB}, ${0.2 + 0.8 * e})` : 'rgba(113, 113, 122, 0.32)'
           ctx.fill()
         }
       }
