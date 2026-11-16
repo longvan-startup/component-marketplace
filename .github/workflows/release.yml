@@ -184,19 +184,25 @@ jobs:
             (.alias | length == 0)
           ' <<< "$response" >/dev/null || { echo "::error::Staged deployment changed or was promoted before this release."; exit 1; }
 
-      - name: Promote the exact staged Vercel build
-        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-
-      - name: Install pinned Vercel CLI
-        if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
-        run: npm install --global vercel@65.12.1
-
       - name: Promote Vercel deployment without rebuilding
         if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_RELEASE_TOKEN }}
-          DEPLOYMENT_URL: ${{ steps.staged.outputs.url }}
-        run: vercel promote "$DEPLOYMENT_URL" --scope "$VERCEL_ORG_ID" --yes --timeout=5m
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --request POST \
+            -H "Authorization: Bearer $VERCEL_TOKEN" -H 'Content-Type: application/json' \
+            --data '{}' \
+            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/promote/$DEPLOYMENT_ID?teamId=$VERCEL_ORG_ID" >/dev/null
+          for attempt in $(seq 1 60); do
+            response="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")"
+            if jq -e --arg id "$DEPLOYMENT_ID" '.targets.production.deploymentId == $id and .targets.production.readyState == "READY"' <<< "$response" >/dev/null; then
+              echo "The confirmed deployment is current in production."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo '::error::Production target did not confirm the requested deployment within five minutes.'
+          exit 1

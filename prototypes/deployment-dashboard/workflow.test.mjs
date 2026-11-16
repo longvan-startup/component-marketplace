@@ -66,7 +66,10 @@ test('production release is manual, protected, immutable, verified and serialize
   assert.match(release, /retry_failed_run_id:/)
   assert.match(release, /A previous release run exists/)
   assert.match(release, /already_released/)
-  assert.match(release, /vercel promote/)
+  assert.match(
+    release,
+    /\/v10\/projects\/\$VERCEL_PROJECT_ID\/promote\/\$DEPLOYMENT_ID\?teamId=\$VERCEL_ORG_ID/,
+  )
   assert.match(release, /cancel-in-progress: false/)
   assert.match(release, /already_released/)
   assert.match(release, /completed.*success/s)
@@ -91,16 +94,11 @@ test('production release is manual, protected, immutable, verified and serialize
   assert.equal((release.match(/secrets\.PROD_DATABASE_URL/g) || []).length, 2)
   assert.equal((release.match(/secrets\.VERCEL_RELEASE_TOKEN/g) || []).length, 4)
 
-  const cliInstallStart = release.indexOf('- name: Install pinned Vercel CLI')
   const promoteStart = release.indexOf('- name: Promote Vercel deployment without rebuilding')
-  const promoteEnd = release.indexOf('\n', release.indexOf('run: vercel promote', promoteStart))
-  const cliInstallStep = release.slice(cliInstallStart, promoteStart)
-  const promoteStep = release.slice(promoteStart, promoteEnd)
-  assert.ok(cliInstallStart >= 0 && promoteStart > cliInstallStart)
-  assert.doesNotMatch(cliInstallStep, /VERCEL_TOKEN|VERCEL_RELEASE_TOKEN/)
+  const promoteStep = release.slice(promoteStart)
+  assert.ok(promoteStart >= 0)
   assert.match(promoteStep, /VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_RELEASE_TOKEN \}\}/)
-  assert.match(promoteStep, /vercel promote "\$DEPLOYMENT_URL" --scope "\$VERCEL_ORG_ID"/)
-  assert.doesNotMatch(promoteStep, /--token/)
+  assert.match(promoteStep, /targets\.production\.deploymentId == \$id/)
 })
 
 test('both Vercel projects disable automatic Git deployments for every branch', async () => {
