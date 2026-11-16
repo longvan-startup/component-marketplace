@@ -26,6 +26,7 @@ describe('createAuthEmailSender', () => {
 
     expect(requestUrl).toBe('https://api.resend.com/emails')
     expect(requestInit?.method).toBe('POST')
+    expect(requestInit?.signal).toBeInstanceOf(AbortSignal)
     expect(new Headers(requestInit?.headers).get('authorization')).toBe('Bearer re_test_secret')
     expect(new Headers(requestInit?.headers).get('content-type')).toBe('application/json')
     expect(JSON.parse(String(requestInit?.body))).toEqual({
