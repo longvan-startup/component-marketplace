@@ -99,6 +99,8 @@ test('production release is manual, protected, immutable, verified and serialize
   assert.ok(cliInstallStart >= 0 && promoteStart > cliInstallStart)
   assert.doesNotMatch(cliInstallStep, /VERCEL_TOKEN|VERCEL_RELEASE_TOKEN/)
   assert.match(promoteStep, /VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_RELEASE_TOKEN \}\}/)
+  assert.match(promoteStep, /vercel promote "\$DEPLOYMENT_URL" --scope "\$VERCEL_ORG_ID"/)
+  assert.doesNotMatch(promoteStep, /--token/)
 })
 
 test('both Vercel projects disable automatic Git deployments for every branch', async () => {
