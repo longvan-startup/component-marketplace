@@ -199,4 +199,4 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_RELEASE_TOKEN }}
           DEPLOYMENT_URL: ${{ steps.staged.outputs.url }}
-        run: vercel promote "$DEPLOYMENT_URL" --yes --timeout=5m --token="$VERCEL_TOKEN"
+        run: vercel promote "$DEPLOYMENT_URL" --scope "$VERCEL_ORG_ID" --yes --timeout=5m
