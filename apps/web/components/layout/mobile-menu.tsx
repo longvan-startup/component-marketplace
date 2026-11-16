@@ -18,7 +18,7 @@ export function MobileMenu() {
   const panelId = useId()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const { user, signOut } = useNavSession()
+  const { user, signOut, pendingAction } = useNavSession()
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger — navigating closes the panel.
   useEffect(() => {
@@ -65,17 +65,34 @@ export function MobileMenu() {
           ))}
         </nav>
         {user ? (
-          <div className="mt-3 flex min-h-11 items-center justify-between gap-3 border-t border-border pt-3">
-            <span className="min-w-0 truncate text-sm font-medium text-foreground">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
               {user.name || user.email}
             </span>
-            <button
-              type="button"
-              onClick={signOut}
-              className={buttonClasses({ variant: 'ghost', size: 'md', className: 'min-h-11' })}
-            >
-              Đăng xuất
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/account/security"
+                className={buttonClasses({
+                  variant: 'ghost',
+                  size: 'md',
+                  className: 'min-h-11',
+                })}
+              >
+                Bảo mật
+              </Link>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                disabled={pendingAction !== null}
+                className={buttonClasses({
+                  variant: 'ghost',
+                  size: 'md',
+                  className: 'min-h-11',
+                })}
+              >
+                {pendingAction === 'signOut' ? 'Đang đăng xuất…' : 'Đăng xuất'}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="mt-3 grid grid-cols-2 gap-3">

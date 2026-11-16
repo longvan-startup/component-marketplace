@@ -91,6 +91,81 @@ describe('http auth source — sign-in / sign-up / session', () => {
     expect(await source.signOut()).toEqual({ success: true })
     expect(calls[0]?.url).toBe('http://api.test/api/auth/sign-out')
   })
+
+  test('changePassword sends current password and always revokes other sessions', async () => {
+    const { calls, source } = httpSource(200, {
+      token: 'replacement-session-token',
+      user: USER,
+    })
+    await source.changePassword('current-password', 'new-password-value')
+
+    expect(calls[0]?.url).toBe('http://api.test/api/auth/change-password')
+    expect(calls[0]?.init.method).toBe('POST')
+    expect(calls[0]?.init.credentials).toBe('include')
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      currentPassword: 'current-password',
+      newPassword: 'new-password-value',
+      revokeOtherSessions: true,
+    })
+  })
+
+  test('changePassword maps the wrong current password to an auth request error', async () => {
+    const { source } = httpSource(400, {
+      code: 'INVALID_PASSWORD',
+      message: 'Invalid password',
+    })
+    await expect(source.changePassword('wrong', 'new-password-value')).rejects.toMatchObject({
+      name: 'AuthRequestError',
+      code: 'INVALID_PASSWORD',
+      status: 400,
+    })
+  })
+
+  test('signOutEverywhere revokes all sessions before clearing the current cookie', async () => {
+    const calls: { url: string; init: RequestInit }[] = []
+    const source = createHttpAuthSource({
+      fetchImpl: (async (url, init) => {
+        calls.push({ url: String(url), init: init ?? {} })
+        return new Response(
+          JSON.stringify(
+            String(url).endsWith('/revoke-sessions') ? { status: true } : { success: true },
+          ),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }) as typeof fetch,
+      publicApiUrl: 'http://api.test',
+      runtime: 'browser',
+    })
+
+    await source.signOutEverywhere()
+
+    expect(calls.map((call) => call.url)).toEqual([
+      'http://api.test/api/auth/revoke-sessions',
+      'http://api.test/api/auth/sign-out',
+    ])
+    expect(calls.every((call) => call.init.credentials === 'include')).toBe(true)
+  })
+
+  test('signOutEverywhere remains successful if cookie cleanup fails after revocation', async () => {
+    let request = 0
+    const source = createHttpAuthSource({
+      fetchImpl: (async () => {
+        request += 1
+        if (request === 1) {
+          return new Response(JSON.stringify({ status: true }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+        throw new Error('connection lost after revocation')
+      }) as typeof fetch,
+      publicApiUrl: 'http://api.test',
+      runtime: 'browser',
+    })
+
+    await expect(source.signOutEverywhere()).resolves.toBeUndefined()
+    expect(request).toBe(2)
+  })
 })
 
 describe('mock auth source — sign-in / sign-up / session', () => {
@@ -108,5 +183,11 @@ describe('mock auth source — sign-in / sign-up / session', () => {
       'http://web.test/verify-email',
     )
     expect(result).toMatchObject({ token: null, user: { name: 'An', emailVerified: false } })
+  })
+
+  test('password/session controls resolve in mock mode', async () => {
+    const source = createMockAuthSource()
+    await expect(source.changePassword('current-password', 'new-password')).resolves.toBeUndefined()
+    await expect(source.signOutEverywhere()).resolves.toBeUndefined()
   })
 })

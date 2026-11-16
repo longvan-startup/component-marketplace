@@ -1,7 +1,6 @@
 /**
- * contracts/auth.ts — public API contract for the forgot/reset-password and
- * email-verification flows (issue #92, both slices). Source of truth for
- * BOTH sides (Văn ↔ Long).
+ * contracts/auth.ts — public API contract for Better Auth flows used by the
+ * web app. Source of truth for BOTH sides (Văn ↔ Long).
  *
  * Unlike `catalog.ts`, these schemas describe `/api/auth/*` payloads, which
  * `apps/api/AGENTS.md` says the API must NOT wrap or translate — Better Auth
@@ -12,10 +11,8 @@
  * maps the `error` callback param / `APIError` to UI states per
  * `apps/api/AUTH.md`'s "Frontend state mapping".
  *
- * `newPassword` bounds (8–128) mirror Better Auth's own defaults
- * (`minPasswordLength`/`maxPasswordLength`, unset in `apps/api/src/auth/
- * config.ts` so the library defaults apply) — update both places together if
- * that config ever changes.
+ * Password bounds (8–128) mirror the explicit `minPasswordLength` and
+ * `maxPasswordLength` settings in `apps/api/src/auth/config.ts`.
  */
 
 import { z } from 'zod'
@@ -43,6 +40,16 @@ export const resetPasswordResponseSchema = z.object({
   status: z.boolean(),
 })
 
+export const changePasswordRequestSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(8).max(128),
+  revokeOtherSessions: z.boolean().optional(),
+})
+
+export const revokeSessionsResponseSchema = z.object({
+  status: z.boolean(),
+})
+
 /** The only error code Better Auth's `/reset-password/:token` GET callback
  * redirects with, for both an invalid and an expired token (same code). */
 export const resetPasswordCallbackErrorSchema = z.enum(['INVALID_TOKEN'])
@@ -51,6 +58,9 @@ export type RequestPasswordResetRequest = z.infer<typeof requestPasswordResetReq
 export type RequestPasswordResetResponse = z.infer<typeof requestPasswordResetResponseSchema>
 export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>
 export type ResetPasswordResponse = z.infer<typeof resetPasswordResponseSchema>
+export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>
+export type ChangePasswordResponse = z.infer<typeof changePasswordResponseSchema>
+export type RevokeSessionsResponse = z.infer<typeof revokeSessionsResponseSchema>
 export type ResetPasswordCallbackError = z.infer<typeof resetPasswordCallbackErrorSchema>
 
 /* ------------------------------------------------------------------ */
@@ -92,6 +102,11 @@ export const authUserSchema = z.object({
   name: z.string(),
   image: z.string().nullable().optional(),
   emailVerified: z.boolean(),
+})
+
+export const changePasswordResponseSchema = z.object({
+  token: z.string().nullable(),
+  user: authUserSchema,
 })
 
 export const signInEmailRequestSchema = z.object({
