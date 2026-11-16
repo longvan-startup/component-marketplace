@@ -63,6 +63,17 @@ function sortedNewest(items) {
   return [...items].sort((a, b) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || ''))
 }
 
+function sortedOldestStable(items) {
+  return [...items].sort((a, b) => {
+    const aCreatedAt = Date.parse(a.createdAt || '')
+    const bCreatedAt = Date.parse(b.createdAt || '')
+    const aOrder = Number.isFinite(aCreatedAt) ? aCreatedAt : Number.POSITIVE_INFINITY
+    const bOrder = Number.isFinite(bCreatedAt) ? bCreatedAt : Number.POSITIVE_INFINITY
+    if (aOrder !== bOrder) return aOrder < bOrder ? -1 : 1
+    return a.id.localeCompare(b.id)
+  })
+}
+
 function deploymentSummary(item) {
   if (!item) return null
   return {
@@ -118,7 +129,7 @@ export function releaseConfiguration(env = process.env) {
 export async function getReleaseSnapshot(
   env = process.env,
   fetchImpl = fetch,
-  { includePullRequests = true } = {},
+  { includePullRequests = true, pinnedStagedDeploymentId = null } = {},
 ) {
   const configuration = releaseConfiguration(env)
   let githubToken
@@ -209,17 +220,11 @@ export async function getReleaseSnapshot(
       deployment.target === 'production' &&
       deployment.status === 'READY' &&
       deployment.commitSha === latestVerifiedSha
-    const stagedCandidate =
-      sortedNewest(
-        vercelDeployments.filter(
-          (deployment) => matchesVerifiedSha(deployment) && deployment.aliasAssigned === false,
-        ),
-      )[0] ||
-      sortedNewest(vercelDeployments.filter((deployment) => matchesVerifiedSha(deployment)))[0]
-    if (stagedCandidate) {
+
+    if (pinnedStagedDeploymentId) {
       try {
         const detail = await getDeploymentDetails(
-          stagedCandidate.id,
+          pinnedStagedDeploymentId,
           configuration.projectId,
           env,
           fetchImpl,
@@ -233,6 +238,27 @@ export async function getReleaseSnapshot(
         }
       } catch {
         stagedDeployment = null
+      }
+    } else {
+      const stagedCandidate = sortedOldestStable(vercelDeployments.filter(matchesVerifiedSha))[0]
+      if (stagedCandidate) {
+        try {
+          const detail = await getDeploymentDetails(
+            stagedCandidate.id,
+            configuration.projectId,
+            env,
+            fetchImpl,
+          )
+          if (
+            detail.status === 'READY' &&
+            detail.target === 'production' &&
+            detail.commitSha === latestVerifiedSha
+          ) {
+            stagedDeployment = deploymentSummary(detail)
+          }
+        } catch {
+          stagedDeployment = null
+        }
       }
     }
   }
@@ -295,7 +321,14 @@ export async function getReleaseSnapshot(
 }
 
 export async function startRelease(env = process.env, fetchImpl = fetch, expectedCandidate = {}) {
-  const snapshot = await getReleaseSnapshot(env, fetchImpl, { includePullRequests: false })
+  const pinnedStagedDeploymentId =
+    typeof expectedCandidate.expectedDeploymentId === 'string'
+      ? expectedCandidate.expectedDeploymentId
+      : null
+  const snapshot = await getReleaseSnapshot(env, fetchImpl, {
+    includePullRequests: false,
+    pinnedStagedDeploymentId,
+  })
   const deployment = snapshot.stagedDeployment
   const sha = snapshot.ci.latestVerified?.sha?.toLowerCase() || null
   const expectedSha =

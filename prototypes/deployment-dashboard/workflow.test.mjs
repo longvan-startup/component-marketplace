@@ -41,6 +41,10 @@ test('main CI stays intact while CD preparation cannot migrate or promote produc
   assert.doesNotMatch(cd, /db:migrate|PROD_DATABASE_URL|deploy-vps|ssh /i)
   assert.match(cd, /cmp-api:sha-\$\{\{ github\.event\.workflow_run\.head_sha \}\}/)
   assert.match(cd, /--prod --skip-domain/)
+  assert.match(
+    cd,
+    /concurrency:\s*group:\s*stage-vercel-\$\{\{\s*github\.event\.workflow_run\.head_sha\s*\}\}\s*cancel-in-progress:\s*false/,
+  )
   assert.doesNotMatch(cd, /vercel promote/)
 })
 

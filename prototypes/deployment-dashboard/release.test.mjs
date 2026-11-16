@@ -64,11 +64,23 @@ function releaseSnapshotFetch({
   candidateSha = sha,
   deploymentId = 'dpl_stage',
   aliasAssigned = false,
+  stagedDeployments = null,
+  reverseStagedDeployments = false,
   releaseRuns = [],
   rejectPullRequestPermission = false,
   onTokenRequest = () => {},
   onDispatch = () => {},
 } = {}) {
+  const staged = stagedDeployments || [
+    {
+      id: deploymentId,
+      sha: candidateSha,
+      aliasAssigned,
+      created: 1762500000000,
+      url: 'staged.vercel.app',
+    },
+  ]
+  const listedStaged = reverseStagedDeployments ? [...staged].reverse() : staged
   return async (url, options = {}) => {
     const parsed = new URL(url)
     if (parsed.pathname === '/app/installations/67890/access_tokens') {
@@ -141,27 +153,29 @@ function releaseSnapshotFetch({
       })
     if (parsed.pathname === '/v6/deployments')
       return response({
-        deployments: [
-          {
-            uid: deploymentId,
-            state: 'READY',
-            target: 'production',
-            meta: { githubCommitSha: candidateSha },
-            url: 'staged.vercel.app',
-            aliasAssigned,
-            created: 1762500000000,
-          },
-        ],
+        deployments: listedStaged.map((deployment) => ({
+          uid: deployment.id,
+          state: deployment.status || 'READY',
+          target: 'production',
+          meta: { githubCommitSha: deployment.sha || candidateSha },
+          url: deployment.url || 'staged.vercel.app',
+          aliasAssigned: deployment.aliasAssigned ?? false,
+          created: deployment.created ?? 1762500000000,
+        })),
       })
-    if (parsed.pathname === `/v13/deployments/${deploymentId}`)
+    const stagedDetail = staged.find(
+      (deployment) => parsed.pathname === `/v13/deployments/${deployment.id}`,
+    )
+    if (stagedDetail)
       return response({
-        uid: deploymentId,
+        uid: stagedDetail.id,
         projectId: 'prj_test',
-        readyState: 'READY',
+        readyState: stagedDetail.status || 'READY',
         target: 'production',
-        meta: { githubCommitSha: candidateSha },
-        url: 'staged.vercel.app',
-        aliasAssigned,
+        meta: { githubCommitSha: stagedDetail.sha || candidateSha },
+        url: stagedDetail.url || 'staged.vercel.app',
+        aliasAssigned: stagedDetail.aliasAssigned ?? false,
+        createdAt: stagedDetail.created ?? 1762500000000,
       })
     if (parsed.pathname === '/v13/deployments/dpl_current')
       return response({
@@ -595,6 +609,79 @@ test('release snapshot is ready only for the exact CI SHA and a ready unpromoted
   const liveFrontend = await getReleaseSnapshot(env(), timestampAssigned)
   assert.equal(liveFrontend.stagedDeployment.id, 'dpl_live')
   assert.equal(liveFrontend.readyToRelease, true)
+})
+
+test('release snapshot keeps the same candidate when Vercel reorders deployments or changes alias state', async () => {
+  const stagedDeployments = [
+    {
+      id: 'dpl_stage_latest',
+      sha,
+      aliasAssigned: false,
+      created: 1762600000000,
+    },
+    {
+      id: 'dpl_stage_old_b',
+      sha,
+      aliasAssigned: false,
+      created: 1762500000000,
+    },
+    {
+      id: 'dpl_stage_old_a',
+      sha,
+      aliasAssigned: false,
+      created: 1762500000000,
+    },
+  ]
+
+  const first = await getReleaseSnapshot(env(), releaseSnapshotFetch({ stagedDeployments }))
+  const aliasChangedDeployments = stagedDeployments.map((deployment) =>
+    deployment.id === 'dpl_stage_old_a' ? { ...deployment, aliasAssigned: true } : deployment,
+  )
+  const refreshed = await getReleaseSnapshot(
+    env(),
+    releaseSnapshotFetch({
+      stagedDeployments: aliasChangedDeployments,
+      reverseStagedDeployments: true,
+    }),
+  )
+
+  assert.equal(first.stagedDeployment.id, 'dpl_stage_old_a')
+  assert.equal(refreshed.stagedDeployment.id, 'dpl_stage_old_a')
+})
+
+test('confirmation verifies and dispatches the exact displayed deployment if the canonical candidate changes', async () => {
+  let dispatched
+  const displayedCandidate = await getReleaseSnapshot(
+    env(),
+    releaseSnapshotFetch({ deploymentId: 'dpl_displayed' }),
+  )
+  assert.equal(displayedCandidate.stagedDeployment.id, 'dpl_displayed')
+
+  const result = await startRelease(
+    env(),
+    releaseSnapshotFetch({
+      stagedDeployments: [
+        {
+          id: 'dpl_new_canonical',
+          sha,
+          aliasAssigned: false,
+          created: 1762400000000,
+        },
+        {
+          id: 'dpl_displayed',
+          sha,
+          aliasAssigned: false,
+          created: 1762500000000,
+        },
+      ],
+      onDispatch: (body) => (dispatched = body),
+    }),
+    { expectedSha: sha, expectedDeploymentId: 'dpl_displayed' },
+  )
+
+  assert.equal(result.started, true)
+  assert.equal(result.release.deploymentId, 'dpl_displayed')
+  assert.equal(dispatched.inputs.vercel_deployment_id, 'dpl_displayed')
 })
 
 test('release readiness requires no active release run for the confirmed candidate', async () => {
