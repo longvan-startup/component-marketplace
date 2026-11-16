@@ -19,6 +19,8 @@ type ResendEmail = {
 
 type EmailEnvironment = Pick<ApiEnv, 'NODE_ENV' | 'RESEND_API_KEY' | 'AUTH_EMAIL_FROM'>
 
+const RESEND_REQUEST_TIMEOUT_MS = 10_000
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
     switch (character) {
@@ -90,6 +92,7 @@ export function createAuthEmailSender(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(RESEND_REQUEST_TIMEOUT_MS),
       })
       if (!response.ok) throw new Error('Provider rejected the email')
     } catch {
