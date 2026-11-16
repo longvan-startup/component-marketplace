@@ -51,6 +51,9 @@ jobs:
 
   stage-vercel:
     name: Build and stage Vercel services
+    concurrency:
+      group: stage-vercel-${{ github.event.workflow_run.head_sha }}
+      cancel-in-progress: false
     if: >-
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&
