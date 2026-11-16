@@ -39,11 +39,13 @@ Request and error shapes are therefore Better Auth's own contract.
 | `POST /api/auth/sign-up/email` | Register with `name`, `email`, `password` | Creates a user with `role: "user"` and `emailVerified: false`, sends a verification email, and returns `{ token: null, user }` — **no session cookie** until the email is verified. |
 | `POST /api/auth/sign-in/email` | Sign in with `email`, `password` | If `emailVerified` is `false`: `403 FORBIDDEN` (`EMAIL_NOT_VERIFIED`) and a fresh verification email is sent. Otherwise sets a session cookie and returns Better Auth's signin response. |
 | `POST /api/auth/sign-out` | End the current session | Revokes the session and clears the session cookie. |
+| `POST /api/auth/change-password` | Change a signed-in credential password with `currentPassword`, `newPassword`, `revokeOtherSessions` | The web app always sends `revokeOtherSessions: true`; Better Auth verifies the current password, revokes the other sessions, rotates the current session cookie, and returns `{ token, user }`. Password length is 8–128 characters. |
+| `POST /api/auth/revoke-sessions` | Revoke every session for the signed-in user | Returns `{ "status": true }` after deleting all sessions, including the current one. It does not clear the browser cookie; the web app follows with `/sign-out` for cookie cleanup. |
 | `GET /api/auth/get-session` | Read current session | Returns `null` when unauthenticated or expired; otherwise returns `{ session, user }`. |
 | `POST /api/auth/update-user` | Update the signed-in user's name or image | Returns Better Auth's `{ "status": true }`; fetch the session again to read the updated user. |
 | `POST /api/auth/request-password-reset` | Request a reset email with `email`, `redirectTo` | On successful delivery (or when the email is unknown), returns `{ "status": true, "message": "..." }` without revealing account existence. A provider failure can fail delivery. `redirectTo` must be a trusted origin (see Configuration) or the request is rejected before any lookup. |
 | `GET /api/auth/reset-password/:token` | The link the reset email points to | Handled entirely by Better Auth: redirects to `redirectTo` with `?token=<raw>` on a valid token, or `?error=INVALID_TOKEN` if invalid or expired. The frontend never calls this directly — it's the email link's destination. |
-| `POST /api/auth/reset-password` | Set a new password with `token`, `newPassword` | Returns `{ "status": true }` on success. `newPassword` must be 8–128 characters (Better Auth's `minPasswordLength`/`maxPasswordLength` defaults — not overridden in this config). On success, every other session for that user is revoked (`revokeSessionsOnPasswordReset: true`) — the user must sign in again on other devices. |
+| `POST /api/auth/reset-password` | Set a new password with `token`, `newPassword` | Returns `{ "status": true }` on success. `newPassword` must be 8–128 characters (`minPasswordLength`/`maxPasswordLength`). On success, every other session for that user is revoked (`revokeSessionsOnPasswordReset: true`) — the user must sign in again on other devices. |
 | `POST /api/auth/send-verification-email` | (Re)send a verification email with `email`, `callbackURL` | Returns `{ "status": true }` without revealing whether the email exists or is verified when delivery succeeds or no email is needed. A provider failure can fail delivery. Also fires automatically on a failed sign-in caused by an unverified email (`sendOnSignIn: true`) — the frontend does not need a separate "resend" trigger for that path. |
 | `GET /api/auth/verify-email` | The link the verification email points to, `token` + optional `callbackURL` | Handled entirely by Better Auth. With `callbackURL`: redirects there on success (no extra query params — see below), or with `?error=INVALID_TOKEN\|TOKEN_EXPIRED\|USER_NOT_FOUND` on failure. Without `callbackURL`: returns `{ "status": true, "user": null }` as JSON directly (used by integration tests, not the frontend). On success, sets a session cookie (`autoSignInAfterVerification: true`) — verifying logs the user in. |
 
@@ -102,7 +104,11 @@ one below") instead of claiming a success it can't actually confirm.
 - A successful response with `{ session, user }` means authenticated.
 - An invalid or expired cookie is treated as guest by `get-session`.
 - Network failures and server failures are errors, not guest state.
-- After signout succeeds, clear the in-memory user and show guest state.
+- After signout succeeds, clear the in-memory user and show guest state. If
+  the request fails, retain the user and show a generic error.
+- Changing a password keeps the current browser signed in and revokes other
+  sessions. Signing out everywhere revokes all sessions, then clears the
+  current browser cookie.
 - Validate any return URL in the frontend: accept only a local relative path or
   an explicitly allowed same-origin URL; reject external and protocol-relative
   destinations.

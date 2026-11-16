@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  changePasswordRequestSchema,
   requestPasswordResetRequestSchema,
   requestPasswordResetResponseSchema,
   resendVerificationEmailRequestSchema,
@@ -59,13 +60,13 @@ describe('resetPasswordRequestSchema', () => {
     ).toEqual({ token: 'abc123', newPassword: 'longenough' })
   })
 
-  test('password shorter than 8 chars FAILS (Better Auth minPasswordLength default)', () => {
+  test('password shorter than 8 chars FAILS (Better Auth minPasswordLength)', () => {
     expect(
       resetPasswordRequestSchema.safeParse({ token: 'abc123', newPassword: 'short' }).success,
     ).toBe(false)
   })
 
-  test('password longer than 128 chars FAILS (Better Auth maxPasswordLength default)', () => {
+  test('password longer than 128 chars FAILS (Better Auth maxPasswordLength)', () => {
     expect(
       resetPasswordRequestSchema.safeParse({ token: 'abc123', newPassword: 'a'.repeat(129) })
         .success,
@@ -138,5 +139,43 @@ describe('verifyEmailCallbackErrorSchema', () => {
 
   test('unknown code FAILS', () => {
     expect(verifyEmailCallbackErrorSchema.safeParse('SOMETHING_ELSE').success).toBe(false)
+  })
+})
+
+describe('change-password contract', () => {
+  test('accepts the configured password length boundaries', () => {
+    expect(
+      changePasswordRequestSchema.safeParse({
+        currentPassword: 'current',
+        newPassword: 'a'.repeat(8),
+        revokeOtherSessions: true,
+      }).success,
+    ).toBe(true)
+    expect(
+      changePasswordRequestSchema.safeParse({
+        currentPassword: 'current',
+        newPassword: 'a'.repeat(128),
+        revokeOtherSessions: true,
+      }).success,
+    ).toBe(true)
+  })
+
+  test('rejects passwords outside 8–128 characters and empty current passwords', () => {
+    for (const newPassword of ['a'.repeat(7), 'a'.repeat(129)]) {
+      expect(
+        changePasswordRequestSchema.safeParse({
+          currentPassword: 'current',
+          newPassword,
+          revokeOtherSessions: true,
+        }).success,
+      ).toBe(false)
+    }
+    expect(
+      changePasswordRequestSchema.safeParse({
+        currentPassword: '',
+        newPassword: 'a'.repeat(8),
+        revokeOtherSessions: true,
+      }).success,
+    ).toBe(false)
   })
 })

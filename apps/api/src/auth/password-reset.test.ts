@@ -1,5 +1,5 @@
 /**
- * Integration tests cho forgot/reset password (#92 slice 1) — Postgres THẬT.
+ * Integration tests cho password flows (#92, #168) — Postgres THẬT.
  * Pattern tái dùng y hệt `catalog/integration.test.ts`: migration thật +
  * HTTP thật qua `app.listen(0)`, `describe.skip` khi không có
  * `TEST_DATABASE_URL`.
@@ -179,6 +179,141 @@ describeIntegration('forgot/reset password (integration, requires TEST_DATABASE_
       body: JSON.stringify({ email: user.email, password: newPassword }),
     })
     expect(newPasswordSignIn.status).toBe(200)
+  })
+
+  test('change-password: keeps the current session, revokes other sessions, and replaces the password', async () => {
+    const user = await register()
+    const otherSessionCookie = await signIn(user.email, user.password)
+    const newPassword = 'changed-password-from-security-page'
+
+    const change = await fetch(`${baseUrl}/api/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: user.cookie,
+      },
+      body: JSON.stringify({
+        currentPassword: user.password,
+        newPassword,
+        revokeOtherSessions: true,
+      }),
+    })
+    expect(change.status).toBe(200)
+    const changeBody = (await change.json()) as {
+      token: string | null
+      user: { id: string; email: string }
+    }
+    expect(changeBody.user).toMatchObject({ id: user.userId, email: user.email })
+    expect(typeof changeBody.token).toBe('string')
+    const currentCookie = change.headers.get('set-cookie')?.split(';', 1)[0]
+    expect(currentCookie).toBeTruthy()
+
+    const currentSession = await fetch(`${baseUrl}/api/auth/get-session`, {
+      headers: { cookie: currentCookie as string },
+    })
+    expect((await currentSession.json()).user.email).toBe(user.email)
+
+    for (const cookie of [user.cookie, otherSessionCookie]) {
+      const revokedSession = await fetch(`${baseUrl}/api/auth/get-session`, {
+        headers: { cookie },
+      })
+      expect(await revokedSession.json()).toBeNull()
+    }
+
+    const oldPasswordSignIn = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: user.email, password: user.password }),
+    })
+    expect(oldPasswordSignIn.status).toBe(401)
+
+    const newPasswordSignIn = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: user.email, password: newPassword }),
+    })
+    expect(newPasswordSignIn.status).toBe(200)
+  })
+
+  test('change-password: rejects a wrong current password without changing sessions or credentials', async () => {
+    const user = await register()
+    const otherSessionCookie = await signIn(user.email, user.password)
+
+    const change = await fetch(`${baseUrl}/api/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: user.cookie,
+      },
+      body: JSON.stringify({
+        currentPassword: 'incorrect-current-password',
+        newPassword: 'another-valid-password',
+        revokeOtherSessions: true,
+      }),
+    })
+    expect(change.status).toBe(400)
+    expect(await change.json()).toMatchObject({ code: 'INVALID_PASSWORD' })
+
+    for (const cookie of [user.cookie, otherSessionCookie]) {
+      const session = await fetch(`${baseUrl}/api/auth/get-session`, { headers: { cookie } })
+      expect((await session.json()).user.email).toBe(user.email)
+    }
+
+    const originalPasswordSignIn = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: user.email, password: user.password }),
+    })
+    expect(originalPasswordSignIn.status).toBe(200)
+  })
+
+  test('change-password: enforces the 8–128 character password bounds', async () => {
+    const user = await register()
+
+    for (const newPassword of ['x'.repeat(7), 'x'.repeat(129)]) {
+      const change = await fetch(`${baseUrl}/api/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: user.cookie,
+        },
+        body: JSON.stringify({
+          currentPassword: user.password,
+          newPassword,
+          revokeOtherSessions: true,
+        }),
+      })
+      expect(change.status).toBe(400)
+    }
+  })
+
+  test('revoke-sessions: invalidates every session and sign-out clears the stale current cookie', async () => {
+    const user = await register()
+    const otherSessionCookie = await signIn(user.email, user.password)
+
+    const revoke = await fetch(`${baseUrl}/api/auth/revoke-sessions`, {
+      method: 'POST',
+      headers: { cookie: user.cookie },
+    })
+    expect(revoke.status).toBe(200)
+    expect(await revoke.json()).toEqual({ status: true })
+
+    for (const cookie of [user.cookie, otherSessionCookie]) {
+      const session = await fetch(`${baseUrl}/api/auth/get-session`, { headers: { cookie } })
+      expect(await session.json()).toBeNull()
+    }
+
+    const clearCookie = await fetch(`${baseUrl}/api/auth/sign-out`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: user.cookie,
+      },
+      body: JSON.stringify({}),
+    })
+    expect(clearCookie.status).toBe(200)
+    expect(await clearCookie.json()).toMatchObject({ success: true })
+    expect(clearCookie.headers.get('set-cookie')).toContain('Max-Age=0')
   })
 
   test('reset-password POST: reusing a consumed token FAILS', async () => {

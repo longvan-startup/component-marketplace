@@ -13,7 +13,7 @@ import { NAV_ACTIONS } from './nav-items'
 import { useNavSession } from './nav-session'
 
 export function NavAuth() {
-  const { user, signOut } = useNavSession()
+  const { user, signOut, pendingAction } = useNavSession()
 
   if (user) {
     return (
@@ -21,7 +21,19 @@ export function NavAuth() {
         <span className="max-w-40 truncate text-sm font-medium text-foreground">
           {user.name || user.email}
         </span>
-        <Button variant="ghost" size="sm" onClick={signOut}>
+        <Link
+          href="/account/security"
+          className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'min-h-11' })}
+        >
+          Bảo mật
+        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="min-h-11"
+          loading={pendingAction !== null}
+          onClick={() => void signOut()}
+        >
           Đăng xuất
         </Button>
       </div>

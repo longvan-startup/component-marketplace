@@ -2,19 +2,32 @@
 
 import type { AuthUser } from '@marketplace/shared'
 import { useRouter } from 'next/navigation'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react'
 import { type ApiMode, getAuthSource } from '../../features/auth/auth-source'
+import { AuthStatusBanner } from '../auth/auth-status-banner'
+import {
+  finishLogoutAction,
+  initialNavSessionState,
+  type NavSessionAction,
+  type NavSessionStatus,
+  navSessionReducer,
+} from './nav-session-state'
 
 type NavSessionValue = {
   user: AuthUser | null
-  signOut: () => Promise<void>
+  status: NavSessionStatus
+  pendingAction: NavSessionAction | null
+  actionError: string | null
+  refreshSession: () => Promise<void>
+  signOut: () => Promise<boolean>
+  signOutEverywhere: () => Promise<boolean>
 }
 
 const NavSessionContext = createContext<NavSessionValue | null>(null)
 
-/** Shares one auth session and logout action between desktop and mobile navigation.
+/** Shares auth session state between the site navigation and account pages.
  * @param apiMode Selects the live or mock auth source.
- * @param children Navigation controls that consume the session.
+ * @param children Site content that consumes the session.
  */
 export function NavSessionProvider({
   apiMode,
@@ -24,42 +37,84 @@ export function NavSessionProvider({
   children: React.ReactNode
 }) {
   const router = useRouter()
-  const [user, setUser] = useState<AuthUser | null>(null)
+  const [state, dispatch] = useReducer(navSessionReducer, initialNavSessionState)
 
-  useEffect(() => {
-    let active = true
-    getAuthSource(apiMode)
-      .getSession()
-      .then((session) => {
-        if (active) setUser(session?.user ?? null)
-      })
-      .catch(() => {
-        // An unreachable auth API keeps the same guest fallback as the desktop nav.
-      })
-    return () => {
-      active = false
+  const refreshSession = useCallback(async () => {
+    dispatch({ type: 'session-loading' })
+    try {
+      const session = await getAuthSource(apiMode).getSession()
+      dispatch({ type: 'session-loaded', user: session?.user ?? null })
+    } catch {
+      dispatch({ type: 'session-unavailable' })
     }
   }, [apiMode])
 
-  const signOut = useCallback(async () => {
-    try {
-      await getAuthSource(apiMode).signOut()
-    } finally {
-      setUser(null)
-      router.refresh()
-    }
-  }, [apiMode, router])
+  useEffect(() => {
+    void refreshSession()
+  }, [refreshSession])
 
-  const value = useMemo(() => ({ user, signOut }), [user, signOut])
+  const runLogoutAction = useCallback(
+    async (action: NavSessionAction, execute: () => Promise<boolean>) => {
+      dispatch({ type: 'action-started', action })
+      const succeeded = await finishLogoutAction(execute, dispatch)
+      if (succeeded) {
+        router.refresh()
+      }
+      return succeeded
+    },
+    [router],
+  )
+
+  const signOut = useCallback(
+    () =>
+      runLogoutAction('signOut', async () => {
+        const response = await getAuthSource(apiMode).signOut()
+        return response.success
+      }),
+    [apiMode, runLogoutAction],
+  )
+
+  const signOutEverywhere = useCallback(
+    () =>
+      runLogoutAction('signOutEverywhere', async () => {
+        await getAuthSource(apiMode).signOutEverywhere()
+        return true
+      }),
+    [apiMode, runLogoutAction],
+  )
+
+  const value = useMemo(
+    () => ({
+      user: state.user,
+      status: state.status,
+      pendingAction: state.pendingAction,
+      actionError: state.actionError,
+      refreshSession,
+      signOut,
+      signOutEverywhere,
+    }),
+    [state, refreshSession, signOut, signOutEverywhere],
+  )
   return <NavSessionContext.Provider value={value}>{children}</NavSessionContext.Provider>
 }
 
-/** Reads the session state owned by the nearest navigation provider.
- * @returns The current user and shared logout action.
+/** Reads the session state owned by the nearest site-level provider.
+ * @returns The current user, session status, and shared auth actions.
  * @throws If rendered outside `NavSessionProvider`.
  */
 export function useNavSession(): NavSessionValue {
   const value = useContext(NavSessionContext)
   if (!value) throw new Error('Nav session components must be inside NavSessionProvider')
   return value
+}
+
+export function NavSessionFeedback() {
+  const { actionError } = useNavSession()
+  if (!actionError) return null
+
+  return (
+    <div className="mx-auto w-full max-w-5xl px-4 pt-4">
+      <AuthStatusBanner variant="error">{actionError}</AuthStatusBanner>
+    </div>
+  )
 }

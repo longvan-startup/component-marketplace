@@ -1,8 +1,7 @@
 /**
- * Auth data layer (issue #92, both slices — forgot/reset password + mandatory
- * email verification) — the ONLY module allowed to know how these calls
- * reach the backend. Mirrors `features/catalog/catalog-source.ts`'s
- * mock/HTTP/`API_MODE` split exactly.
+ * Auth data layer — the ONLY module allowed to know how these calls reach the
+ * backend. Mirrors `features/catalog/catalog-source.ts`'s mock/HTTP/`API_MODE`
+ * split exactly.
  *
  * Unlike catalog, the HTTP source is typed against `@marketplace/shared`'s
  * `contracts/auth.ts` directly — that contract already mirrors Better Auth's
@@ -11,14 +10,18 @@
  */
 
 import {
+  type ChangePasswordResponse,
+  changePasswordResponseSchema,
   type GetSessionResponse,
   getSessionResponseSchema,
   type RequestPasswordResetResponse,
   type ResendVerificationEmailResponse,
   type ResetPasswordResponse,
+  type RevokeSessionsResponse,
   requestPasswordResetResponseSchema,
   resendVerificationEmailResponseSchema,
   resetPasswordResponseSchema,
+  revokeSessionsResponseSchema,
   type SignInEmailResponse,
   type SignOutResponse,
   type SignUpEmailResponse,
@@ -37,6 +40,8 @@ export interface AuthSource {
   /** Resolves `null` when nobody is signed in. */
   getSession(): Promise<GetSessionResponse>
   signOut(): Promise<SignOutResponse>
+  changePassword(currentPassword: string, newPassword: string): Promise<void>
+  signOutEverywhere(): Promise<void>
   requestPasswordReset(email: string, redirectTo: string): Promise<RequestPasswordResetResponse>
   resetPassword(token: string, newPassword: string): Promise<ResetPasswordResponse>
   resendVerificationEmail(
@@ -60,9 +65,9 @@ export class ResetPasswordError extends Error {
   }
 }
 
-/** Error thrown by `signIn` / `signUp` when Better Auth rejects the request.
- * `code` is one of `authFormErrorCodeSchema` in `@marketplace/shared` when
- * the backend sent one — match on `code`, never on `message`. */
+/** Error thrown by auth requests when Better Auth rejects the request.
+ * Match its machine-readable `code`, never the server's human-readable
+ * `message`. */
 export class AuthRequestError extends Error {
   readonly status: number
   readonly code?: string
@@ -107,6 +112,8 @@ export function createMockAuthSource(): AuthSource {
     }),
     getSession: async () => null,
     signOut: async () => ({ success: true }),
+    changePassword: async () => {},
+    signOutEverywhere: async () => {},
     requestPasswordReset: async () => ({ status: true, message: GENERIC_REQUEST_MESSAGE }),
     resetPassword: async (token) => {
       if (token === 'expired' || token === 'invalid') {
@@ -154,6 +161,10 @@ function resolveAuthBaseUrl(deps: HttpDeps): string {
 export function createHttpAuthSource(deps: HttpDeps = {}): AuthSource {
   const base = resolveAuthBaseUrl(deps)
   const authDeps = { ...deps, publicApiUrl: base, internalApiUrl: base }
+  const signOut = async () => {
+    const payload = await apiMutateJson<unknown>('/api/auth/sign-out', {}, authDeps)
+    return signOutResponseSchema.parse(payload)
+  }
 
   return {
     signIn: async (email, password) => {
@@ -187,9 +198,40 @@ export function createHttpAuthSource(deps: HttpDeps = {}): AuthSource {
       })
       return getSessionResponseSchema.parse(payload)
     },
-    signOut: async () => {
-      const payload = await apiMutateJson<unknown>('/api/auth/sign-out', {}, authDeps)
-      return signOutResponseSchema.parse(payload)
+    signOut,
+    changePassword: async (currentPassword, newPassword) => {
+      try {
+        const payload = await apiMutateJson<unknown>(
+          '/api/auth/change-password',
+          { currentPassword, newPassword, revokeOtherSessions: true },
+          authDeps,
+        )
+        const response: ChangePasswordResponse = changePasswordResponseSchema.parse(payload)
+        if (response.token === null) {
+          throw new AuthRequestError(502, 'Session replacement was not confirmed')
+        }
+      } catch (error) {
+        throw toAuthRequestError(error)
+      }
+    },
+    signOutEverywhere: async () => {
+      try {
+        const payload = await apiMutateJson<unknown>('/api/auth/revoke-sessions', {}, authDeps)
+        const response: RevokeSessionsResponse = revokeSessionsResponseSchema.parse(payload)
+        if (!response.status) {
+          throw new AuthRequestError(502, 'Session revocation was not confirmed')
+        }
+      } catch (error) {
+        throw toAuthRequestError(error)
+      }
+
+      // The session rows are already gone. Sign-out clears the stale cookie;
+      // a transport failure here cannot restore any of the revoked sessions.
+      try {
+        await signOut()
+      } catch {
+        // Keep the completed revocation successful; the stale cookie is invalid.
+      }
     },
     requestPasswordReset: async (email, redirectTo) => {
       const payload = await apiMutateJson<unknown>(

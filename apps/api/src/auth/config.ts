@@ -54,6 +54,8 @@ export function createAuth(db: Database, env: AuthEnvironment) {
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
+      minPasswordLength: 8,
+      maxPasswordLength: 128,
       // Issue #92 slice 2 decision: verification is mandatory. Sign-up no
       // longer returns a session (Better Auth's own `shouldSkipAutoSignIn`
       // logic skips it automatically once this is true) and sign-in 403s

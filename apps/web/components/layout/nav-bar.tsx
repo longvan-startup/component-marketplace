@@ -3,13 +3,11 @@
  * 1440. Server Component; the only client part is the mobile menu island.
  * Below `md` the links, search and actions collapse into that menu.
  */
-import { resolveApiMode } from '../../features/auth/auth-source'
 import { NavLink } from '../ui/nav-link'
 import { Logo } from './logo'
 import { MobileMenu } from './mobile-menu'
 import { NavAuth } from './nav-auth'
 import { NAV_LINKS } from './nav-items'
-import { NavSessionProvider } from './nav-session'
 import { SearchForm } from './search-form'
 
 export function NavBar() {
@@ -27,13 +25,11 @@ export function NavBar() {
           </nav>
         </div>
 
-        <NavSessionProvider apiMode={resolveApiMode()}>
-          <div className="hidden items-center gap-4 md:flex">
-            <SearchForm className="hidden w-80 lg:flex" />
-            <NavAuth />
-          </div>
-          <MobileMenu />
-        </NavSessionProvider>
+        <div className="hidden items-center gap-4 md:flex">
+          <SearchForm className="hidden w-80 lg:flex" />
+          <NavAuth />
+        </div>
+        <MobileMenu />
       </div>
     </header>
   )
