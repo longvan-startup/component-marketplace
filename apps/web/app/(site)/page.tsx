@@ -57,6 +57,7 @@ function FeaturedCard({ item }: { item: CatalogItem }) {
       </div>
       <div className="mt-auto flex flex-wrap gap-2 px-4 pb-4">
         <Badge variant="neutral">{CATEGORY_LABEL[item.category]}</Badge>
+        {item.tags.includes('gsap') ? <Badge variant="neutral">GSAP</Badge> : null}
         {item.accessTier ? (
           <Badge variant={item.accessTier === 'pro' ? 'accent' : 'success'}>
             {TIER_LABEL[item.accessTier]}
@@ -69,11 +70,15 @@ function FeaturedCard({ item }: { item: CatalogItem }) {
 
 export default async function HomePage() {
   const source = getCatalogSource()
-  const [featured, ...counts] = await Promise.all([
+  const [featured, demo, ...counts] = await Promise.all([
     source.list({ pageSize: 4 }),
+    source.detail('seed-spring-cards'),
     ...CATEGORIES.map((category) => source.list({ category: category.value, pageSize: 1 })),
   ])
-  const highlights = featured.items.slice(0, 4)
+  const highlights = [
+    ...(demo ? [demo] : []),
+    ...featured.items.filter((item) => item.id !== demo?.id),
+  ].slice(0, 4)
 
   return (
     <div className="flex flex-col gap-24 pb-8">
