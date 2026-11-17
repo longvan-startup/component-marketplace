@@ -17,7 +17,7 @@ export default function LoginPage() {
       title="Đăng nhập"
       subtitle="Chào mừng quay lại Luva UI."
       showcaseTitle="Chào mừng quay lại"
-      showcaseSubtitle="Tiếp tục khám phá và tải component UI mới nhất."
+      showcaseSubtitle="Tiếp tục khám phá các component UI trong thư viện."
     >
       <SocialButtons />
       <SignInForm apiMode={resolveApiMode()} />

@@ -4,20 +4,6 @@ import type { CatalogItem } from '../features/catalog/catalog-source'
 
 export const MOCK_COMPONENTS: CatalogItem[] = [
   {
-    id: '0d8f55a7-0c1f-4c2f-98a2-0fbb5f0f5ad1',
-    slug: 'seed-spring-cards',
-    name: 'Card Stack',
-    summary: 'Bộ thẻ xòe khi rê chuột; chọn thẻ để đưa ra giữa.',
-    description:
-      'Bộ thẻ xòe ra khi rê chuột. Chọn một thẻ để đưa ra giữa; bấm ngoài hoặc nhấn Escape để thu lại.',
-    category: 'animation',
-    tags: ['card-stack', 'hover', 'interaction', 'preview'],
-    latestVersion: '0.9.1',
-    author: 'anonymous',
-    isPublished: true,
-    accessTier: 'free',
-  },
-  {
     id: '5bfbe3a3-c6df-47bb-8eb5-31d0884b9ec9',
     slug: 'shimmer-skeleton-block',
     name: 'Shimmer Skeleton Block',
