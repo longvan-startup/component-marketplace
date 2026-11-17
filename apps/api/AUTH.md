@@ -16,7 +16,10 @@ Set these API environment variables when the API has a production database:
   and password-reset email through Resend. The sender must be on a domain
   verified in Resend. Leaving both unset keeps the API available; when an
   eligible account triggers delivery, Better Auth receives a generic delivery
-  error. Production never logs tokenized links. Non-production uses the local
+  error. Production logs only the email type and provider status, or a
+  sanitized transport error name with an optional allow-listed network code;
+  it never logs recipients, tokenized links, provider response bodies, or API
+  credentials. Non-production uses the local
   console transport for development.
 
 The browser must send requests with credentials so the HTTP-only session cookie
