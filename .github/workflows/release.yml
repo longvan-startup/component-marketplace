@@ -134,27 +134,30 @@ jobs:
             .projectId == $project and
             .target == "production" and
             ((.readyState // .state) == "READY") and
-            ((.meta.githubCommitSha | ascii_downcase) == $sha) and
-            ((.alias | type) == "array")
+            ((.meta.githubCommitSha | ascii_downcase) == $sha)
           ' <<< "$response" >/dev/null || { echo "::error::Deployment is not READY for the exact verified SHA."; exit 1; }
-          assigned="$(jq -r 'if (.alias | length) > 0 then "true" else "false" end' <<< "$response")"
+          aliases="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v2/deployments/$DEPLOYMENT_ID/aliases?teamId=$VERCEL_ORG_ID")"
+          jq -e '(.aliases | type) == "array"' <<< "$aliases" >/dev/null || { echo "::error::Vercel did not return the deployment alias list."; exit 1; }
+          assigned="$(jq -r 'if (.aliases | length) > 0 then "true" else "false" end' <<< "$aliases")"
           echo "already_live=$assigned" >> "$GITHUB_OUTPUT"
           deployment_url="$(jq -r '.url // empty' <<< "$response")"
           [[ "$deployment_url" =~ ^[A-Za-z0-9.-]+\.vercel\.app$ ]] || { echo "::error::Vercel returned an invalid staged deployment URL."; exit 1; }
           echo "url=https://$deployment_url" >> "$GITHUB_OUTPUT"
 
       - name: Set up Bun for production database migrations
-        if: steps.duplicate.outputs.already_released != 'true' && steps.release_config.outputs.migrate == 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.release_config.outputs.migrate == 'true' && steps.staged.outputs.already_live != 'true'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: .bun-version
 
       - name: Install locked dependencies
-        if: steps.duplicate.outputs.already_released != 'true' && steps.release_config.outputs.migrate == 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.release_config.outputs.migrate == 'true' && steps.staged.outputs.already_live != 'true'
         run: bun install --frozen-lockfile
 
       - name: Apply database migrations after release approval
-        if: steps.duplicate.outputs.already_released != 'true' && steps.release_config.outputs.migrate == 'true'
+        if: steps.duplicate.outputs.already_released != 'true' && steps.release_config.outputs.migrate == 'true' && steps.staged.outputs.already_live != 'true'
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         shell: bash
@@ -179,10 +182,12 @@ jobs:
             .projectId == $project and
             .target == "production" and
             ((.readyState // .state) == "READY") and
-            ((.meta.githubCommitSha | ascii_downcase) == $sha) and
-            ((.alias | type) == "array") and
-            (.alias | length == 0)
+            ((.meta.githubCommitSha | ascii_downcase) == $sha)
           ' <<< "$response" >/dev/null || { echo "::error::Staged deployment changed or was promoted before this release."; exit 1; }
+          aliases="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v2/deployments/$DEPLOYMENT_ID/aliases?teamId=$VERCEL_ORG_ID")"
+          jq -e '(.aliases | type) == "array" and (.aliases | length == 0)' <<< "$aliases" >/dev/null || { echo "::error::Staged deployment already has aliases or Vercel could not verify its aliases."; exit 1; }
 
       - name: Promote Vercel deployment without rebuilding
         if: steps.duplicate.outputs.already_released != 'true' && steps.staged.outputs.already_live != 'true'
@@ -195,14 +200,14 @@ jobs:
             --data '{}' \
             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/promote/$DEPLOYMENT_ID?teamId=$VERCEL_ORG_ID" >/dev/null
           for attempt in $(seq 1 60); do
-            response="$(curl --fail --silent --show-error \
+            aliases="$(curl --fail --silent --show-error \
               -H "Authorization: Bearer $VERCEL_TOKEN" \
-              "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")"
-            if jq -e --arg id "$DEPLOYMENT_ID" '.targets.production.deploymentId == $id and .targets.production.readyState == "READY"' <<< "$response" >/dev/null; then
-              echo "The confirmed deployment is current in production."
+              "https://api.vercel.com/v2/deployments/$DEPLOYMENT_ID/aliases?teamId=$VERCEL_ORG_ID")"
+            if jq -e '(.aliases | type) == "array" and (.aliases | length > 0)' <<< "$aliases" >/dev/null; then
+              echo "The confirmed deployment has production aliases."
               exit 0
             fi
             sleep 5
           done
-          echo '::error::Production target did not confirm the requested deployment within five minutes.'
+          echo '::error::Vercel did not assign production aliases to the requested deployment within five minutes.'
           exit 1

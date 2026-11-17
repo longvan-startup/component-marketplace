@@ -115,12 +115,15 @@ jobs:
               .projectId == $project and
               .target == "production" and
               (.readyState // .state) == "READY" and
-              ((.meta.githubCommitSha | ascii_downcase) == ($sha | ascii_downcase)) and
-              ((.alias | type) == "array") and
-              (.alias | length == 0)
+              ((.meta.githubCommitSha | ascii_downcase) == ($sha | ascii_downcase))
             ' <<< "$details" >/dev/null; then
-              staged_id="$deployment_id"
-              break
+              aliases="$(curl --fail --silent --show-error \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                "https://api.vercel.com/v2/deployments/$deployment_id/aliases?teamId=$VERCEL_ORG_ID")" || continue
+              if jq -e '(.aliases | type) == "array" and (.aliases | length == 0)' <<< "$aliases" >/dev/null; then
+                staged_id="$deployment_id"
+                break
+              fi
             fi
           done <<< "$candidate_ids"
           if [[ -n "$staged_id" ]]; then
@@ -197,12 +200,15 @@ jobs:
                 .projectId == $project and
                 .target == "production" and
                 (.readyState // .state) == "READY" and
-                ((.meta.githubCommitSha | ascii_downcase) == ($sha | ascii_downcase)) and
-                ((.alias | type) == "array") and
-                (.alias | length == 0)
+                ((.meta.githubCommitSha | ascii_downcase) == ($sha | ascii_downcase))
               ' <<< "$details" >/dev/null; then
-                echo "A ready immutable deployment for $TARGET_SHA is staged without aliases."
-                exit 0
+                aliases="$(curl --fail --silent --show-error \
+                  -H "Authorization: Bearer $VERCEL_TOKEN" \
+                  "https://api.vercel.com/v2/deployments/$deployment_id/aliases?teamId=$VERCEL_ORG_ID")" || continue
+                if jq -e '(.aliases | type) == "array" and (.aliases | length == 0)' <<< "$aliases" >/dev/null; then
+                  echo "A ready immutable deployment for $TARGET_SHA is staged without aliases."
+                  exit 0
+                fi
               fi
             done <<< "$candidate_ids"
             failed="$(jq -r --arg sha "$TARGET_SHA" '
