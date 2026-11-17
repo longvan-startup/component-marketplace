@@ -118,9 +118,10 @@ export function createServer(options: ServerOptions = {}) {
     const pathname = req.path
     if (!pathname.startsWith('/health')) {
       const started = performance.now()
+      const logPath = /^\/api\/auth(?:\/|$)/i.test(pathname) ? '/api/auth/[redacted]' : pathname
       res.on('finish', () => {
         console.log(
-          `[api] ${req.method} ${pathname} ${res.statusCode} ${Math.round(performance.now() - started)}ms`,
+          `[api] ${req.method} ${logPath} ${res.statusCode} ${Math.round(performance.now() - started)}ms`,
         )
       })
     }
