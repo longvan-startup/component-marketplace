@@ -93,12 +93,14 @@ test('production release is manual, protected, immutable, verified and serialize
   )
   assert.equal((release.match(/secrets\.PROD_DATABASE_URL/g) || []).length, 2)
   assert.equal((release.match(/secrets\.VERCEL_RELEASE_TOKEN/g) || []).length, 4)
+  assert.match(release, /\/v2\/deployments\/\$DEPLOYMENT_ID\/aliases\?teamId=\$VERCEL_ORG_ID/)
+  assert.match(release, /steps\.staged\.outputs\.already_live != 'true'/)
 
   const promoteStart = release.indexOf('- name: Promote Vercel deployment without rebuilding')
   const promoteStep = release.slice(promoteStart)
   assert.ok(promoteStart >= 0)
   assert.match(promoteStep, /VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_RELEASE_TOKEN \}\}/)
-  assert.match(promoteStep, /targets\.production\.deploymentId == \$id/)
+  assert.match(promoteStep, /\.aliases \| length > 0/)
 })
 
 test('both Vercel projects disable automatic Git deployments for every branch', async () => {
