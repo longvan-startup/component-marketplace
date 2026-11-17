@@ -19,8 +19,8 @@ const CATEGORIES = [
 
 const WHY_ITEMS = [
   {
-    title: 'Xem trước animation',
-    body: 'Xem component chạy animation thật trước khi tải, không cần đoán mò.',
+    title: 'Khám phá component',
+    body: 'Xem mô tả và thông tin phiên bản của từng component trong thư viện.',
   },
   {
     title: 'Lọc và tìm nhanh',
@@ -57,7 +57,6 @@ function FeaturedCard({ item }: { item: CatalogItem }) {
       </div>
       <div className="mt-auto flex flex-wrap gap-2 px-4 pb-4">
         <Badge variant="neutral">{CATEGORY_LABEL[item.category]}</Badge>
-        {item.tags.includes('gsap') ? <Badge variant="neutral">GSAP</Badge> : null}
         {item.accessTier ? (
           <Badge variant={item.accessTier === 'pro' ? 'accent' : 'success'}>
             {TIER_LABEL[item.accessTier]}
@@ -70,15 +69,11 @@ function FeaturedCard({ item }: { item: CatalogItem }) {
 
 export default async function HomePage() {
   const source = getCatalogSource()
-  const [featured, demo, ...counts] = await Promise.all([
+  const [featured, ...counts] = await Promise.all([
     source.list({ pageSize: 4 }),
-    source.detail('seed-spring-cards'),
     ...CATEGORIES.map((category) => source.list({ category: category.value, pageSize: 1 })),
   ])
-  const highlights = [
-    ...(demo ? [demo] : []),
-    ...featured.items.filter((item) => item.id !== demo?.id),
-  ].slice(0, 4)
+  const highlights = featured.items.slice(0, 4)
 
   return (
     <div className="flex flex-col gap-24 pb-8">
@@ -88,8 +83,7 @@ export default async function HomePage() {
           Thư viện <span className="text-primary">component</span> sẵn dùng cho dự án của bạn
         </h1>
         <p className="max-w-[640px] text-base leading-6 text-muted-foreground">
-          Duyệt, xem trước animation và tải component UI đã publish — xây giao diện nhanh hơn, không
-          phải viết lại từ đầu.
+          Khám phá các component UI đã publish và tìm thông tin phù hợp cho dự án của bạn.
         </p>
         <div className="flex flex-wrap justify-center gap-3 pt-2">
           <Link

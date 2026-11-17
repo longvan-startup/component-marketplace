@@ -16,7 +16,7 @@ export default function RegisterPage() {
       title="Tạo tài khoản miễn phí"
       subtitle="Khám phá và tải hàng trăm component UI, miễn phí."
       showcaseTitle="Component UI chất lượng, sẵn dùng ngay"
-      showcaseSubtitle="Xem trước animation trước khi tải — không cần viết lại từ đầu."
+      showcaseSubtitle="Khám phá các component UI trong thư viện."
     >
       <SocialButtons />
       <SignUpForm apiMode={resolveApiMode()} />

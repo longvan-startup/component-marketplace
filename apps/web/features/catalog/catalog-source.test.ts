@@ -25,8 +25,8 @@ describe('mock catalog source', () => {
   })
 
   test('filters by q across name, summary and tags (case-insensitive)', async () => {
-    const byName = await mockSource.list({ q: 'CARD' })
-    expect(byName.items.map((item) => item.slug)).toEqual(['seed-spring-cards'])
+    const byName = await mockSource.list({ q: 'SHIMMER' })
+    expect(byName.items.map((item) => item.slug)).toEqual(['shimmer-skeleton-block'])
 
     const byTag = await mockSource.list({ q: 'skeleton' })
     expect(byTag.items.length).toBe(1)
@@ -50,9 +50,8 @@ describe('mock catalog source', () => {
   })
 
   test('detail returns published item by slug and null for unknown', async () => {
-    const found = await mockSource.detail('seed-spring-cards')
-    expect(found?.name).toBe('Card Stack')
-    expect(found?.accessTier).toBe('free')
+    const found = await mockSource.detail('shimmer-skeleton-block')
+    expect(found?.name).toBe('Shimmer Skeleton Block')
 
     const unpublished = await mockSource.detail('version-diff-previewer')
     expect(unpublished).toBeNull()
@@ -132,12 +131,12 @@ describe('http catalog source (API_MODE=live only)', () => {
       fetchImpl: async () => jsonResponse(503, { code: 'DATABASE_UNCONFIGURED' }),
       publicApiUrl: 'https://api.example.test',
     })
-    expect(await unconfigured.detail('seed-spring-cards')).toBeNull()
+    expect(await unconfigured.detail('shimmer-skeleton-block')).toBeNull()
   })
 
   test('detail unwraps the shared API envelope and returns the component row', async () => {
-    const expected = MOCK_COMPONENTS.find((item) => item.slug === 'seed-spring-cards')
-    if (!expected) throw new Error('seed-spring-cards fixture is required')
+    const expected = MOCK_COMPONENTS.find((item) => item.slug === 'shimmer-skeleton-block')
+    if (!expected) throw new Error('shimmer-skeleton-block fixture is required')
 
     const source = createHttpCatalogSource({
       fetchImpl: async () => jsonResponse(200, { item: expected }),

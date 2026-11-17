@@ -51,7 +51,7 @@ function FooterBrand() {
     <div className="flex w-full max-w-[400px] shrink-0 flex-col items-start gap-3">
       <Logo className="text-[15px] font-bold" />
       <p className="text-[13px] text-muted-foreground">
-        Thư viện UI component sẵn dùng, xem trước animation trước khi tải — cho mọi dự án của bạn.
+        Khám phá các component UI trong thư viện cho dự án của bạn.
       </p>
       <SocialRow />
       <p className="text-xs font-medium text-muted-foreground">Nhận component mới hàng tuần</p>

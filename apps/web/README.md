@@ -41,7 +41,7 @@ apps/web/
 │   └── components/[slug]/  # trang detail theo slug (khớp contract :slug)
 ├── components/
 │   ├── ui/                 # badge, card — primitives thuần
-│   ├── catalog/            # card, search (client), preview panel
+│   ├── catalog/            # card and search (client)
 │   └── layout/             # shell/site-level layout
 ├── features/catalog/
 │   ├── catalog-source.ts   # ★ ĐIỂM TRUY DỮ LIỆU DUY NHẤT — mock | live
