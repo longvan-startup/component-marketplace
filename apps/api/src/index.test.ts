@@ -5,7 +5,7 @@
  * Là "contract" mà Docker healthcheck (compose) và CI runtime kiểm tra.
  */
 
-import { afterAll, describe, expect, test } from 'bun:test'
+import { afterAll, describe, expect, spyOn, test } from 'bun:test'
 import { parseApiEnv } from './env'
 import { createServer, resolveMountPaths } from './index'
 
@@ -23,6 +23,30 @@ afterAll(() => {
 })
 
 describe('API smoke', () => {
+  test('request logs redact auth paths, including password reset tokens', async () => {
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+    try {
+      for (const path of [
+        '/api/auth/reset-password/example-token',
+        '/API/AUTH/reset-password/other-token',
+      ]) {
+        const res = await fetch(`http://127.0.0.1:${port}${path}?secret=query-value`)
+        expect(res.status).toBe(503)
+      }
+      const normal = await fetch(`http://127.0.0.1:${port}/missing`)
+      expect(normal.status).toBe(404)
+
+      const messages = log.mock.calls.map((call) => String(call[0]))
+      expect(messages.filter((message) => message.includes('/api/auth/[redacted]'))).toHaveLength(2)
+      expect(messages.some((message) => message.includes('/missing'))).toBe(true)
+      expect(messages.join(' ')).not.toContain('example-token')
+      expect(messages.join(' ')).not.toContain('other-token')
+      expect(messages.join(' ')).not.toContain('query-value')
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   test('GET /health trả 200 đúng contract', async () => {
     const res = await fetch(`http://127.0.0.1:${port}/health`)
 
