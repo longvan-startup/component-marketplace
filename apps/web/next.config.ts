@@ -5,6 +5,7 @@ const nextConfig = (phase: string): NextConfig => ({
   // Standalone output để chạy trong Docker image tối giản
   output: 'standalone',
   reactStrictMode: true,
+  experimental: { agentUpgrade: 'security' },
   ...(phase === PHASE_PRODUCTION_BUILD && {
     typescript: { tsconfigPath: 'tsconfig.typecheck.json' },
   }),
