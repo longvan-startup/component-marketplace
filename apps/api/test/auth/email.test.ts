@@ -71,15 +71,15 @@ describe('createAuthEmailSender', () => {
     ).rejects.toThrow('Email delivery is not configured')
   })
 
-  test('does not include provider response details in failures', async () => {
+  test('logs only the provider status when Resend rejects an email', async () => {
     const send = createAuthEmailSender(
       productionEnv,
       async () => new Response('provider-error-private-detail', { status: 403 }),
     )
 
-    const messages: string[] = []
-    const originalLog = console.log
-    console.log = (...values: unknown[]) => messages.push(values.map(String).join(' '))
+    const logged: unknown[][] = []
+    const originalError = console.error
+    console.error = (...values: unknown[]) => logged.push(values)
     try {
       await expect(
         send({
@@ -89,10 +89,49 @@ describe('createAuthEmailSender', () => {
         }),
       ).rejects.toThrow('Email delivery failed')
     } finally {
-      console.log = originalLog
+      console.error = originalError
     }
 
-    expect(messages).toEqual([])
+    expect(logged).toEqual([
+      ['[auth-email] Resend rejected email', { kind: 'verification', status: 403 }],
+    ])
+    expect(JSON.stringify(logged)).not.toContain('provider-error-private-detail')
+    expect(JSON.stringify(logged)).not.toContain('private-token')
+    expect(JSON.stringify(logged)).not.toContain('person@example.test')
+  })
+
+  test('logs only safe network metadata when the Resend request fails', async () => {
+    const cause = Object.assign(new Error('private provider request detail'), {
+      code: 'ECONNRESET',
+    })
+    const send = createAuthEmailSender(productionEnv, async () => {
+      throw new TypeError('fetch failed', { cause })
+    })
+
+    const logged: unknown[][] = []
+    const originalError = console.error
+    console.error = (...values: unknown[]) => logged.push(values)
+    try {
+      await expect(
+        send({
+          kind: 'verification',
+          user: { email: 'person@example.test' },
+          url: 'https://marketplace.test/verify?token=private-token',
+        }),
+      ).rejects.toThrow('Email delivery failed')
+    } finally {
+      console.error = originalError
+    }
+
+    expect(logged).toEqual([
+      [
+        '[auth-email] Resend request failed',
+        { kind: 'verification', errorName: 'TypeError', errorCode: 'ECONNRESET' },
+      ],
+    ])
+    expect(JSON.stringify(logged)).not.toContain('private provider request detail')
+    expect(JSON.stringify(logged)).not.toContain('private-token')
+    expect(JSON.stringify(logged)).not.toContain('person@example.test')
   })
 
   test('keeps the link transport in development for local auth testing', async () => {

@@ -20,6 +20,38 @@ type ResendEmail = {
 type EmailEnvironment = Pick<ApiEnv, 'NODE_ENV' | 'RESEND_API_KEY' | 'AUTH_EMAIL_FROM'>
 
 const RESEND_REQUEST_TIMEOUT_MS = 10_000
+const SAFE_NETWORK_ERROR_CODES = new Set([
+  'CERT_HAS_EXPIRED',
+  'EAI_AGAIN',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+  'EPIPE',
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_SOCKET',
+])
+
+function safeNetworkErrorName(error: unknown): string {
+  if (error instanceof TypeError) return 'TypeError'
+  if (error instanceof Error && ['AbortError', 'TimeoutError'].includes(error.name)) {
+    return error.name
+  }
+  return error instanceof Error ? 'Error' : 'unknown'
+}
+
+function safeNetworkErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof Error) || typeof error.cause !== 'object' || error.cause === null) {
+    return undefined
+  }
+
+  const code = 'code' in error.cause ? error.cause.code : undefined
+  return typeof code === 'string' && SAFE_NETWORK_ERROR_CODES.has(code) ? code : undefined
+}
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
@@ -84,8 +116,9 @@ export function createAuthEmailSender(
       ...content,
     }
 
+    let response: Response
     try {
-      const response = await fetchImpl('https://api.resend.com/emails', {
+      response = await fetchImpl('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -94,8 +127,21 @@ export function createAuthEmailSender(
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(RESEND_REQUEST_TIMEOUT_MS),
       })
-      if (!response.ok) throw new Error('Provider rejected the email')
-    } catch {
+    } catch (error) {
+      const errorName = safeNetworkErrorName(error)
+      const errorCode = safeNetworkErrorCode(error)
+      console.error('[auth-email] Resend request failed', {
+        kind,
+        errorName,
+        ...(errorCode ? { errorCode } : {}),
+      })
+      // Keep provider response text, credentials, and tokenized links out of
+      // Better Auth's error logs and the HTTP response.
+      throw new Error('Email delivery failed')
+    }
+
+    if (!response.ok) {
+      console.error('[auth-email] Resend rejected email', { kind, status: response.status })
       // Keep provider response text, credentials, and tokenized links out of
       // Better Auth's error logs and the HTTP response.
       throw new Error('Email delivery failed')
