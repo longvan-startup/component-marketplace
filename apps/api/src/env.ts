@@ -21,6 +21,27 @@ import { z } from 'zod'
 
 export const nodeEnvSchema = z.enum(['development', 'test', 'production'])
 
+const optionalConfigValue = z
+  .string()
+  .optional()
+  .transform((raw) => (raw && raw.trim() !== '' ? raw.trim() : undefined))
+
+function requirePair(
+  ctx: z.RefinementCtx,
+  left: string | undefined,
+  right: string | undefined,
+  idName: 'GOOGLE_CLIENT_ID' | 'GITHUB_CLIENT_ID',
+  secretName: 'GOOGLE_CLIENT_SECRET' | 'GITHUB_CLIENT_SECRET',
+) {
+  if (Boolean(left) !== Boolean(right)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: [idName],
+      message: `${idName} and ${secretName} must be configured together`,
+    })
+  }
+}
+
 const envConfigSchema = z
   .object({
     PORT: z.coerce
@@ -90,6 +111,10 @@ const envConfigSchema = z
       .refine((address) => address === undefined || z.email().safeParse(address).success, {
         message: 'AUTH_EMAIL_FROM must be an email address',
       }),
+    GOOGLE_CLIENT_ID: optionalConfigValue,
+    GOOGLE_CLIENT_SECRET: optionalConfigValue,
+    GITHUB_CLIENT_ID: optionalConfigValue,
+    GITHUB_CLIENT_SECRET: optionalConfigValue,
   })
   .superRefine((env, ctx) => {
     if (Boolean(env.RESEND_API_KEY) !== Boolean(env.AUTH_EMAIL_FROM)) {
@@ -99,6 +124,20 @@ const envConfigSchema = z
         message: 'RESEND_API_KEY and AUTH_EMAIL_FROM must be configured together',
       })
     }
+    requirePair(
+      ctx,
+      env.GOOGLE_CLIENT_ID,
+      env.GOOGLE_CLIENT_SECRET,
+      'GOOGLE_CLIENT_ID',
+      'GOOGLE_CLIENT_SECRET',
+    )
+    requirePair(
+      ctx,
+      env.GITHUB_CLIENT_ID,
+      env.GITHUB_CLIENT_SECRET,
+      'GITHUB_CLIENT_ID',
+      'GITHUB_CLIENT_SECRET',
+    )
 
     if (env.NODE_ENV === 'production' && env.DATABASE_URL) {
       if (!env.BETTER_AUTH_SECRET) {

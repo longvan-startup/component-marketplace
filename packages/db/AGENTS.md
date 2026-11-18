@@ -58,8 +58,13 @@ API/domain contract). Backend owner: @NguyenTuMinhLong.
   `free` via the column default. Later writes may set `pro` while the legacy
   price columns stay null.
 - `components.latest_version` is the current catalog value, not release
-  history. Add release/artifact tables only with an approved version-delivery
-  task; payment gating must not be inferred from this field.
+  history. A component row is catalog metadata only: do not add source text,
+  a registry JSON blob, playground state, a per-row license, or install
+  entitlement. MIT is a product-wide rule, not a column. Add
+  `component_releases` and release-file path/checksum tables only with an
+  approved version-delivery task; the file bytes stay in git or a build
+  artifact. Payment gating must not be inferred from `latest_version` or the
+  legacy price columns.
 - CI runs on a blank volume and does not apply migrations automatically; the
   `/health/db` check only pings `select 1` (see issue #15).
 

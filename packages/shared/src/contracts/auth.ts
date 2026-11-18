@@ -153,6 +153,24 @@ export const signOutResponseSchema = z.object({
   success: z.boolean(),
 })
 
+/** `POST /api/auth/sign-in/social` — Better Auth returns the provider
+ * authorize URL when `disableRedirect` is true. Google and GitHub are the
+ * only providers this app configures. A new social account is a Free user. */
+export const socialProviderSchema = z.enum(['google', 'github'])
+
+export const signInSocialRequestSchema = z.object({
+  provider: socialProviderSchema,
+  callbackURL: z.string().optional(),
+  errorCallbackURL: z.string().optional(),
+  newUserCallbackURL: z.string().optional(),
+  disableRedirect: z.literal(true),
+})
+
+export const signInSocialResponseSchema = z.object({
+  url: z.string().min(1),
+  redirect: z.boolean(),
+})
+
 /** Better Auth error codes the sign-in / sign-up UI maps to messages.
  * Sign-up reports an existing email with either of the two
  * `USER_ALREADY_EXISTS*` codes depending on the code path. */
@@ -173,4 +191,7 @@ export type SignUpEmailRequest = z.infer<typeof signUpEmailRequestSchema>
 export type SignUpEmailResponse = z.infer<typeof signUpEmailResponseSchema>
 export type GetSessionResponse = z.infer<typeof getSessionResponseSchema>
 export type SignOutResponse = z.infer<typeof signOutResponseSchema>
+export type SocialProvider = z.infer<typeof socialProviderSchema>
+export type SignInSocialRequest = z.infer<typeof signInSocialRequestSchema>
+export type SignInSocialResponse = z.infer<typeof signInSocialResponseSchema>
 export type AuthFormErrorCode = z.infer<typeof authFormErrorCodeSchema>

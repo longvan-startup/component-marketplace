@@ -9,6 +9,8 @@ import {
   resetPasswordCallbackErrorSchema,
   resetPasswordRequestSchema,
   resetPasswordResponseSchema,
+  signInSocialRequestSchema,
+  signInSocialResponseSchema,
   verifyEmailCallbackErrorSchema,
 } from './auth'
 
@@ -177,5 +179,36 @@ describe('change-password contract', () => {
         revokeOtherSessions: true,
       }).success,
     ).toBe(false)
+  })
+})
+
+describe('signInSocialRequestSchema', () => {
+  test('accepts Google or GitHub and requires the client to handle the redirect', () => {
+    expect(
+      signInSocialRequestSchema.parse({
+        provider: 'github',
+        callbackURL: 'https://example.com/',
+        errorCallbackURL: 'https://example.com/login',
+        newUserCallbackURL: 'https://example.com/',
+        disableRedirect: true,
+      }).provider,
+    ).toBe('github')
+  })
+
+  test('rejects an unknown provider', () => {
+    expect(
+      signInSocialRequestSchema.safeParse({ provider: 'apple', disableRedirect: true }).success,
+    ).toBe(false)
+  })
+})
+
+describe('signInSocialResponseSchema', () => {
+  test('accepts the authorize URL payload', () => {
+    expect(
+      signInSocialResponseSchema.parse({
+        url: 'https://github.com/login/oauth/authorize',
+        redirect: false,
+      }),
+    ).toEqual({ url: 'https://github.com/login/oauth/authorize', redirect: false })
   })
 })

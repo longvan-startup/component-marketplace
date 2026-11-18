@@ -151,10 +151,13 @@ Mỗi bước là một task/PR riêng; bước 1–3 không cần thanh toán.
 3. **CLI chứng minh quyền Pro thế nào** — token cá nhân tạo trong trang tài
    khoản, đăng nhập qua trình duyệt kiểu device flow, hay license key. Ảnh
    hưởng tới `GET /components/:slug/install`.
-4. **Mã nguồn component nằm ở đâu** — hiện `components.latest_version` chỉ là
-   một giá trị hiển thị, chưa có bảng release/artifact
-   (`packages/db/AGENTS.md`). Endpoint cài đặt ở mục 6 chỉ có ý nghĩa sau khi
-   có task phân phối phiên bản riêng.
+4. **Mã nguồn component nằm ở đâu** — **ĐÃ CHỐT 2026-11-18** (cùng
+   [`PRODUCT.md`](../PRODUCT.md) mục 2). Dòng `components` chỉ giữ metadata
+   catalog và con trỏ `latest_version`. Source cài được không nằm trong cột
+   text hay JSON registry trên dòng đó; playground cũng không phải artifact.
+   Bảng release/artifact chỉ được thêm bởi task phát hành riêng. Endpoint cài
+   ở mục 6 chưa có ý nghĩa cho tới task đó. License MIT là quy ước sản phẩm,
+   không phải cột.
 5. **Vai trò `seller`** trong enum `user_role` — không dùng trong mô hình này;
    giữ hay bỏ là quyết định riêng, không thuộc RFC.
 

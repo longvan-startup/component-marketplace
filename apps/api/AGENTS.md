@@ -43,6 +43,10 @@ are ignored (Vercel/compose inject plenty). Invalid values ⇒ `ApiConfigError`
 | `BETTER_AUTH_URL` | Better Auth public API base URL | required with `DATABASE_URL` in production; absolute `http(s)` URL |
 | `RESEND_API_KEY` | Resend API credential for verification/reset email | optional; set or omit together with `AUTH_EMAIL_FROM`; never log |
 | `AUTH_EMAIL_FROM` | Verified sender email address used by Resend | optional; set or omit together with `RESEND_API_KEY` |
+| `GOOGLE_CLIENT_ID` | Google OAuth client id | optional; set or omit together with `GOOGLE_CLIENT_SECRET`; never log the secret |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | optional; pair with `GOOGLE_CLIENT_ID` |
+| `GITHUB_CLIENT_ID` | GitHub OAuth client id | optional; set or omit together with `GITHUB_CLIENT_SECRET`; never log the secret |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret | optional; pair with `GITHUB_CLIENT_ID` |
 
 Never log the values of these variables (secrets live inside `DATABASE_URL`).
 

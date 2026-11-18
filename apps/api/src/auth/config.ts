@@ -14,7 +14,21 @@ type AuthEnvironment = Pick<
   | 'CORS_ORIGINS'
   | 'RESEND_API_KEY'
   | 'AUTH_EMAIL_FROM'
+  | 'GOOGLE_CLIENT_ID'
+  | 'GOOGLE_CLIENT_SECRET'
+  | 'GITHUB_CLIENT_ID'
+  | 'GITHUB_CLIENT_SECRET'
 >
+
+export type SocialProviderId = 'google' | 'github'
+
+/** Provider ids that have both a client id and a secret. Secrets stay in the auth config. */
+export function configuredSocialProviderIds(env: AuthEnvironment): SocialProviderId[] {
+  const ids: SocialProviderId[] = []
+  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) ids.push('google')
+  if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) ids.push('github')
+  return ids
+}
 
 export function createAuth(db: Database, env: AuthEnvironment) {
   if (!env.BETTER_AUTH_SECRET || !env.BETTER_AUTH_URL) {
@@ -23,12 +37,37 @@ export function createAuth(db: Database, env: AuthEnvironment) {
 
   const trustedOrigins = [new URL(env.BETTER_AUTH_URL).origin, ...(env.CORS_ORIGINS ?? [])]
   const sendAuthEmail = createAuthEmailSender(env)
+  const socialProviders = {
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? {
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
+          },
+        }
+      : {}),
+    ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
+      ? {
+          github: {
+            clientId: env.GITHUB_CLIENT_ID,
+            clientSecret: env.GITHUB_CLIENT_SECRET,
+          },
+        }
+      : {}),
+  }
 
   return betterAuth({
     appName: 'Component Marketplace',
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: [...new Set(trustedOrigins)],
+    socialProviders,
+    account: {
+      accountLinking: {
+        enabled: true,
+        trustedProviders: ['google', 'github'],
+      },
+    },
     database: drizzleAdapter(db, {
       provider: 'pg',
       transaction: true,
