@@ -54,6 +54,7 @@ Request and error shapes are therefore Better Auth's own contract.
 | `GET /api/auth/reset-password/:token` | The link the reset email points to | Handled entirely by Better Auth: redirects to `redirectTo` with `?token=<raw>` on a valid token, or `?error=INVALID_TOKEN` if invalid or expired. The frontend never calls this directly — it's the email link's destination. |
 | `POST /api/auth/reset-password` | Set a new password with `token`, `newPassword` | Returns `{ "status": true }` on success. `newPassword` must be 8–128 characters (`minPasswordLength`/`maxPasswordLength`). On success, every other session for that user is revoked (`revokeSessionsOnPasswordReset: true`) — the user must sign in again on other devices. |
 | `POST /api/auth/send-verification-email` | (Re)send a verification email with `email`, `callbackURL` | Returns `{ "status": true }` without revealing whether the email exists or is verified when delivery succeeds or no email is needed. A provider failure can fail delivery. Also fires automatically on a failed sign-in caused by an unverified email (`sendOnSignIn: true`) — the frontend does not need a separate "resend" trigger for that path. |
+| `GET /api/social-providers` | List configured social providers | Returns `{ "providers": ["google" and/or "github"] }`. Ids only. An unconfigured provider is omitted. |
 | `POST /api/auth/sign-in/social` | Start Google or GitHub sign-in with `provider`, `callbackURL`, `errorCallbackURL`, `newUserCallbackURL`, and `disableRedirect: true` | Returns `{ "url", "redirect": false }`. The browser navigates to `url`. An unconfigured or unknown provider is an error and does not create a user. |
 | `GET /api/auth/verify-email` | The link the verification email points to, `token` + optional `callbackURL` | Handled entirely by Better Auth. With `callbackURL`: redirects there on success (no extra query params — see below), or with `?error=INVALID_TOKEN\|TOKEN_EXPIRED\|USER_NOT_FOUND` on failure. Without `callbackURL`: returns `{ "status": true, "user": null }` as JSON directly (used by integration tests, not the frontend). On success, sets a session cookie (`autoSignInAfterVerification: true`) — verifying logs the user in. |
 
@@ -146,7 +147,7 @@ Register these redirect URIs on the provider, using the origin of
 - `{origin}/api/auth/callback/google`
 - `{origin}/api/auth/callback/github`
 
-The browser returns to `/` after success and `/login` after failure. Both
+The browser returns to `/` after success and `/login?oauth=1` after failure. Both
 callback URLs are built by the web app from its own origin. Google and GitHub
 are trusted providers. Better Auth still requires the existing local account
 to have a verified email before it links an OAuth identity into that row.

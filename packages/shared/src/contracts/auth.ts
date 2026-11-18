@@ -171,6 +171,11 @@ export const signInSocialResponseSchema = z.object({
   redirect: z.boolean(),
 })
 
+/** `GET /api/social-providers` — ids only. Secrets stay on the API. */
+export const socialProvidersResponseSchema = z.object({
+  providers: z.array(socialProviderSchema),
+})
+
 /** Better Auth error codes the sign-in / sign-up UI maps to messages.
  * Sign-up reports an existing email with either of the two
  * `USER_ALREADY_EXISTS*` codes depending on the code path. */
@@ -194,4 +199,5 @@ export type SignOutResponse = z.infer<typeof signOutResponseSchema>
 export type SocialProvider = z.infer<typeof socialProviderSchema>
 export type SignInSocialRequest = z.infer<typeof signInSocialRequestSchema>
 export type SignInSocialResponse = z.infer<typeof signInSocialResponseSchema>
+export type SocialProvidersResponse = z.infer<typeof socialProvidersResponseSchema>
 export type AuthFormErrorCode = z.infer<typeof authFormErrorCodeSchema>

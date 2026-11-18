@@ -30,7 +30,7 @@ import { getAppInfo } from '@marketplace/shared'
 import { toNodeHandler } from 'better-auth/node'
 import { sql } from 'drizzle-orm'
 import express from 'express'
-import { createAuth } from './auth/config'
+import { configuredSocialProviderIds, createAuth } from './auth/config'
 import { requireAuth, requireRole } from './auth/guards'
 import { insertComponent, setPublished, updateComponent } from './catalog/admin-queries'
 import { parseCreateComponentRequest, parseUpdateComponentRequest } from './catalog/admin-requests'
@@ -139,6 +139,9 @@ export function createServer(options: ServerOptions = {}) {
   const authHandler = auth ? toNodeHandler(auth) : unavailableAuthHandler
   app.all('/api/auth', authHandler)
   app.all('/api/auth/*splat', authHandler)
+  app.get('/api/social-providers', (_req, res) => {
+    res.status(200).json({ providers: configuredSocialProviderIds(env) })
+  })
 
   // Better Auth consumes its own request stream, so the API JSON parser follows
   // the catch-all auth handler (Express 5 ordering requirement).

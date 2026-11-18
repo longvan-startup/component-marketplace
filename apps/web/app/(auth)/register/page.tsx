@@ -3,14 +3,16 @@ import Link from 'next/link'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { SignUpForm } from '@/components/auth/sign-up-form'
 import { SocialButtons } from '@/components/auth/social-buttons'
-import { resolveApiMode } from '@/features/auth/auth-source'
+import { loadSocialProviders, resolveApiMode } from '@/features/auth/auth-source'
 
 export const metadata: Metadata = {
   title: 'Đăng ký',
 }
 
 /* Đăng ký — Figma 154:5838. Same shell as /login, three-field form. */
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const apiMode = resolveApiMode()
+  const providers = await loadSocialProviders(apiMode)
   return (
     <AuthShell
       title="Tạo tài khoản miễn phí"
@@ -18,8 +20,8 @@ export default function RegisterPage() {
       showcaseTitle="Component UI chất lượng, sẵn dùng ngay"
       showcaseSubtitle="Khám phá các component UI trong thư viện."
     >
-      <SocialButtons apiMode={resolveApiMode()} />
-      <SignUpForm apiMode={resolveApiMode()} />
+      <SocialButtons providers={providers} />
+      <SignUpForm apiMode={apiMode} />
       <p className="text-center text-[13px] text-muted-foreground">
         Đã có tài khoản?{' '}
         <Link

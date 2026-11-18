@@ -1,5 +1,6 @@
 'use client'
 
+import type { SocialProvider } from '@marketplace/shared'
 /**
  * Social sign-in row — Figma `Button/Social` (154:5832) ×2 + `Divider/Or`
  * (154:5837). Live mode starts Google or GitHub OAuth. Mock mode stays
@@ -8,15 +9,13 @@
  */
 import Image from 'next/image'
 import { useState } from 'react'
-import { type ApiMode, AuthRequestError, getAuthSource } from '@/features/auth/auth-source'
+import { AuthRequestError, getAuthSource } from '@/features/auth/auth-source'
 import { socialCallbackUrl, socialErrorCallbackUrl } from '@/features/auth/safe-callback-url'
 import { IconSocialGitHub } from '../ui/icons'
 import { AuthStatusBanner } from './auth-status-banner'
 
 const BUTTON_CLASSES =
   'flex h-[34px] w-full items-center justify-center gap-2 rounded-[10px] border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60'
-
-type Provider = 'google' | 'github'
 
 function socialErrorMessage(error: unknown): string {
   if (error instanceof AuthRequestError && error.code === 'PROVIDER_NOT_FOUND') {
@@ -25,18 +24,24 @@ function socialErrorMessage(error: unknown): string {
   return 'Không mở được đăng nhập. Thử lại sau.'
 }
 
-export function SocialButtons({ apiMode, failed = false }: { apiMode: ApiMode; failed?: boolean }) {
-  const live = apiMode === 'live'
-  const [pending, setPending] = useState<Provider | null>(null)
+export function SocialButtons({
+  providers,
+  failed = false,
+}: {
+  providers: SocialProvider[]
+  failed?: boolean
+}) {
+  const enabled = new Set(providers)
+  const [pending, setPending] = useState<SocialProvider | null>(null)
   const [error, setError] = useState<string | null>(
     failed ? 'Đăng nhập Google hoặc GitHub không thành công. Thử lại.' : null,
   )
 
-  async function start(provider: Provider) {
+  async function start(provider: SocialProvider) {
     setPending(provider)
     setError(null)
     try {
-      const { url } = await getAuthSource(apiMode).signInSocial(
+      const { url } = await getAuthSource('live').signInSocial(
         provider,
         socialCallbackUrl(),
         socialErrorCallbackUrl(),
@@ -54,8 +59,8 @@ export function SocialButtons({ apiMode, failed = false }: { apiMode: ApiMode; f
       <button
         type="button"
         className={BUTTON_CLASSES}
-        disabled={!live || pending !== null}
-        title={live ? undefined : 'Cần kết nối API thật'}
+        disabled={!enabled.has('google') || pending !== null}
+        title={enabled.has('google') ? undefined : 'Chưa được cấu hình'}
         onClick={() => start('google')}
       >
         <Image src="/auth/google.svg" alt="" width={18} height={18} className="size-[18px]" />
@@ -64,8 +69,8 @@ export function SocialButtons({ apiMode, failed = false }: { apiMode: ApiMode; f
       <button
         type="button"
         className={BUTTON_CLASSES}
-        disabled={!live || pending !== null}
-        title={live ? undefined : 'Cần kết nối API thật'}
+        disabled={!enabled.has('github') || pending !== null}
+        title={enabled.has('github') ? undefined : 'Chưa được cấu hình'}
         onClick={() => start('github')}
       >
         <IconSocialGitHub className="size-4" />

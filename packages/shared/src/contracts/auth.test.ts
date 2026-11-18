@@ -11,6 +11,7 @@ import {
   resetPasswordResponseSchema,
   signInSocialRequestSchema,
   signInSocialResponseSchema,
+  socialProvidersResponseSchema,
   verifyEmailCallbackErrorSchema,
 } from './auth'
 
@@ -199,6 +200,15 @@ describe('signInSocialRequestSchema', () => {
     expect(
       signInSocialRequestSchema.safeParse({ provider: 'apple', disableRedirect: true }).success,
     ).toBe(false)
+  })
+})
+
+describe('socialProvidersResponseSchema', () => {
+  test('accepts the configured ids and rejects an unknown provider', () => {
+    expect(socialProvidersResponseSchema.parse({ providers: ['github'] })).toEqual({
+      providers: ['github'],
+    })
+    expect(socialProvidersResponseSchema.safeParse({ providers: ['apple'] }).success).toBe(false)
   })
 })
 

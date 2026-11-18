@@ -32,5 +32,10 @@ export function socialCallbackUrl(origin: string = window.location.origin): stri
 }
 
 export function socialErrorCallbackUrl(origin: string = window.location.origin): string {
-  return `${origin}/login`
+  return `${origin}/login?oauth=1`
+}
+
+/** True only for the marker this app puts on the OAuth error redirect. */
+export function isSocialSignInError(oauth: string | string[] | undefined): boolean {
+  return oauth === '1' || (Array.isArray(oauth) && oauth.includes('1'))
 }
