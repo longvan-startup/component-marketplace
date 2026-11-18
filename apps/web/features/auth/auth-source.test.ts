@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  AuthRequestError,
   createHttpAuthSource,
   createMockAuthSource,
   getAuthSource,
@@ -35,6 +36,12 @@ describe('mock auth source', () => {
     await expect(source.resetPassword('invalid', 'longenoughpassword')).rejects.toBeInstanceOf(
       ResetPasswordError,
     )
+  })
+
+  test('signInSocial stays closed in mock mode', async () => {
+    await expect(
+      source.signInSocial('google', 'https://web/', 'https://web/login'),
+    ).rejects.toMatchObject({ code: 'PROVIDER_NOT_FOUND' })
   })
 
   test('resendVerificationEmail always returns the generic non-leaking response', async () => {
@@ -160,5 +167,42 @@ describe('http auth source (real Better Auth wire shape)', () => {
       email: 'user@test.local',
       callbackURL: 'https://web/verify-email?verified=1',
     })
+  })
+
+  test('signInSocial POSTs to /api/auth/sign-in/social and returns the authorize URL', async () => {
+    let seenUrl = ''
+    let seenBody: unknown
+    const source = createHttpAuthSource({
+      fetchImpl: async (url, init) => {
+        seenUrl = String(url)
+        seenBody = JSON.parse(String(init?.body))
+        return jsonResponse(200, {
+          url: 'https://github.com/login/oauth/authorize?client_id=public',
+          redirect: false,
+        })
+      },
+      publicApiUrl: 'https://api.example.test',
+    })
+    const result = await source.signInSocial('github', 'https://web/', 'https://web/login')
+    expect(result.url).toContain('https://github.com/login/oauth/authorize')
+    expect(seenUrl).toBe('https://api.example.test/api/auth/sign-in/social')
+    expect(seenBody).toEqual({
+      provider: 'github',
+      callbackURL: 'https://web/',
+      errorCallbackURL: 'https://web/login',
+      newUserCallbackURL: 'https://web/',
+      disableRedirect: true,
+    })
+  })
+
+  test('signInSocial surfaces PROVIDER_NOT_FOUND', async () => {
+    const source = createHttpAuthSource({
+      fetchImpl: async () =>
+        jsonResponse(404, { code: 'PROVIDER_NOT_FOUND', message: 'Provider not found' }),
+      publicApiUrl: 'https://api.example.test',
+    })
+    await expect(
+      source.signInSocial('google', 'https://web/', 'https://web/login'),
+    ).rejects.toBeInstanceOf(AuthRequestError)
   })
 })

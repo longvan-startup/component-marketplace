@@ -25,3 +25,12 @@ export function resetPasswordCallbackUrl(origin: string = window.location.origin
 export function verifyEmailCallbackUrl(origin: string = window.location.origin): string {
   return `${origin}/verify-email/success`
 }
+
+/** Fixed pages for Google/GitHub. No caller-supplied return path. */
+export function socialCallbackUrl(origin: string = window.location.origin): string {
+  return `${origin}/`
+}
+
+export function socialErrorCallbackUrl(origin: string = window.location.origin): string {
+  return `${origin}/login`
+}

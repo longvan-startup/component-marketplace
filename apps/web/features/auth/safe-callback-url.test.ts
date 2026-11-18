@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { resetPasswordCallbackUrl, verifyEmailCallbackUrl } from './safe-callback-url'
+import {
+  resetPasswordCallbackUrl,
+  socialCallbackUrl,
+  socialErrorCallbackUrl,
+  verifyEmailCallbackUrl,
+} from './safe-callback-url'
 
 describe('resetPasswordCallbackUrl', () => {
   test('appends the fixed /reset-password path to the given origin', () => {
@@ -14,5 +19,12 @@ describe('verifyEmailCallbackUrl', () => {
     expect(verifyEmailCallbackUrl('https://example.com')).toBe(
       'https://example.com/verify-email/success',
     )
+  })
+})
+
+describe('social callback URLs', () => {
+  test('returns the site root and the login page on the same origin', () => {
+    expect(socialCallbackUrl('https://example.com')).toBe('https://example.com/')
+    expect(socialErrorCallbackUrl('https://example.com')).toBe('https://example.com/login')
   })
 })

@@ -18,7 +18,7 @@ export default function RegisterPage() {
       showcaseTitle="Component UI chất lượng, sẵn dùng ngay"
       showcaseSubtitle="Khám phá các component UI trong thư viện."
     >
-      <SocialButtons />
+      <SocialButtons apiMode={resolveApiMode()} />
       <SignUpForm apiMode={resolveApiMode()} />
       <p className="text-center text-[13px] text-muted-foreground">
         Đã có tài khoản?{' '}

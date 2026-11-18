@@ -23,9 +23,12 @@ import {
   resetPasswordResponseSchema,
   revokeSessionsResponseSchema,
   type SignInEmailResponse,
+  type SignInSocialResponse,
   type SignOutResponse,
   type SignUpEmailResponse,
+  type SocialProvider,
   signInEmailResponseSchema,
+  signInSocialResponseSchema,
   signOutResponseSchema,
   signUpEmailResponseSchema,
 } from '@marketplace/shared'
@@ -33,6 +36,11 @@ import { ApiClientError, apiFetchJson, apiMutateJson } from '../../lib/api-clien
 
 export interface AuthSource {
   signIn(email: string, password: string): Promise<SignInEmailResponse>
+  signInSocial(
+    provider: SocialProvider,
+    callbackURL: string,
+    errorCallbackURL: string,
+  ): Promise<SignInSocialResponse>
   signUp(
     input: { name: string; email: string; password: string },
     callbackURL: string,
@@ -106,6 +114,9 @@ export function createMockAuthSource(): AuthSource {
       }
       return { redirect: false, token: 'mock-token', user: mockUser(email) }
     },
+    signInSocial: async () => {
+      throw new AuthRequestError(404, 'Provider not found', 'PROVIDER_NOT_FOUND')
+    },
     signUp: async ({ name, email }) => ({
       token: null,
       user: { ...mockUser(email, name), emailVerified: false },
@@ -175,6 +186,24 @@ export function createHttpAuthSource(deps: HttpDeps = {}): AuthSource {
           authDeps,
         )
         return signInEmailResponseSchema.parse(payload)
+      } catch (error) {
+        throw toAuthRequestError(error)
+      }
+    },
+    signInSocial: async (provider, callbackURL, errorCallbackURL) => {
+      try {
+        const payload = await apiMutateJson<unknown>(
+          '/api/auth/sign-in/social',
+          {
+            provider,
+            callbackURL,
+            errorCallbackURL,
+            newUserCallbackURL: callbackURL,
+            disableRedirect: true,
+          },
+          authDeps,
+        )
+        return signInSocialResponseSchema.parse(payload)
       } catch (error) {
         throw toAuthRequestError(error)
       }

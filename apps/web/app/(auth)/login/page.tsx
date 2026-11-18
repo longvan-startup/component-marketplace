@@ -9,9 +9,15 @@ export const metadata: Metadata = {
   title: 'Đăng nhập',
 }
 
+interface LoginPageProps {
+  searchParams: Promise<{ error?: string | string[] }>
+}
+
 /* Đăng nhập — Figma 154:6049. Server Component shell; `API_MODE` is
    resolved here and passed to the client form (see auth-source.ts). */
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams
+  const socialFailed = params.error !== undefined
   return (
     <AuthShell
       title="Đăng nhập"
@@ -19,7 +25,7 @@ export default function LoginPage() {
       showcaseTitle="Chào mừng quay lại"
       showcaseSubtitle="Tiếp tục khám phá các component UI trong thư viện."
     >
-      <SocialButtons />
+      <SocialButtons apiMode={resolveApiMode()} failed={socialFailed} />
       <SignInForm apiMode={resolveApiMode()} />
       <p className="text-center text-[13px] text-muted-foreground">
         Chưa có tài khoản?{' '}
