@@ -1,3 +1,4 @@
+import type { CatalogCategory } from '@marketplace/shared'
 import Link from 'next/link'
 import { HeroBackdrop } from '@/components/home/hero-backdrop'
 import { Badge } from '@/components/ui/badge'
@@ -9,7 +10,10 @@ import { type CatalogItem, getCatalogSource } from '@/features/catalog/catalog-s
    featured components, category links and "Why Luva UI". Every list reads the
    catalog data layer; the copy about categories and featured items only claims
    what the catalog really does. */
-export const dynamic = 'force-dynamic'
+/* Static page regenerated in the background every 60 seconds, so visits are
+   served from the CDN. A catalog outage is cached only until the next
+   regeneration after the API recovers (at most about a minute). */
+export const revalidate = 60
 
 const CATEGORIES = [
   { value: 'animation', label: 'Animation' },
@@ -69,9 +73,19 @@ function FeaturedCard({ item }: { item: CatalogItem }) {
 
 export default async function HomePage() {
   const source = getCatalogSource()
+  /* Any failure (not just 503 or a network error) becomes an unavailable
+     result, so a bad API response never fails the build or the render. */
+  const list = (query: { category?: CatalogCategory; pageSize: number }) =>
+    source.list(query).catch(() => ({
+      items: [],
+      page: 1,
+      pageSize: query.pageSize,
+      total: 0,
+      unavailable: true,
+    }))
   const [featured, ...counts] = await Promise.all([
-    source.list({ pageSize: 4 }),
-    ...CATEGORIES.map((category) => source.list({ category: category.value, pageSize: 1 })),
+    list({ pageSize: 4 }),
+    ...CATEGORIES.map((category) => list({ category: category.value, pageSize: 1 })),
   ])
   const highlights = featured.items.slice(0, 4)
 
