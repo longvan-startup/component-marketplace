@@ -12,9 +12,8 @@
  * on `issues`/`pull_request` events; GITHUB_EVENT_NAME + GITHUB_EVENT_PATH are
  * set by Actions automatically).
  *
- * Missing NOTION_API_TOKEN/NOTION_DATABASE_ID ⇒ skip with a notice, same
- * fail-safe-off pattern as prototypes/deployment-dashboard — never guess or
- * fall back to a demo mode.
+ * Missing NOTION_API_TOKEN/NOTION_DATABASE_ID ⇒ skip with a notice.
+ * Never guess or fall back to a demo mode.
  *
  * A closed or merged issue/PR is archived (Notion's trash) right after
  * syncing, not just marked State=closed — the database should only ever
