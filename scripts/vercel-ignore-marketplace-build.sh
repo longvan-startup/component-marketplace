@@ -10,7 +10,6 @@ if [[ -z "${VERCEL_GIT_PREVIOUS_SHA:-}" || -z "${VERCEL_GIT_COMMIT_SHA:-}" ]]; t
 fi
 
 if git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" "$VERCEL_GIT_COMMIT_SHA" -- . \
-  ':(exclude)prototypes/deployment-dashboard/**' \
   ':(exclude)docs/DEPLOYMENT.md' \
   ':(exclude,top)package.json' \
   ':(exclude,top)bun.lock' \
