@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { getCatalogSource } from '@/features/catalog/catalog-source'
@@ -27,12 +28,17 @@ export async function generateMetadata({ params }: ComponentDetailProps): Promis
 /* Component detail — Server Component. Unknown/unpublished slugs → 404 via
    notFound(); renders mock data until API_MODE=live flips the data source.
    Live fetches happen per request; the API is not reachable at build time. */
-export const dynamic = 'force-dynamic'
+/* Static per slug and regenerated every 60 seconds. A missing component calls
+   connection() first, so a not-found or outage result is never cached. */
+export const revalidate = 60
 
 export default async function ComponentDetailPage({ params }: ComponentDetailProps) {
   const { slug } = await params
   const item = await loadComponent(slug)
-  if (!item) notFound()
+  if (!item) {
+    await connection()
+    notFound()
+  }
 
   return (
     <section className="flex flex-col gap-6">

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { connection } from 'next/server'
 import { HeroBackdrop } from '@/components/home/hero-backdrop'
 import { Badge } from '@/components/ui/badge'
 import { buttonClasses } from '@/components/ui/button'
@@ -9,7 +10,10 @@ import { type CatalogItem, getCatalogSource } from '@/features/catalog/catalog-s
    featured components, category links and "Why Luva UI". Every list reads the
    catalog data layer; the copy about categories and featured items only claims
    what the catalog really does. */
-export const dynamic = 'force-dynamic'
+/* Static page regenerated in the background every 60 seconds, so visits are
+   served from the CDN. When the catalog is unreachable, connection() opts this
+   render out of caching so an outage page is never stored as the final result. */
+export const revalidate = 60
 
 const CATEGORIES = [
   { value: 'animation', label: 'Animation' },
@@ -73,6 +77,9 @@ export default async function HomePage() {
     source.list({ pageSize: 4 }),
     ...CATEGORIES.map((category) => source.list({ category: category.value, pageSize: 1 })),
   ])
+  if (featured.unavailable || counts.some((count) => count.unavailable)) {
+    await connection()
+  }
   const highlights = featured.items.slice(0, 4)
 
   return (
