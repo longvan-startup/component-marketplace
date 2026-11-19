@@ -27,7 +27,15 @@ export async function generateMetadata({ params }: ComponentDetailProps): Promis
 /* Component detail — Server Component. Unknown/unpublished slugs → 404 via
    notFound(); renders mock data until API_MODE=live flips the data source.
    Live fetches happen per request; the API is not reachable at build time. */
-export const dynamic = 'force-dynamic'
+/* Static per slug and regenerated every 60 seconds. generateStaticParams
+   (empty on purpose) makes unseen slugs render on demand and be cached. A
+   missing component (404) can be cached for up to a minute before it is retried. */
+export const revalidate = 60
+export const dynamicParams = true
+
+export function generateStaticParams() {
+  return []
+}
 
 export default async function ComponentDetailPage({ params }: ComponentDetailProps) {
   const { slug } = await params
