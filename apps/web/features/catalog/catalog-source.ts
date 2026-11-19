@@ -3,6 +3,7 @@
 import {
   type CatalogCategory,
   type CatalogComponent,
+  catalogCategorySchema,
   detailResponseSchema,
 } from '@marketplace/shared'
 import { ApiClientError, apiFetchJson } from '../../lib/api-client'
@@ -186,10 +187,14 @@ export function getCatalogSource(deps: HttpDeps = {}): CatalogSource {
 /** Parse raw route searchParams into a safe catalog query (clamped page). */
 export function parseCatalogQuery(raw: {
   q?: string | string[]
+  category?: string | string[]
   page?: string | string[]
 }): CatalogListQuery & { page: number } {
   const q = typeof raw.q === 'string' ? raw.q : undefined
+  const categoryRaw = typeof raw.category === 'string' ? raw.category : undefined
+  const parsedCategory = categoryRaw ? catalogCategorySchema.safeParse(categoryRaw) : undefined
+  const category = parsedCategory?.success ? parsedCategory.data : undefined
   const pageRaw = typeof raw.page === 'string' ? Number.parseInt(raw.page, 10) : NaN
   const page = Number.isNaN(pageRaw) ? 1 : Math.min(Math.max(1, pageRaw), 10_000)
-  return { q, page }
+  return category ? { q, category, page } : { q, page }
 }

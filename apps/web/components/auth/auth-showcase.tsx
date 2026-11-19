@@ -10,19 +10,19 @@ const CARDS = [
   {
     title: 'Copyable Slug Field',
     author: 'long',
-    image: '/auth/showcase-1.png',
+    image: '/auth/showcase-1.jpg',
     position: 'left-[2px] top-[76px] rotate-[7deg]',
   },
   {
     title: 'Version Diff Previewer',
     author: 'van',
-    image: '/auth/showcase-2.png',
+    image: '/auth/showcase-2.jpg',
     position: 'left-[174px] top-[45px] -rotate-6',
   },
   {
     title: 'Badge Row',
     author: 'long',
-    image: '/auth/showcase-3.png',
+    image: '/auth/showcase-3.jpg',
     position: 'left-[140px] top-0',
   },
 ] as const

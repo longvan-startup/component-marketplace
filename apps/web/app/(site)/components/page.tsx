@@ -1,10 +1,34 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { CatalogSearch } from '@/components/catalog/catalog-search'
 import { ComponentCard } from '@/components/catalog/component-card'
-import { getCatalogSource, parseCatalogQuery } from '@/features/catalog/catalog-source'
+import {
+  type CatalogListQuery,
+  getCatalogSource,
+  parseCatalogQuery,
+} from '@/features/catalog/catalog-source'
 
 interface CatalogPageProps {
-  searchParams: Promise<{ q?: string | string[]; page?: string | string[] }>
+  searchParams: Promise<{
+    q?: string | string[]
+    category?: string | string[]
+    page?: string | string[]
+  }>
+}
+
+const CATEGORY_FILTERS = [
+  { value: undefined, label: 'Tất cả' },
+  { value: 'animation', label: 'Animation' },
+  { value: 'react-component', label: 'React component' },
+  { value: 'tool', label: 'Công cụ' },
+] as const
+
+function catalogHref(query: Pick<CatalogListQuery, 'q' | 'category'>) {
+  const params = new URLSearchParams()
+  if (query.q) params.set('q', query.q)
+  if (query.category) params.set('category', query.category)
+  const search = params.toString()
+  return search ? `/components?${search}` : '/components'
 }
 
 export const metadata: Metadata = {
@@ -33,8 +57,28 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
             {query.q ? ` matching “${query.q}”` : ''} · page {result.page}
           </p>
         </div>
-        <CatalogSearch initialQuery={query.q ?? ''} />
+        <CatalogSearch initialQuery={query.q ?? ''} category={query.category} />
       </header>
+
+      <nav aria-label="Lọc danh mục" className="flex flex-wrap gap-2">
+        {CATEGORY_FILTERS.map((filter) => {
+          const active = (filter.value ?? undefined) === query.category
+          return (
+            <Link
+              key={filter.label}
+              href={catalogHref({ q: query.q, category: filter.value })}
+              aria-current={active ? 'page' : undefined}
+              className={`inline-flex min-h-11 items-center rounded-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                active
+                  ? 'bg-foreground font-medium text-background'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {filter.label}
+            </Link>
+          )
+        })}
+      </nav>
 
       {result.unavailable ? (
         <p className="rounded-card border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
