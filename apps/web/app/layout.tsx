@@ -14,7 +14,10 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'component-marketplace',
+  title: {
+    default: 'Luva UI',
+    template: '%s | Luva UI',
+  },
   description:
     'Marketplace for reusable UI components & animations, built by developers for developers.',
 }
