@@ -26,7 +26,7 @@ export function ComponentCard({
 }) {
   return (
     <Card className="flex h-full flex-col overflow-hidden">
-      <DemoPreview demo={demo} name={item.name} />
+      <DemoPreview demo={demo} name={item.name} summary={item.summary} />
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-center justify-between gap-3">
           <Link
