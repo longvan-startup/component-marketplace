@@ -98,6 +98,10 @@ interface HttpDeps {
   runtime?: 'browser' | 'server'
 }
 
+/** Public catalog reads are cached for a minute, so moving between pages does
+ * not wait on the API every time. Publish changes show up within this window. */
+const CATALOG_REVALIDATE_SECONDS = 60
+
 /** Matches `PAGINATION_LIMITS.maxPageSize` in `@marketplace/shared`. */
 const MAX_PAGE_SIZE = 48
 
@@ -132,6 +136,7 @@ export function createHttpCatalogSource(deps: HttpDeps = {}): CatalogSource {
       let payload: CatalogListResult
       try {
         payload = await apiFetchJson<CatalogListResult>(path, {
+          revalidate: CATALOG_REVALIDATE_SECONDS,
           runtime: deps.runtime,
           fetchImpl: deps.fetchImpl,
           publicApiUrl: deps.publicApiUrl,
@@ -155,6 +160,7 @@ export function createHttpCatalogSource(deps: HttpDeps = {}): CatalogSource {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return null
       try {
         const payload = await apiFetchJson<unknown>(`/components/${slug}`, {
+          revalidate: CATALOG_REVALIDATE_SECONDS,
           runtime: deps.runtime,
           fetchImpl: deps.fetchImpl,
           publicApiUrl: deps.publicApiUrl,

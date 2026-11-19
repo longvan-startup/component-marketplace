@@ -76,6 +76,10 @@ interface FetchJsonOptions {
   /** Send the session cookie on a GET (Better Auth `get-session`). Catalog
    * reads leave this unset. */
   credentials?: RequestCredentials
+  /** Let Next cache this GET for N seconds. Public catalog reads use it so a
+   * repeat visit within the window skips the API round-trip. Unset means no
+   * cache, as before. */
+  revalidate?: number
 }
 
 /** Typed JSON GET with normalized errors. See `apiMutateJson` below for POST. */
@@ -94,7 +98,9 @@ export async function apiFetchJson<T>(path: string, options: FetchJsonOptions = 
     response = await doFetch(url, {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
-      cache: 'no-store',
+      ...(options.revalidate !== undefined
+        ? { next: { revalidate: options.revalidate } }
+        : { cache: 'no-store' }),
       ...(options.credentials ? { credentials: options.credentials } : {}),
     })
   } catch (error) {
