@@ -113,7 +113,7 @@ jobs:
             echo "already_released=true" >> "$GITHUB_OUTPUT"
             echo "This exact target SHA already has a successful production release; no migration or promotion will run."
           elif [[ "$decision" == "duplicate" ]]; then
-            echo "::error::A previous release run exists for this SHA. Review its result and explicitly confirm a retry from the dashboard before another release."
+            echo "::error::A previous release run exists for this SHA. Review its result and dispatch a new release with that failed run ID before another release."
             exit 1
           fi
 
