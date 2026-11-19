@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    actor AD as Admin
+    participant A as API (Express)
+    participant G as Auth Guard
+    participant S as Catalog Service
+    participant DB as PostgreSQL
+
+    Note over A,DB: SE-02 · Publish và unpublish. POST /admin/components/:slug/publish hoặc /unpublish
+    AD->>A: POST /admin/components/:slug/publish
+    A->>G: requireAuth + requireRole(admin)
+    alt Không có phiên
+        G-->>A: UNAUTHENTICATED
+        A-->>AD: 401 UNAUTHENTICATED
+    else Phiên không phải admin
+        G-->>A: FORBIDDEN
+        A-->>AD: 403 FORBIDDEN
+    else Role = admin
+        A->>S: setPublished(slug, true)
+        S->>DB: Đọc component theo slug (mọi trạng thái)
+        alt Không tìm thấy
+            DB-->>S: Không có dòng
+            S-->>A: NOT_FOUND
+            A-->>AD: 404 NOT_FOUND
+        else Tìm thấy
+            alt Đã ở trạng thái yêu cầu
+                S-->>A: Item hiện tại (no-op)
+            else Khác trạng thái
+                S->>DB: UPDATE components SET is_published = true
+                DB-->>S: Dòng đã cập nhật
+                S-->>A: Item đã publish
+            end
+            A-->>AD: 200 published
+        end
+    end
+    Note over A,DB: Unpublish dùng cùng luồng, đặt is_published = false

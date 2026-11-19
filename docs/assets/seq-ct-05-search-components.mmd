@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor G as Guest
+    participant W as Web (Next.js)
+    participant A as API (Express)
+    participant Q as Catalog Queries
+    participant DB as PostgreSQL
+
+    Note over W,A: CT-05 · Tìm kiếm, lọc và phân trang. Chỉ đọc item is_published=true
+    G->>W: Nhập q / category / tag / sort / page
+    W->>A: GET /components?q=&category=&tag=&sort=&page=&pageSize=
+    A->>A: Kiểm tra query theo hợp đồng
+    alt Tham số sai
+        A-->>W: 422 VALIDATION_QUERY
+    else Tham số hợp lệ
+        A->>Q: listComponents(query)
+        Q->>DB: SELECT ... WHERE is_published = true ORDER BY ... LIMIT / OFFSET, COUNT(*)
+        alt Chưa cấu hình DB
+            DB-->>Q: Lỗi kết nối
+            Q-->>A: DATABASE_UNCONFIGURED
+            A-->>W: 503 DATABASE_UNCONFIGURED
+            W-->>G: Trạng thái catalog chưa tải được
+        else DB sẵn sàng
+            DB-->>Q: rows + total
+            Q-->>A: CatalogRow[]
+            A-->>W: 200 { items, page, pageSize, total }
+            W-->>G: Hiển thị card hoặc trạng thái rỗng
+        end
+    end
+    Note over W,A: Bản nháp không bao giờ nằm trong phản hồi công khai

@@ -35,7 +35,7 @@ năng chưa có code thì bám theo tài liệu thiết kế và ghi rõ **DỰ 
 Thành phần dùng chung trong các sơ đồ: **Web** = `apps/web` (Next.js), **API**
 = `apps/api` (Express), **Better Auth** = thư viện xử lý toàn bộ
 `/api/auth/*` bên trong API, **PostgreSQL** qua Drizzle (`packages/db`),
-**Email** hiện chỉ là `console.log` ở môi trường dev (chưa chọn nhà cung cấp).
+**Email**: môi trường dev chỉ `console.log`; production gửi qua Resend khi có `RESEND_API_KEY` và `AUTH_EMAIL_FROM` (`apps/api/src/auth/email.ts`).
 
 ## Nhóm: Xác thực (đã có backend)
 
@@ -51,7 +51,7 @@ sequenceDiagram
     participant A as API (Express)
     participant BA as Better Auth
     participant DB as PostgreSQL
-    participant M as Email (dev: console.log)
+    participant M as Email (dev: console.log · prod: Resend)
 
     Note over W,BA: AU-01 · Backend đã chạy. Màn Đăng ký trên web đang làm
     U->>W: Nhập tên, email, mật khẩu
@@ -92,7 +92,7 @@ sequenceDiagram
     participant A as API (Express)
     participant BA as Better Auth
     participant DB as PostgreSQL
-    participant M as Email (dev: console.log)
+    participant M as Email (dev: console.log · prod: Resend)
 
     Note over W,BA: AU-02 · Backend đã chạy. Màn Đăng nhập trên web đang làm
     U->>W: Nhập email, mật khẩu
@@ -190,7 +190,7 @@ sequenceDiagram
     participant A as API (Express)
     participant BA as Better Auth
     participant DB as PostgreSQL
-    participant M as Email (dev: console.log)
+    participant M as Email (dev: console.log · prod: Resend)
 
     Note over W,BA: AU-05 · Đã chạy đủ cả web lẫn backend
     U->>W: Mở /forgot-password, nhập email
@@ -645,8 +645,8 @@ functions":
 - **CT-07**: `apps/web/features/catalog/catalog-source.ts` coi cả response của
   `GET /components/:slug` là component, trong khi API trả `{ item }` — chế độ
   `API_MODE=live` sẽ hỏng trang chi tiết. Sửa trong phần việc Catalog của web.
-- **AU-01 / AU-05**: email xác minh và đặt lại mật khẩu mới chỉ `console.log`;
-  chưa có nhà cung cấp email (ghi trong `apps/api/AUTH.md`, việc của backend).
+- **AU-01 / AU-05**: email xác minh và đặt lại mật khẩu: dev chỉ `console.log`, production dùng Resend khi đã cấu hình env;
+  cần kiểm chứng production (#153).
 - **Các route admin `PATCH`**: CORS preflight của API hiện chỉ cho
   `GET, POST, OPTIONS`, nên `PATCH /admin/components/:slug` gọi khác origin ở
   môi trường dev sẽ bị chặn — cần backend xử lý trước khi dựng màn Admin.

@@ -1,30 +1,26 @@
 sequenceDiagram
     autonumber
-    actor U as Thành viên
-    participant W as Web (Next.js)
+    actor U as Người xem
+    participant W as Web (use-chat-socket)
     participant WS as API WebSocket /ws/chat
     participant DB as PostgreSQL
 
     Note over U,DB: CH-05 · DỰ KIẾN theo COMMUNITY_ARCHITECTURE + RFC-01, chưa có code
-    Note over W,WS: Server ping/pong mỗi 30 giây để phát hiện rớt kết nối
-    WS--xW: Mất kết nối
-    W-->>U: Báo đang kết nối lại
-    loop Thử lại với khoảng chờ 1s, 2s, ... tối đa 30s, có jitter
-        W->>WS: Upgrade /ws/chat (kèm cookie phiên)
+    W->>WS: Upgrade /ws/chat, đã có afterSeq của lần đọc cuối
+    WS-->>W: Kết nối mở
+    loop Mỗi 30 giây
+        WS->>W: ping
+        W-->>WS: pong
     end
-    WS-->>W: Kết nối lại thành công
-    W->>WS: resume (afterSeq = seq lớn nhất đã nhận)
-    WS->>DB: Lấy chat_messages có seq lớn hơn afterSeq, xếp theo seq
-    DB-->>WS: Các tin đã lỡ
-    loop Từng tin đã lỡ
-        WS-->>W: message.created
-    end
-    Note over WS: Phát lại xong mới chuyển sang luồng trực tiếp, seq bảo đảm không trùng và đúng thứ tự
-    W->>W: Bỏ trùng theo message.id
-
-    opt Có tin đang gửi dở lúc rớt mạng
-        W->>WS: send với đúng clientMessageId cũ
-        WS->>DB: INSERT bị bỏ qua vì trùng, đọc tin đã lưu
-        WS-->>W: ack trả về tin đã lưu, không tạo bản ghi mới
-    end
-    W-->>U: Lịch sử liền mạch, không thiếu, không trùng
+    Note over W,WS: Mất kết nối, không nhận được pong
+    W->>W: Tự động kết nối lại, backoff 1s, 2s, 4s ... tối đa 30s, có jitter
+    W->>WS: Upgrade /ws/chat (kèm cookie phiên)
+    WS->>WS: Kiểm tra phiên Better Auth lúc upgrade
+    W->>WS: resume { afterSeq }
+    WS->>DB: SELECT messages WHERE channel_id = ? AND seq > afterSeq ORDER BY seq
+    DB-->>WS: Các tin đã lưu nhưng client chưa nhận
+    WS-->>W: Replay từng message.created theo thứ tự seq
+    W->>W: Bỏ trùng theo message.id, cập nhật afterSeq theo seq cuối
+    WS-->>W: Chuyển sang nhận tin realtime (live stream)
+    Note over WS,DB: seq là điều kiện để replay và live không trùng, không lệch thứ tự
+    Note over WS,DB: PostgreSQL là nguồn chân lý, WebSocket chỉ là kênh phát

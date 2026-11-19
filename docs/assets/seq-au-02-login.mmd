@@ -5,7 +5,7 @@ sequenceDiagram
     participant A as API (Express)
     participant BA as Better Auth
     participant DB as PostgreSQL
-    participant M as Email (dev: console.log)
+    participant M as Email (dev: console.log · prod: Resend)
 
     Note over W,BA: AU-02 · Backend đã chạy. Màn Đăng nhập trên web đang làm
     U->>W: Nhập email, mật khẩu
