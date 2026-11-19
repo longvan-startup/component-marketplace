@@ -54,6 +54,11 @@ export default async function ComponentDetailPage({ params }: ComponentDetailPro
           <Badge variant={item.category === 'animation' ? 'accent' : 'neutral'}>
             {item.category}
           </Badge>
+          {item.accessTier ? (
+            <Badge variant={item.accessTier === 'pro' ? 'accent' : 'success'}>
+              {item.accessTier === 'pro' ? 'Pro' : 'Free'}
+            </Badge>
+          ) : null}
           {item.isPublished ? <Badge variant="success">published</Badge> : null}
           <span className="font-mono text-xs text-muted-foreground">v{item.latestVersion}</span>
         </div>

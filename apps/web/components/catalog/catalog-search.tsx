@@ -9,14 +9,24 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-export function CatalogSearch({ initialQuery = '' }: { initialQuery?: string }) {
+export function CatalogSearch({
+  initialQuery = '',
+  category,
+}: {
+  initialQuery?: string
+  category?: string
+}) {
   const router = useRouter()
   const [value, setValue] = useState(initialQuery)
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const params = new URLSearchParams()
     const trimmed = value.trim()
-    router.replace(trimmed ? `/components?q=${encodeURIComponent(trimmed)}` : '/components')
+    if (trimmed) params.set('q', trimmed)
+    if (category) params.set('category', category)
+    const search = params.toString()
+    router.replace(search ? `/components?${search}` : '/components')
   }
 
   return (

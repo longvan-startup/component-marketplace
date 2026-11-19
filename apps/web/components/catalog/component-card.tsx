@@ -13,6 +13,8 @@ const CATEGORY_LABELS: Record<CatalogItem['category'], string> = {
   tool: 'tool',
 }
 
+const TIER_LABEL = { free: 'Free', pro: 'Pro' } as const
+
 export function ComponentCard({ item }: { item: CatalogItem }) {
   return (
     <Card className="flex h-full flex-col gap-3 p-5">
@@ -32,6 +34,11 @@ export function ComponentCard({ item }: { item: CatalogItem }) {
         <Badge variant={item.category === 'animation' ? 'accent' : 'neutral'}>
           {CATEGORY_LABELS[item.category]}
         </Badge>
+        {item.accessTier ? (
+          <Badge variant={item.accessTier === 'pro' ? 'accent' : 'success'}>
+            {TIER_LABEL[item.accessTier]}
+          </Badge>
+        ) : null}
         {item.isPublished ? null : <Badge variant="success">preview</Badge>}
         {item.tags.slice(0, 3).map((tag) => (
           <span key={tag} className="font-mono text-xs text-muted-foreground">

@@ -77,6 +77,9 @@ describe('source selection + query parsing', () => {
     expect(parseCatalogQuery({ page: '-9' })).toEqual({ page: 1 })
     expect(parseCatalogQuery({ page: '999999' })).toEqual({ page: 10000 })
     expect(parseCatalogQuery({ page: ['2'] })).toEqual({ page: 1 })
+    expect(parseCatalogQuery({ category: 'tool' })).toEqual({ category: 'tool', page: 1 })
+    expect(parseCatalogQuery({ category: 'nope' })).toEqual({ page: 1 })
+    expect(parseCatalogQuery({ category: ['tool'] })).toEqual({ page: 1 })
   })
 })
 
