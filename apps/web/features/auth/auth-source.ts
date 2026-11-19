@@ -27,10 +27,12 @@ import {
   type SignOutResponse,
   type SignUpEmailResponse,
   type SocialProvider,
+  type SocialProvidersResponse,
   signInEmailResponseSchema,
   signInSocialResponseSchema,
   signOutResponseSchema,
   signUpEmailResponseSchema,
+  socialProvidersResponseSchema,
 } from '@marketplace/shared'
 import { ApiClientError, apiFetchJson, apiMutateJson } from '../../lib/api-client'
 
@@ -41,6 +43,8 @@ export interface AuthSource {
     callbackURL: string,
     errorCallbackURL: string,
   ): Promise<SignInSocialResponse>
+  /** Providers that have both a client id and a secret. Empty in mock mode. */
+  socialProviders(): Promise<SocialProvider[]>
   signUp(
     input: { name: string; email: string; password: string },
     callbackURL: string,
@@ -117,6 +121,7 @@ export function createMockAuthSource(): AuthSource {
     signInSocial: async () => {
       throw new AuthRequestError(404, 'Provider not found', 'PROVIDER_NOT_FOUND')
     },
+    socialProviders: async () => [],
     signUp: async ({ name, email }) => ({
       token: null,
       user: { ...mockUser(email, name), emailVerified: false },
@@ -207,6 +212,11 @@ export function createHttpAuthSource(deps: HttpDeps = {}): AuthSource {
       } catch (error) {
         throw toAuthRequestError(error)
       }
+    },
+    socialProviders: async () => {
+      const payload = await apiFetchJson<unknown>('/api/social-providers', authDeps)
+      const response: SocialProvidersResponse = socialProvidersResponseSchema.parse(payload)
+      return response.providers
     },
     signUp: async (input, callbackURL) => {
       try {
@@ -321,4 +331,14 @@ export function resolveApiMode(mode = process.env.API_MODE): ApiMode {
  * re-resolving `API_MODE` itself. */
 export function getAuthSource(mode: ApiMode, deps: HttpDeps = {}): AuthSource {
   return mode === 'live' ? createHttpAuthSource(deps) : createMockAuthSource()
+}
+
+/** Live mode asks the API which providers are configured. Failure leaves them off. */
+export async function loadSocialProviders(mode: ApiMode): Promise<SocialProvider[]> {
+  if (mode !== 'live') return []
+  try {
+    return await getAuthSource(mode).socialProviders()
+  } catch {
+    return []
+  }
 }

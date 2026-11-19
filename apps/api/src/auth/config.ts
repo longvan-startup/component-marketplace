@@ -22,12 +22,30 @@ type AuthEnvironment = Pick<
 
 export type SocialProviderId = 'google' | 'github'
 
-/** Provider ids that have both a client id and a secret. Secrets stay in the auth config. */
+type SocialProviderCredentials = { clientId: string; clientSecret: string }
+
+function credentialPair(
+  clientId: string | undefined,
+  clientSecret: string | undefined,
+): SocialProviderCredentials | undefined {
+  if (!clientId || !clientSecret) return undefined
+  return { clientId, clientSecret }
+}
+
+/** The only place that decides which social providers are configured. */
+export function socialProvidersFromEnv(
+  env: AuthEnvironment,
+): Partial<Record<SocialProviderId, SocialProviderCredentials>> {
+  const google = credentialPair(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET)
+  const github = credentialPair(env.GITHUB_CLIENT_ID, env.GITHUB_CLIENT_SECRET)
+  return {
+    ...(google ? { google } : {}),
+    ...(github ? { github } : {}),
+  }
+}
+
 export function configuredSocialProviderIds(env: AuthEnvironment): SocialProviderId[] {
-  const ids: SocialProviderId[] = []
-  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) ids.push('google')
-  if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) ids.push('github')
-  return ids
+  return Object.keys(socialProvidersFromEnv(env)) as SocialProviderId[]
 }
 
 export function createAuth(db: Database, env: AuthEnvironment) {
@@ -37,24 +55,8 @@ export function createAuth(db: Database, env: AuthEnvironment) {
 
   const trustedOrigins = [new URL(env.BETTER_AUTH_URL).origin, ...(env.CORS_ORIGINS ?? [])]
   const sendAuthEmail = createAuthEmailSender(env)
-  const socialProviders = {
-    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
-      ? {
-          google: {
-            clientId: env.GOOGLE_CLIENT_ID,
-            clientSecret: env.GOOGLE_CLIENT_SECRET,
-          },
-        }
-      : {}),
-    ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
-      ? {
-          github: {
-            clientId: env.GITHUB_CLIENT_ID,
-            clientSecret: env.GITHUB_CLIENT_SECRET,
-          },
-        }
-      : {}),
-  }
+  const socialProviders = socialProvidersFromEnv(env)
+  const socialProviderIds = configuredSocialProviderIds(env)
 
   return betterAuth({
     appName: 'Component Marketplace',
@@ -65,7 +67,7 @@ export function createAuth(db: Database, env: AuthEnvironment) {
     account: {
       accountLinking: {
         enabled: true,
-        trustedProviders: ['google', 'github'],
+        trustedProviders: socialProviderIds,
       },
     },
     database: drizzleAdapter(db, {

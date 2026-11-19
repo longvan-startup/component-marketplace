@@ -195,6 +195,19 @@ describe('http auth source (real Better Auth wire shape)', () => {
     })
   })
 
+  test('socialProviders reads the configured provider ids', async () => {
+    let seenUrl = ''
+    const source = createHttpAuthSource({
+      fetchImpl: async (url) => {
+        seenUrl = String(url)
+        return jsonResponse(200, { providers: ['github'] })
+      },
+      publicApiUrl: 'https://api.example.test',
+    })
+    expect(await source.socialProviders()).toEqual(['github'])
+    expect(seenUrl).toBe('https://api.example.test/api/social-providers')
+  })
+
   test('signInSocial surfaces PROVIDER_NOT_FOUND', async () => {
     const source = createHttpAuthSource({
       fetchImpl: async () =>

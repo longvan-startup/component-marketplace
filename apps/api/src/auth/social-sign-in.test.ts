@@ -86,6 +86,10 @@ describeIntegration('social sign-in (integration, requires TEST_DATABASE_URL)', 
     expect(new URL(githubBody.url).hostname).toBe('github.com')
     expect(githubBody.url).not.toContain(GITHUB_SECRET)
 
+    const listed = await fetch(`${baseUrl}/api/social-providers`)
+    expect(listed.status).toBe(200)
+    expect(await listed.json()).toEqual({ providers: ['google', 'github'] })
+
     const missing = await start('apple')
     expect(missing.status).toBeGreaterThanOrEqual(400)
     const missingBody = (await missing.json()) as { code?: string }

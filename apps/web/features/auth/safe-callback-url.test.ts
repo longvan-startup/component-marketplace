@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  isSocialSignInError,
   resetPasswordCallbackUrl,
   socialCallbackUrl,
   socialErrorCallbackUrl,
@@ -25,6 +26,10 @@ describe('verifyEmailCallbackUrl', () => {
 describe('social callback URLs', () => {
   test('returns the site root and the login page on the same origin', () => {
     expect(socialCallbackUrl('https://example.com')).toBe('https://example.com/')
-    expect(socialErrorCallbackUrl('https://example.com')).toBe('https://example.com/login')
+    expect(socialErrorCallbackUrl('https://example.com')).toBe('https://example.com/login?oauth=1')
+    expect(isSocialSignInError('1')).toBe(true)
+    expect(isSocialSignInError(['1'])).toBe(true)
+    expect(isSocialSignInError(undefined)).toBe(false)
+    expect(isSocialSignInError('error')).toBe(false)
   })
 })

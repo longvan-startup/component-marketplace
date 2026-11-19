@@ -3,21 +3,23 @@ import Link from 'next/link'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { SignInForm } from '@/components/auth/sign-in-form'
 import { SocialButtons } from '@/components/auth/social-buttons'
-import { resolveApiMode } from '@/features/auth/auth-source'
+import { loadSocialProviders, resolveApiMode } from '@/features/auth/auth-source'
+import { isSocialSignInError } from '@/features/auth/safe-callback-url'
 
 export const metadata: Metadata = {
   title: 'Đăng nhập',
 }
 
 interface LoginPageProps {
-  searchParams: Promise<{ error?: string | string[] }>
+  searchParams: Promise<{ oauth?: string | string[] }>
 }
 
 /* Đăng nhập — Figma 154:6049. Server Component shell; `API_MODE` is
    resolved here and passed to the client form (see auth-source.ts). */
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams
-  const socialFailed = params.error !== undefined
+  const apiMode = resolveApiMode()
+  const providers = await loadSocialProviders(apiMode)
   return (
     <AuthShell
       title="Đăng nhập"
@@ -25,8 +27,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       showcaseTitle="Chào mừng quay lại"
       showcaseSubtitle="Tiếp tục khám phá các component UI trong thư viện."
     >
-      <SocialButtons apiMode={resolveApiMode()} failed={socialFailed} />
-      <SignInForm apiMode={resolveApiMode()} />
+      <SocialButtons providers={providers} failed={isSocialSignInError(params.oauth)} />
+      <SignInForm apiMode={apiMode} />
       <p className="text-center text-[13px] text-muted-foreground">
         Chưa có tài khoản?{' '}
         <Link
