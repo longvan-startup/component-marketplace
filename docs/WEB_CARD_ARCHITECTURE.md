@@ -88,7 +88,7 @@ Trùng lặp và không thống nhất cần xử lý:
 |---|---|---|---|
 | L1 | Demo sống trên card và popup bench | Đã merge (#192) | Dữ liệu mock |
 | L2 | Hoạt ảnh popup, đóng khi bấm ngoài, nhãn tiếng Việt, kích thước | Mở (#194) | Chỉ đổi giao diện popup |
-| L3 | Gom bản đồ nhãn, tier, variant vào `features/catalog/catalog-labels.ts` | Chưa làm | Không đổi giao diện, trừ nhãn đã chốt (mục 6) |
+| L3 | Gom bản đồ nhãn, tier, variant vào `features/catalog/catalog-labels.ts` | Đã làm (#196) | Không đổi giao diện, trừ nhãn đã chốt (mục 6) |
 | L4 | Skeleton khớp card đã chọn | Chưa làm | Chặn bởi L5 |
 | L5 | Chốt card chuẩn: thumbnail, version/summary, tác giả, bản nháp | Chưa làm | Cần quyết định owner (mục 6) |
 | L6 | Contract demo manifest và knob schema trong `packages/shared` | Chưa làm | Long review |
@@ -116,18 +116,31 @@ Mọi lát đều cần: `bun run verify` PASS, số đo trước và sau ghi v�
 - Popup dùng `<dialog>` gốc, bo góc hai panel, nền trong suốt, kích thước 1040×600.
 - Nút popup: "Xem thêm" (mở trang chi tiết, không thêm vào danh sách như bencho).
 
-## 7. Quyết định chưa chốt
+## 7. Quyết định
 
-1. Card chuẩn: giữ hay bỏ version, summary, tác giả (L5).
-2. Demo có origin riêng không, và đã có domain chưa (L7).
-3. Trang chủ có demo sống không, hay chỉ catalog.
-4. Trên mobile, kích hoạt demo bằng chạm có ổn không.
-5. Ai sở hữu contract demo manifest (L6). Đề xuất: Long.
-6. Danh sách catalog có hiện bản nháp (`isPublished: false`) không. Mock hiện có, API thật chưa xác nhận.
-7. Nhãn category: viết hoa như trang chủ hay chữ thường như catalog (L3).
-8. Vị trí frame Card Grid trong Figma.
-9. Biến thể Free và Pro của card trong Figma.
-10. Popup dùng WAAPI hay chuyển sang GSAP.
+Phân công theo issue #176: owner frontend (@DaoDungVan) quyết về card, nhãn, hiển thị và chuyển động. Long chỉ review phần contract dùng chung và hạ tầng.
+
+### 7.1 Owner frontend quyết (đã áp dụng mặc định, chờ xác nhận)
+
+| # | Quyết định | Mặc định đã áp dụng | Trạng thái |
+|---|---|---|---|
+| 1 | Card chuẩn: giữ hay bỏ version, summary, tác giả | Giữ tất cả trường hiện có. Chốt sau khi có Figma đầy đủ. | Mở (L5) |
+| 2 | Nhãn category: viết hoa hay chữ thường | Viết hoa như trang chủ (#196) | Đã áp dụng |
+| 3 | Badge category: neutral hay theo category | Luôn neutral (#196) | Đã áp dụng |
+| 4 | Trạng thái bản nháp hiển thị thế nào | "Bản nháp" (neutral), "Đã publish" (trang chi tiết) (#196) | Đã áp dụng |
+| 5 | Catalog có hiện bản nháp không | Giữ như hiện tại. Chờ API thật xác nhận. | Mở |
+| 6 | Trang chủ có demo sống không | Có, cùng cơ chế với catalog | Đã áp dụng (#192) |
+| 7 | Trên mobile, kích hoạt demo bằng chạm | Có. Chạm vào khung demo mở popup. | Đã áp dụng (#192) |
+| 8 | Popup dùng WAAPI hay GSAP | WAAPI của trình duyệt cho popup, vì đây là hiệu ứng mở đóng riêng, không phải animation của trang | Đã áp dụng (#194) |
+| 9 | Nhãn nút popup | "Xem thêm" | Đã áp dụng (#194) |
+| 10 | Biến thể Free và Pro trong Figma | Dùng cùng một variant như code: Pro accent, Free success | Mở, chờ đối chiếu Figma |
+
+### 7.2 Long quyết (contract và hạ tầng)
+
+| # | Quyết định | Đề xuất | Trạng thái |
+|---|---|---|---|
+| 11 | Contract demo manifest và knob schema trong `packages/shared` (L6) | Long review. Web chỉ dùng, không tự định nghĩa. | Chưa làm |
+| 12 | Demo có origin riêng, domain nào, pipeline build bundle, CSP (L7) | Long quyết về hạ tầng. | Chưa làm |
 
 ## 8. Ngân sách hiệu năng (đề xuất, chưa đo)
 
@@ -155,5 +168,6 @@ Trạng thái: chưa đo. Chưa deploy được, theo lịch sử #191.
 - [x] Lát cắt card đầu tiên đã có code (L1, L2)
 - [ ] Owner xác nhận tài liệu và các quyết định mục 7
 - [ ] Long review contract demo (L6) và hạ tầng demo (L7)
-- [ ] Chốt card chuẩn (L5), rồi làm L3 và L4
+- [x] L3 đã làm (#196)
+- [ ] Chốt card chuẩn (L5), rồi làm L4
 - [ ] Đo ngân sách hiệu năng trên production
