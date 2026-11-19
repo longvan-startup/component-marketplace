@@ -49,11 +49,13 @@ export function AuthShowcase({ title, subtitle }: { title: string; subtitle: str
               className={`absolute w-[280px] overflow-hidden rounded-card border border-border bg-muted shadow-[0_24px_48px_-8px_rgba(0,0,0,0.4)] ${card.position}`}
             >
               <div className="relative h-40 w-full">
+                {/* Public file. /_next/image currently 404s on this deployment. */}
                 <Image
                   src={card.image}
                   alt=""
                   width={280}
                   height={160}
+                  unoptimized
                   className="h-40 w-full object-cover"
                 />
                 <span className="absolute right-3 top-3 flex size-6 items-center justify-center text-xs text-muted-foreground">
