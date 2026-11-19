@@ -5,6 +5,13 @@ import { HeroBackdrop } from '@/components/home/hero-backdrop'
 import { Badge } from '@/components/ui/badge'
 import { buttonClasses } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import {
+  CATEGORY_LABEL,
+  CATEGORY_OPTIONS,
+  CATEGORY_VARIANT,
+  TIER_LABEL,
+  tierVariant,
+} from '@/features/catalog/catalog-labels'
 import { type CatalogItem, getCatalogSource } from '@/features/catalog/catalog-source'
 import { getDemoManifest } from '@/features/demo/demo-source'
 
@@ -17,11 +24,7 @@ import { getDemoManifest } from '@/features/demo/demo-source'
    regeneration after the API recovers (at most about a minute). */
 export const revalidate = 60
 
-const CATEGORIES = [
-  { value: 'animation', label: 'Animation' },
-  { value: 'react-component', label: 'React component' },
-  { value: 'tool', label: 'Công cụ' },
-] as const
+const CATEGORIES = CATEGORY_OPTIONS
 
 const WHY_ITEMS = [
   {
@@ -38,14 +41,6 @@ const WHY_ITEMS = [
   },
 ] as const
 
-const CATEGORY_LABEL: Record<CatalogItem['category'], string> = {
-  animation: 'Animation',
-  'react-component': 'React component',
-  tool: 'Công cụ',
-}
-
-const TIER_LABEL = { free: 'Free', pro: 'Pro' } as const
-
 function FeaturedCard({ item }: { item: CatalogItem }) {
   return (
     <Card className="flex h-full w-full flex-col overflow-hidden rounded-[16px] bg-muted">
@@ -60,11 +55,9 @@ function FeaturedCard({ item }: { item: CatalogItem }) {
         <p className="truncate text-sm leading-5 text-muted-foreground">by {item.author}</p>
       </div>
       <div className="mt-auto flex flex-wrap gap-2 px-4 pb-4">
-        <Badge variant="neutral">{CATEGORY_LABEL[item.category]}</Badge>
+        <Badge variant={CATEGORY_VARIANT}>{CATEGORY_LABEL[item.category]}</Badge>
         {item.accessTier ? (
-          <Badge variant={item.accessTier === 'pro' ? 'accent' : 'success'}>
-            {TIER_LABEL[item.accessTier]}
-          </Badge>
+          <Badge variant={tierVariant(item.accessTier)}>{TIER_LABEL[item.accessTier]}</Badge>
         ) : null}
       </div>
     </Card>
