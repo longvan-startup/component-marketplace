@@ -11,7 +11,15 @@ import { acquireDemoSlot, releaseDemoSlot, subscribeDemoSlots } from './demo-poo
 
 const DemoBench = lazy(() => import('./demo-bench').then((m) => ({ default: m.DemoBench })))
 
-export function DemoPreview({ demo, name }: { demo: DemoManifest | null; name: string }) {
+export function DemoPreview({
+  demo,
+  name,
+  summary,
+}: {
+  demo: DemoManifest | null
+  name: string
+  summary?: string
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [slot] = useState(() => Symbol('demo-slot'))
   const [inView, setInView] = useState(false)
@@ -92,7 +100,13 @@ export function DemoPreview({ demo, name }: { demo: DemoManifest | null; name: s
       />
       {open ? (
         <Suspense fallback={null}>
-          <DemoBench demo={demo} name={name} onClose={closeBench} />
+          <DemoBench
+            demo={demo}
+            name={name}
+            summary={summary}
+            originRef={openerRef}
+            onClose={closeBench}
+          />
         </Suspense>
       ) : null}
     </div>

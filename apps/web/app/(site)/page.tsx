@@ -49,7 +49,7 @@ const TIER_LABEL = { free: 'Free', pro: 'Pro' } as const
 function FeaturedCard({ item }: { item: CatalogItem }) {
   return (
     <Card className="flex h-full w-full flex-col overflow-hidden rounded-[16px] bg-muted">
-      <DemoPreview demo={getDemoManifest(item.slug)} name={item.name} />
+      <DemoPreview demo={getDemoManifest(item.slug)} name={item.name} summary={item.summary} />
       <div className="flex flex-col gap-1.5 px-4 pb-4 pt-3.5">
         <Link
           href={`/components/${item.slug}`}
