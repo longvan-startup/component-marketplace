@@ -7,6 +7,7 @@ import {
   getCatalogSource,
   parseCatalogQuery,
 } from '@/features/catalog/catalog-source'
+import { getDemoManifest } from '@/features/demo/demo-source'
 
 interface CatalogPageProps {
   searchParams: Promise<{
@@ -92,7 +93,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         <ul className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {result.items.map((item) => (
             <li key={item.id} className="min-w-0">
-              <ComponentCard item={item} />
+              <ComponentCard item={item} demo={getDemoManifest(item.slug)} />
             </li>
           ))}
         </ul>

@@ -1,10 +1,12 @@
 import type { CatalogCategory } from '@marketplace/shared'
 import Link from 'next/link'
+import { DemoPreview } from '@/components/catalog/demo-preview'
 import { HeroBackdrop } from '@/components/home/hero-backdrop'
 import { Badge } from '@/components/ui/badge'
 import { buttonClasses } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { type CatalogItem, getCatalogSource } from '@/features/catalog/catalog-source'
+import { getDemoManifest } from '@/features/demo/demo-source'
 
 /* Home — Server Component. Layout follows the Figma Home frame (13:18): hero,
    featured components, category links and "Why Luva UI". Every list reads the
@@ -47,9 +49,7 @@ const TIER_LABEL = { free: 'Free', pro: 'Pro' } as const
 function FeaturedCard({ item }: { item: CatalogItem }) {
   return (
     <Card className="flex h-full w-full flex-col overflow-hidden rounded-[16px] bg-muted">
-      <div className="flex h-40 items-center justify-center font-mono text-sm text-muted-foreground">
-        {CATEGORY_LABEL[item.category]}
-      </div>
+      <DemoPreview demo={getDemoManifest(item.slug)} name={item.name} />
       <div className="flex flex-col gap-1.5 px-4 pb-4 pt-3.5">
         <Link
           href={`/components/${item.slug}`}
