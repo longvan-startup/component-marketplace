@@ -82,7 +82,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
       {result.unavailable ? (
         <p className="rounded-card border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          Catalog chưa kết nối database. Danh sách sẽ hiện khi database được cấu hình.
+          Catalog tạm thời chưa tải được. Vui lòng thử lại sau.
         </p>
       ) : result.items.length === 0 ? (
         <p className="rounded-card border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
