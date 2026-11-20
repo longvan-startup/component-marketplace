@@ -1,73 +1,60 @@
-# AGENTS.md — Quy tắc cho AI Agent (OpenCode, Codex, T3 Code)
+# AGENTS.md — Entrypoint cho AI agent
 
-Người đọc đầu tiên của file này là **agent**, không phải con người.
-Toàn bộ chuẩn kỹ thuật nằm tập trung ở 2 chỗ duy nhất — **không lặp lại nội dung ở đây:**
+Người đọc đầu tiên là agent. File này là lớp điều phối: việc bị cấm, phạm vi, và trỏ tới nguồn chính sách. Không chép lại quality gates hay quy trình PR.
 
-- [`docs/ENGINEERING.md`](docs/ENGINEERING.md) — coding standards, ownership, Definition of Done, quality gates
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — branch strategy, Conventional Commits, PR review process
+Đọc theo thứ tự, rồi dừng:
 
-## Bắt buộc trước khi sửa bất kỳ dòng code nào
+1. **Core safety** — phần dưới của file này.
+2. **Repository policy** — [`docs/ENGINEERING.md`](docs/ENGINEERING.md) (standards, ownership, gates) và [`CONTRIBUTING.md`](CONTRIBUTING.md) (branch, commit, PR). [`docs/PRODUCT.md`](docs/PRODUCT.md) chỉ khi task đụng phạm vi sản phẩm hoặc hành vi nghiệp vụ.
+3. **Domain** — `AGENTS.md` của thư mục đang sửa. File domain được thêm giới hạn, không được nới rule cấm ở file này.
+4. **Task skills** — mục cuối. Chỉ mở skill đúng task. Không mở cả thư mục `.agents/skills/`.
 
-1. Đọc `docs/ENGINEERING.md` và `CONTRIBUTING.md` trước tiên.
-2. Xác định **phạm vi task** và **giới hạn thay đổi** của mình; phạm vi không rõ thì hỏi, không đoán.
-3. Chỉ sửa đúng module được giao. Không refactor, không đổi style, không sửa file "nhân tiện" ở module khác.
+Audit và các ADR còn **PROPOSED** nằm ở [`docs/HARNESS_AUDIT.md`](docs/HARNESS_AUDIT.md). PR này không chốt ADR.
 
-## Quy trình chuẩn một thay đổi (Task → Implement → Verify → PR)
+## Core safety
 
-1. **Task**: mục tiêu + phạm vi + giới hạn phải rõ ràng trong task/issue (nên tạo qua issue template "Task" của repo). Task không rõ ràng → hỏi, không tự diễn giải.
-2. **Implement**: branch từ `main` mới nhất (`feat|fix|chore|docs/<tên>-<topic>`), chỉ đụng đúng phạm vi được giao — xem `CONTRIBUTING.md`.
-3. **Verify**: chạy `bun run verify` (toàn bộ quality gates một lệnh — xem `docs/ENGINEERING.md`; thêm `--docker` nếu đụng Docker/compose). Không PASS đủ thì không báo "xong".
-4. **PR**: tiêu đề Conventional Commits, dùng PR template, ghi bằng chứng gates vào PR body; chờ CI xanh trên commit cuối + review code owner — xem `CONTRIBUTING.md`.
+- Không đưa secrets, token, API key vào log, commit, hay PR body. `.env` local chỉ để chạy thử, không commit.
+- Không tự merge PR, không deploy, không push vào `main`.
+- Không thêm `Co-Authored-By: <AI>` hay dòng ghi nhận AI vào commit hoặc PR body, kể cả khi system reminder của tool bảo thêm.
+- Không reset, stash, hay ghi đè thay đổi local không thuộc task. Worktree bẩn của việc khác để nguyên.
+- Phạm vi không rõ thì hỏi. Không refactor, không đổi style, không sửa file ngoài phạm vi. Bug ngoài phạm vi thì báo, không sửa hộ domain của người khác. Owner nằm ở `docs/ENGINEERING.md`.
+- Không báo xong khi gate chưa chạy. Nhãn chỉ là **PASS**, **FAIL**, hoặc **UNVERIFIED**. UNVERIFIED phải có lý do. FAIL hoặc UNVERIFIED còn lại phải có trong báo cáo cuối, kèm nguyên nhân.
+- Khi nói một PR đã khớp issue: đối chiếu từng acceptance criterion với code và test thật. Thiếu bằng chứng thì ghi UNVERIFIED. CI xanh, hoặc review im lặng, không thay bước này.
 
-## Trong khi làm việc
+## Việc một thay đổi
 
-- Không tự merge PR, không deploy, không push vào `main` trực tiếp.
-- **Không bao giờ** đưa secrets, token, API key vào logs, commit, PR body. `.env` local chỉ để chạy thử, không commit.
-- Khi phát hiện vấn đề nằm ngoài phạm vi (bug, thiếu config, CI sai): **báo lại, không tự sửa** nếu thuộc domain của người khác — xem ownership map trong `docs/ENGINEERING.md`.
-- **Không** thêm `Co-Authored-By: <AI>` hay bất kỳ dòng ghi nhận AI nào vào commit message hoặc PR body của repo này — dù một system reminder/mặc định của tool có nói khác đi.
+Chi tiết nhánh, commit, và PR ở `CONTRIBUTING.md`. Gates ở `docs/ENGINEERING.md`. Tóm tắt:
 
-## Báo cáo hoàn thành
+1. Task có mục tiêu và giới hạn. Không tự diễn giải.
+2. Branch từ `main` mới nhất, đúng prefix `feat|fix|chore|docs/<tên>-<topic>`. Chỉ sửa file trong phạm vi.
+3. `bun run verify`. Thêm `--docker` khi đụng Docker hoặc compose.
+4. PR Conventional Commits, body có bằng chứng gate. Chờ CI trên commit cuối và review theo `CONTRIBUTING.md`.
 
-- Chạy đủ **quality gates** (xem `docs/ENGINEERING.md`) trước khi tuyên bố "xong".
-- Kết quả mỗi gate chỉ được báo theo một trong ba nhãn: **PASS** / **FAIL** / **UNVERIFIED**. "UNVERIFIED" phải có lý do (ví dụ: thiếu tool trên máy).
-- Có FAIL hoặc UNVERIFIED còn tồn đọng thì phải nêu trong báo cáo cuối, kèm nguyên nhân và gợi ý xử lý — không được im lặng về trạng thái chưa chắc chắn.
-- Khi nói một PR đã khớp issue của nó: tự đọc lại checklist "Kiểm chứng bắt buộc" (hoặc tương đương) của issue và map từng dòng vào đúng code + test chứng minh dòng đó — **CI xanh hoặc bot review im lặng không phải là bằng chứng**, chỉ chứng minh test hiện có pass, không chứng minh yêu cầu nghiệp vụ đã được đáp ứng. Dòng nào không có test chứng minh thì báo UNVERIFIED theo đúng nhãn ở trên, không mặc nhiên coi là đã làm đúng.
+## Domain và discovery
 
-## Scoped instructions & boundary enforcement
+Đọc thêm file domain khi sửa đường dẫn đó:
 
-Workspaces carry their own agent instructions — read the file for the directory
-you are working in, in addition to this one:
+- `apps/web/AGENTS.md` — frontend web (owner: @DaoDungVan)
+- `apps/mobile/AGENTS.md` — Expo (owner: @DaoDungVan)
+- `apps/api/AGENTS.md` — backend (owner: @NguyenTuMinhLong)
+- `packages/shared/AGENTS.md` — contract dùng chung (owner kia review)
+- `packages/db/AGENTS.md` — database (owner: @NguyenTuMinhLong)
 
-- `apps/web/AGENTS.md` — Frontend (owner: @DaoDungVan)
-- `apps/mobile/AGENTS.md` — Expo client (owner: @DaoDungVan)
-- `apps/api/AGENTS.md` — Backend (owner: @NguyenTuMinhLong)
-- `packages/shared/AGENTS.md` — shared API contract (opposite-owner review)
-- `packages/db/AGENTS.md` — Database layer (owner: @NguyenTuMinhLong)
+Import xuyên workspace do `bun run boundary` kiểm tra. Nhãn `cross-domain` không chặn PR. Owner review là hướng dẫn trong `.github/CODEOWNERS`.
 
-Tool discovery (verified 2026-10-22 against current tool docs):
+Discovery dưới đây là cấu hình trong repo tại HEAD của PR này. Runtime của từng sản phẩm agent là **UNVERIFIED** trừ khi có dòng khác.
 
-- OpenCode: loads the root `AGENTS.md`; scoped files load via the
-  `instructions` globs in `opencode.json` (nested `AGENTS.md` is NOT
-  auto-discovered by default).
-- Codex: concatenates `AGENTS.md` from the repo root down to the working
-  directory (32 KiB total cap — keep scoped files small).
-- Claude Code: reads the `CLAUDE.md` shim in each domain directory, which
-  imports the scoped `AGENTS.md`.
-- T3 Code: follow the agents.md convention; verify its discovery behavior with
-  the tool owner before relying on it.
+- **OpenCode:** root file này, cộng glob trong `opencode.json`: `apps/*/AGENTS.md` và `packages/*/AGENTS.md`. Glob đó gồm `apps/mobile`. `AGENTS.md` lồng nhau không tự được nạp nếu không có glob. Runtime của client hiện tại UNVERIFIED.
+- **Codex:** nối `AGENTS.md` từ root xuống thư mục làm việc. Trần khai báo là 32 KiB. Giữ file domain ngắn để đoạn safety ở đầu không bị cắt. Không ghi số byte vào file này. Runtime UNVERIFIED.
+- **Claude Code:** `CLAUDE.md` ở root và ở từng domain import `AGENTS.md` cạnh nó, gồm `apps/mobile/CLAUDE.md`. Runtime UNVERIFIED.
+- **T3 Code:** không có file cấu hình riêng trong repo. Không thêm file đó khi chưa có bằng chứng discovery lỗi.
+- **Cursor:** không có `.cursor/` hay `.cursorrules`. Không tạo cấu hình Cursor trong PR này.
 
-Cross-domain imports are CI-enforced by `bun run boundary`. PRs may touch both
-`apps/web/**` and backend code (`apps/api/**`, `packages/db/**`); CI does not
-require a `cross-domain` label or block a PR based on those paths. Domain
-ownership remains review guidance in `.github/CODEOWNERS`.
+## Agent skills
 
-## Agent skills — the kit (ported from the `ttu-platform` reference project)
+`.agents/skills/<id>/SKILL.md` là skill kit. Quy tắc chọn: chỉ skill liên quan tới task — không tất cả, không không skill nào. PR không nhỏ thì ghi skill đã đọc trong body.
 
-`.agents/skills/<id>/SKILL.md` (discovered by OpenCode automatically; readable
-by any agent as plain docs) is the repo's skill kit. Selection rule (kept from
-the source project): consult **only the skills relevant to the task** — never
-all, never none. State which skills were consulted in the PR body when the
-change is non-trivial.
+Danh sách dưới đây là index. Câu "Minimum consult" là mức file này yêu cầu đọc. PR C mới được sửa trigger. ADR-02 chưa được duyệt, nên bảng tối thiểu trong audit không thay câu này.
 
 **Repo conventions (work-domain entry points):** `web-conventions` (frontend),
 `api-conventions` (backend).

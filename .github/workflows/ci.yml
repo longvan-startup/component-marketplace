@@ -55,7 +55,7 @@ jobs:
           mkdir -p apps/web/.next/dev/types
           printf 'const staleRouteType: number = "stale";\n' > apps/web/.next/dev/types/verify-stale.ts
 
-      # Typecheck bao phủ packages/shared + apps/api + apps/web
+      # Typecheck chạy script root: packages/shared, packages/db, apps/api, apps/web, apps/mobile.
       - name: Typecheck
         run: bun run typecheck
 
