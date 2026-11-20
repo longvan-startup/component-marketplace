@@ -1,6 +1,6 @@
 ---
 name: reactbits
-description: Animated, interactive React UI components and micro-interactions from React Bits (reactbits.dev) — text animations, backgrounds, and polished components in JS/TS + CSS/Tailwind variants.
+description: Use only when the task names React Bits. Not the web animation stack. Web motion uses GSAP through apps/web. Do not load for a static control.
 source: https://www.reactbits.dev/get-started/introduction
 ---
 

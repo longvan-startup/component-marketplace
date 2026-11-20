@@ -1,6 +1,6 @@
 ---
 name: antislop-ui
-description: 'UI and visual skill for antislop. Use when building or editing any interface: color, layout, components, motion. Load with the core.'
+description: 'Visual filter. Load with antislop when the task changes color, layout, or components. Not a substitute for web-conventions. Not required for a non-visual edit.'
 allowed-tools: Read Write Edit Glob Grep
 source: https://github.com/miqdadbadjuber/anti-slop
 ---

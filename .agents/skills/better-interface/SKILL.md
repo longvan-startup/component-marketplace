@@ -1,6 +1,6 @@
 ---
 name: better-interface
-description: Run a holistic interface review across accessibility, layout, writing, typography, color, and visual polish.
+description: Use when the user asks for an interface review. Report findings. Do not edit product code unless they ask to apply them.
 source: https://www.ui-skills.com/skills/jakubkrehel/better-interface
 ---
 

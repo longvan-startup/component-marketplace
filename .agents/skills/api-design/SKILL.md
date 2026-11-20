@@ -1,6 +1,6 @@
 ---
 name: api-design
-description: REST API design patterns including resource naming, status codes, pagination, filtering, error responses, versioning, and rate limiting for production APIs. Use when designing or reviewing REST endpoints, resource names, status codes, pagination, or versioning.
+description: Use when designing a new public REST resource or changing its contract shape. Do not load for a bugfix inside an existing route. Do not override api-conventions.
 ---
 
 # API Design Patterns
