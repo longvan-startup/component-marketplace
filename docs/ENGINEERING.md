@@ -14,7 +14,7 @@ Quy trình (branch/commit/PR) ở [`CONTRIBUTING.md`](../CONTRIBUTING.md); quy t
 | Phạm vi | Owner (GitHub) | Vai |
 |---|---|---|
 | Toàn bộ repo + Backend (apps/api, auth, `packages/db`, `packages/shared`) — default code owner | `NguyenTuMinhLong` | Backend/AI |
-| Frontend (`apps/web`) | `DaoDungVan` | Frontend/AI |
+| Frontend (`apps/web`, `apps/mobile`) | `DaoDungVan` | Frontend/AI |
 | CI / Docker / infra / `scripts/` | `NguyenTuMinhLong` + `DaoDungVan` | both required |
 
 Việc bắt buộc review ở tầng GitHub được quản bằng **branch protection + CODEOWNERS**, không chỉ bằng docs.
@@ -53,7 +53,7 @@ runtime smoke layer).
 |---|---|---|
 | Lint | `bun run lint` | 0 errors, 0 warnings from Biome |
 | Boundary | `bun run boundary` | 0 cross-workspace imports (web→DB/api, api→web, shared→internal deps) |
-| Typecheck | `bun run typecheck` | `tsc --noEmit` passes for shared + db + api + web (test files are excluded from tsc; checked at runtime by `bun test`) |
+| Typecheck | `bun run typecheck` | `tsc --noEmit` passes for shared + db + api + web + mobile (test files are excluded from tsc; checked at runtime by `bun test`). Mobile is not part of `bun run build`; store binaries stay out of this gate |
 | Test | `bun test` | 0 failures; tests must contain real assertions |
 | Build | `bun run build` | exit 0; artifacts in the expected `dist`/`.next` paths |
 | Docker runtime | CI job `docker-runtime` — or `bun run verify --docker` locally | compose runs inside an **isolated project** `cmp-verify-*` (no host ports published) + in-container probes `/health`, `/health/db` (`= connected`), web `/`, and catalog list/detail responses after migration on a blank database; `users`/`components` tables exist and repeated migration is a no-op |

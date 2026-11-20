@@ -39,6 +39,7 @@ Workspaces carry their own agent instructions — read the file for the director
 you are working in, in addition to this one:
 
 - `apps/web/AGENTS.md` — Frontend (owner: @DaoDungVan)
+- `apps/mobile/AGENTS.md` — Expo client (owner: @DaoDungVan)
 - `apps/api/AGENTS.md` — Backend (owner: @NguyenTuMinhLong)
 - `packages/shared/AGENTS.md` — shared API contract (opposite-owner review)
 - `packages/db/AGENTS.md` — Database layer (owner: @NguyenTuMinhLong)

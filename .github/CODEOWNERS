@@ -5,8 +5,9 @@
 # Backend/AI (default toàn repo): apps/api, auth, packages/*, DB, docs
 *           @NguyenTuMinhLong
 
-# Frontend/AI: apps/web
+# Frontend/AI: apps/web and the Expo client
 /apps/web/           @DaoDungVan
+/apps/mobile/        @DaoDungVan
 
 # CI / Docker / infra / harness tooling — cả hai owner phải review
 /.github/workflows/ @NguyenTuMinhLong @DaoDungVan
