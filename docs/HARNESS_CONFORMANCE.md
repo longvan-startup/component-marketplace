@@ -98,7 +98,7 @@ Statuses below describe the evidence available at the PR E head. The epic remain
 | Measure efficiency or define a reusable method | The measurement table records observed counts and limits; audit §3.2 already defined a method. | PASS | No comparable before/after baseline or token/cost figure exists. | Method complete; make no savings claim. |
 | Provide staged PR plan and rollback strategy | PRs #216-#219 follow the phased plan. PR E's rollback is to revert its documentation commit. | PASS | No deployment or product rollback applies to docs. | Complete. |
 | Provide a reusable starter-kit proposal | `docs/HARNESS_STARTER_KIT.md` gives the four-layer model, templates, gates, checklist, and project-specific placeholders. | PASS | It is a design proposal, not a published template. | Complete in scope; no repository or package created. |
-| Long and Văn review the decisions | PR #218's skill-table decision is recorded by Long. PR E requests both owners. Fetched PR metadata for #216-#219 has no review decision; no formal review submissions were returned. | UNVERIFIED | Joint approval for ADR-01, ADR-03, ADR-04 and this conformance finding is missing. | Keep epic open until owners decide. |
+| Long and Văn review the decisions | PR #218's skill-table decision is recorded by Long. PR #221 requests Văn as reviewer. Long is the PR author, so GitHub cannot request him to review his own PR; his sign-off must be recorded separately. Fetched PR metadata for #216-#219 has no review decision, and no formal review submissions were returned. | UNVERIFIED | Joint approval for ADR-01, ADR-03, ADR-04 and this conformance finding is missing. | Keep epic open until owners decide. |
 | Each PR records changed files and PASS/FAIL/UNVERIFIED | PR #217 and #219 list files and statuses. PR #216 does not use the required labels for the skipped full verify; PR #218 does not list changed files in its body. | FAIL | Merged historical PR bodies do not fully meet this criterion. | Do not claim retroactive compliance; owners decide whether this evidence gap blocks closure. |
 | Close only after phases are approved complete or deferred with reasons | PR E is not yet owner-approved or merged. ADR-01, ADR-03, and ADR-04 remain proposed or pending, and criteria above have open failures. | UNVERIFIED | Closing now would contradict the issue's own gate. | Do not close #161. |
 
@@ -108,7 +108,7 @@ Statuses below describe the evidence available at the PR E head. The epic remain
 |---|---|---|
 | `bun run verify` | PASS | `bun install --frozen-lockfile`, then `bun run verify`: lint passed (157 files), boundary passed, typecheck passed, 247 tests passed / 0 failed, and shared, db, API, and web builds passed. |
 | PR required checks | UNVERIFIED | Checks run after PR creation. |
-| Owner review | UNVERIFIED | PR E submission requests review from Long and Văn. |
+| Owner review | UNVERIFIED | Văn is requested as reviewer. Long is the PR author; his separate owner sign-off remains pending. |
 
 ## Deferred and out of scope
 
