@@ -52,33 +52,22 @@ Discovery dưới đây là cấu hình trong repo tại HEAD của PR này. Run
 
 ## Agent skills
 
-`.agents/skills/<id>/SKILL.md` là skill kit. Quy tắc chọn: chỉ skill liên quan tới task — không tất cả, không không skill nào. PR không nhỏ thì ghi skill đã đọc trong body.
+`.agents/skills/<id>/SKILL.md` là skill kit. Safety ở file này và `AGENTS.md` của domain vẫn luôn có hiệu lực. Không mở cả thư mục skill.
 
-Danh sách dưới đây là index. Câu "Minimum consult" là mức file này yêu cầu đọc. PR C mới được sửa trigger. ADR-02 chưa được duyệt, nên bảng tối thiểu trong audit không thay câu này.
+Owner review và merge là lúc bảng này được chấp nhận làm quy tắc chọn skill. Không dùng bảng như luật tạm, và không giữ bảng cho đến khi bị bác. PR không nhỏ thì ghi skill đã đọc. Task không có skill ở cột bắt buộc thì không nạp skill.
 
-**Repo conventions (work-domain entry points):** `web-conventions` (frontend),
-`api-conventions` (backend).
+| Task | Required instructions | Required skill | Optional | Trigger | Không nạp |
+|---|---|---|---|---|---|
+| Docs | file này, file đang sửa | không | `diagram-design` nếu có Mermaid | sửa docs | craft UI, `antislop` |
+| Web UI thường | file này, `apps/web/AGENTS.md` | `web-conventions`, `antislop` | `antislop-ui` nếu đụng màu hoặc layout | sửa control, copy, layout | pack motion, Figma |
+| Web motion | cùng Web UI: file này, `apps/web/AGENTS.md` | `web-conventions`, `antislop`, rồi một skill motion | `interaction-design` hoặc `emil-design-eng`; `reactbits` chỉ khi task nêu React Bits | task nói animation, motion, GSAP | skill motion không thay convention. Không dùng cho nút tĩnh |
+| Mobile UI | file này, `apps/mobile/AGENTS.md` | `antislop` | `antislop-ui`, `antislop-layoutmobile` | sửa UI mobile | rule GSAP của web, `web-conventions` |
+| API | file này, `apps/api/AGENTS.md` | `api-conventions` | `api-design` khi thiết kế resource mới; `backend-patterns` khi task xin một pattern | sửa route | skill UI |
+| Migration | file này, `packages/db/AGENTS.md` | `changing-the-database-schema` | không | đổi schema | skill UI |
+| Shared contract | file này, `packages/shared/AGENTS.md` | không | `api-conventions` nếu contract do API phát | đổi zod công khai | skill UI |
+| Figma Plugin API | file này | `figma-design-verification` | không | đọc hoặc ghi Figma bằng Plugin API | không bỏ skill này |
+| Commit | file này, `CONTRIBUTING.md` | `git-commit` | `branch-and-document` khi tạo nhánh hoặc sửa doc cùng lúc | user bảo commit | skill UI |
+| PR | file này, `CONTRIBUTING.md` | `github-pr` | `git-commit` nếu cùng lúc commit | user bảo mở hoặc sửa PR | skill UI |
+| Verify | file này, `docs/ENGINEERING.md` | `verifying-monorepo-changes` | không | trước commit, PR, hoặc khi CI lệch local | không đổi CI từ skill |
 
-**Design/motion craft (`apps/web` UI/UX tasks):** `frontend-design`,
-`emil-design-eng`, `apple-design`, `interaction-design`, `adapt`,
-`beautiful-shadows`, `reactbits`, `design-review`, `better-interface`.
-
-**Figma design-tool work (any task reading/writing the Luva UI Figma file via
-the Plugin API):** `figma-design-verification` — mandatory audit-real-data-
-after-every-mutation discipline and known Plugin API gotchas; consult before
-any `use_figma` write, not just at the end.
-
-**Quality filters:** `antislop` (core, load first when running the family) +
-`antislop-ui`, `antislop-code`, `antislop-layoutmobile`, `antislop-copywriting`,
-`antislop-human`.
-
-**Backend & API:** `backend-patterns`, `api-design`, `changing-the-database-schema`.
-
-**Workflow gates (any task):** `branch-and-document`, `git-commit`, `github-pr`,
-`autoreview`, `verifying-monorepo-changes`, `diagram-design`.
-
-Minimum consult per task type: any `apps/web` UI/UX change → `web-conventions`
-+ `antislop` (core) + relevant craft skills; any backend/schema change →
-`api-conventions` + `changing-the-database-schema` when migrations are touched;
-any Figma Plugin API task → `figma-design-verification`; every commit/PR →
-`git-commit` / `github-pr`.
+`apple-design`, `adapt`, `beautiful-shadows`, `frontend-design`, `design-review`, `better-interface`, `antislop-code`, `antislop-copywriting`, `antislop-human`, và `autoreview` chỉ mở khi task gọi đúng việc đó. Không nạp kèm theo mặc định.

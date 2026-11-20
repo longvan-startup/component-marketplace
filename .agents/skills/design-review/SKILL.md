@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: Run a sharp, prioritized design critique of a UI — a URL, a screenshot/image, or a component file — covering visual hierarchy, typography, spacing, color & contrast, motion, component states, responsiveness, accessibility, and brand consistency. Returns findings ranked from blocking to polish, each with a specific fix; can optionally apply the fixes to code. Use when the user asks to review/critique a design, page, screen, component, or screenshot, or to check craft/accessibility before shipping.
+description: Use when the user asks to critique a UI. Return ranked findings. Do not edit product code unless they ask to apply the fixes.
 source: https://www.ui-skills.com/skills/superfuture/design-review
 ---
 

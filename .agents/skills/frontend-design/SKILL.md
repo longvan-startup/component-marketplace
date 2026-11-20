@@ -1,6 +1,6 @@
 ---
 name: frontend-design
-description: Create distinctive, production-grade frontend interfaces with high design quality. Generates creative, polished code and UI design that avoids generic AI aesthetics.
+description: Use when the task asks for a new page or a distinct visual treatment in apps/web. Do not load for a one-control change or for motion-only work.
 source: https://www.ui-skills.com/skills/anthropics/frontend-design
 ---
 

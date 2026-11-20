@@ -1,6 +1,6 @@
 ---
 name: emil-design-eng
-description: Emil Kowalski's design-engineering philosophy for UI polish, components, animation, and production-ready frontend craft.
+description: Use when the task asks for motion or interface polish in apps/web. Do not load for a static control change. Do not replace the web GSAP rule.
 source: https://www.ui-skills.com/skills/emilkowalski/emil-design-eng
 ---
 

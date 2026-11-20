@@ -1,6 +1,6 @@
 ---
 name: branch-and-document
-description: Follow branching, commit messaging, and continuous documentation workflows before creating code changes or pull requests in component-marketplace.
+description: Use when creating a branch or when the same change must update a doc. Not a substitute for git-commit or github-pr.
 ---
 
 # Branch and Document
