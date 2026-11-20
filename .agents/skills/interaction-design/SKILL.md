@@ -1,6 +1,6 @@
 ---
 name: interaction-design
-description: Design and implement microinteractions, motion design, transitions, and user feedback patterns for delightful user experiences.
+description: Use when the task asks for motion, transitions, or microinteractions. Do not load for a static control change. Web animation still follows apps/web GSAP rules.
 source: https://www.ui-skills.com/skills/wshobson/interaction-design
 ---
 

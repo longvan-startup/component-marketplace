@@ -5,7 +5,7 @@ Quy trình (branch/commit/PR) ở [`CONTRIBUTING.md`](../CONTRIBUTING.md); quy t
 
 ## Phạm vi repo & nguyên tắc nền
 
-- Repo là **monorepo skeleton Foundation** — chỉ setup nền tảng. **Chưa được phép thêm business logic** (marketplace, auth, payment) trừ khi có task riêng.
+- Repo gồm `apps/web`, `apps/mobile`, `apps/api`, `packages/shared`, và `packages/db`. Phạm vi sản phẩm nằm ở [`PRODUCT.md`](PRODUCT.md). RFC đang ghi PENDING REVIEW chưa phải tính năng được duyệt.
 - Mỗi domain có chủ nhân. Sửa ngoài domain phải thống nhất với owner (map bên dưới) trước khi có code.
 - Ưu tiên **nhỏ, đúng, đo được** hơn to, nhanh, "tạm chạy được".
 

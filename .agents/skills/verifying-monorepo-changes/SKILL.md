@@ -1,6 +1,6 @@
 ---
 name: verifying-monorepo-changes
-description: Run verification checks before committing, opening a PR, or finishing a task in component-marketplace, or when CI fails on a check that passed locally.
+description: Use before a commit, a PR, or when local and CI disagree. The gate list is docs/ENGINEERING.md. This skill does not replace that file and does not change CI.
 ---
 
 # Verifying Monorepo Changes
