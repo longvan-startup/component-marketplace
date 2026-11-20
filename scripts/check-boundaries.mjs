@@ -5,7 +5,9 @@
  * 1. apps/web and apps/mobile MUST NOT import apps/api or packages/db.
  * 2. apps/api MUST NOT import apps/web or apps/mobile.
  * 3. packages/shared imports NOTHING from any app; no DB dependency either.
- * 4. Apps may consume internal packages ONLY through their public package
+ * 4. packages/db imports no app and no other @marketplace package. Drizzle
+ *    and the postgres driver stay external.
+ * 5. Apps may consume internal packages ONLY through their public package
  *    specifier (@marketplace/*), never by reaching into package source folders
  *    with relative paths.
  *
@@ -37,6 +39,7 @@ const CODE_EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
  * - Frontend talks to the backend only via the public HTTP API ⇒ no @marketplace/db.
  * - Backend may use @marketplace/db + @marketplace/shared.
  * - Shared is the stop point: zero internal deps (the shared contract of both sides).
+ * - Database owns Drizzle. It does not import apps or other @marketplace packages.
  */
 const DOMAINS = {
   'apps/web': {
@@ -61,6 +64,12 @@ const DOMAINS = {
     allowedInternal: [],
     packageHint:
       'Shared must stay fully independent (zero internal deps) — it is the shared contract of both sides.',
+  },
+  'packages/db': {
+    label: 'Database (packages/db)',
+    allowedInternal: [],
+    packageHint:
+      'Database must not import an app or another @marketplace package. Drizzle stays an external dependency.',
   },
 }
 

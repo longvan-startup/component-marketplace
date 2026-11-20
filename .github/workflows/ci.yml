@@ -18,7 +18,7 @@ jobs:
     # Readiness probe để bun test không race với container boot.
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: marketplace_test
@@ -65,8 +65,8 @@ jobs:
           # Chỉ integration suite (#31) đọc biến này; suite khác không phụ thuộc.
           TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/marketplace_test
 
-      - name: Build API + Shared
-        run: bun run build:shared && bun run build:api
+      - name: Build shared, database, and API
+        run: bun run build:shared && bun run build:db && bun run build:api
 
       - name: Build Web (Next.js)
         run: bun run build:web

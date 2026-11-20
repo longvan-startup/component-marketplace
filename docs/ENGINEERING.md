@@ -52,7 +52,7 @@ runtime smoke layer).
 | Gate | Command | PASS when |
 |---|---|---|
 | Lint | `bun run lint` | 0 errors, 0 warnings from Biome |
-| Boundary | `bun run boundary` | 0 cross-workspace imports (web→DB/api, api→web, shared→internal deps) |
+| Boundary | `bun run boundary` | 0 cross-workspace imports (web/mobile→DB/api, api→web/mobile, shared→internal deps, db→apps or other @marketplace packages) |
 | Typecheck | `bun run typecheck` | `tsc --noEmit` passes for shared + db + api + web + mobile (test files are excluded from tsc; checked at runtime by `bun test`). Mobile is not part of `bun run build`; store binaries stay out of this gate |
 | Test | `bun test` | 0 failures; tests must contain real assertions |
 | Build | `bun run build` | exit 0; artifacts in the expected `dist`/`.next` paths |
@@ -72,4 +72,4 @@ Kết quả mỗi gate **chỉ được báo PASS / FAIL / UNVERIFIED** — khô
 |---|---|---|
 | Bun | `.bun-version`, `docker/*.Dockerfile` | 1.4.3 |
 | Node runtime cho Next image | `docker/web.Dockerfile` runner | `node:22-alpine` |
-| PostgreSQL | `compose.yaml` | `postgres:17-alpine` |
+| PostgreSQL | `compose.yaml` and the CI quality service | `postgres:17-alpine` |

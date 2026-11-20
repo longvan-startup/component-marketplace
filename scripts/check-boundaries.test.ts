@@ -117,6 +117,42 @@ describe('check-boundaries', () => {
     )
   })
 
+  test('PASS — database may import Drizzle and a sibling file', async () => {
+    await withFixture(
+      {
+        'packages/db/src/schema.ts': "import { pgTable } from 'drizzle-orm/pg-core'\n",
+        'packages/db/src/index.ts': "import * as schema from './schema'\n",
+      },
+      (violations) => expect(violations).toEqual([]),
+    )
+  })
+
+  test('FAIL — database imports an app', async () => {
+    await withFixture(
+      {
+        'packages/db/src/leak.ts': 'import { page } from "../../../apps/web/app/page"\n',
+      },
+      (violations) => {
+        expect(fingerprints(violations)).toEqual([
+          'packages/db/src/leak.ts RULE_CROSS_DOMAIN ../../../apps/web/app/page',
+        ])
+      },
+    )
+  })
+
+  test('FAIL — database imports another workspace package', async () => {
+    await withFixture(
+      {
+        'packages/db/src/leak.ts': "import { x } from '@marketplace/shared'\n",
+      },
+      (violations) => {
+        expect(fingerprints(violations)).toEqual([
+          'packages/db/src/leak.ts RULE_NO_DIRECT_DEP @marketplace/shared',
+        ])
+      },
+    )
+  })
+
   test('FAIL — shared depends on the DB (zero-internal-dep violation)', async () => {
     await withFixture(
       {
