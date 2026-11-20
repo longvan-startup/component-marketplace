@@ -56,6 +56,41 @@ describe('check-boundaries', () => {
     )
   })
 
+  test('FAIL — mobile imports the DB directly', async () => {
+    await withFixture(
+      {
+        'apps/mobile/App.tsx': "import { db } from '@marketplace/db'\n",
+      },
+      (violations) => {
+        expect(fingerprints(violations)).toEqual([
+          'apps/mobile/App.tsx RULE_NO_DIRECT_DEP @marketplace/db',
+        ])
+        expect(violations[0].why).toContain('public HTTP API')
+      },
+    )
+  })
+
+  test('PASS — mobile may import the shared contract', async () => {
+    await withFixture(
+      {
+        'apps/mobile/App.tsx': "import { APP_NAME } from '@marketplace/shared'\n",
+      },
+      (violations) => expect(violations).toEqual([]),
+    )
+  })
+
+  test('FAIL — mobile imports web source', async () => {
+    await withFixture(
+      {
+        'apps/mobile/App.tsx': "import { Page } from '../web/app/page'\n",
+      },
+      (violations) => {
+        expect(violations[0].rule).toBe('RULE_CROSS_DOMAIN')
+        expect(violations[0].file).toBe('apps/mobile/App.tsx')
+      },
+    )
+  })
+
   test('FAIL — web imports the DB directly', async () => {
     await withFixture(
       {

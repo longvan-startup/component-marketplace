@@ -2,8 +2,8 @@
  * check-boundaries.mjs — Enforce workspace import boundaries.
  *
  * Rules (docs/ENGINEERING.md → "Knowledge Boundaries"):
- * 1. apps/web MUST NOT import apps/api or packages/db.
- * 2. apps/api MUST NOT import apps/web.
+ * 1. apps/web and apps/mobile MUST NOT import apps/api or packages/db.
+ * 2. apps/api MUST NOT import apps/web or apps/mobile.
  * 3. packages/shared imports NOTHING from any app; no DB dependency either.
  * 4. Apps may consume internal packages ONLY through their public package
  *    specifier (@marketplace/*), never by reaching into package source folders
@@ -44,6 +44,12 @@ const DOMAINS = {
     allowedInternal: ['@marketplace/shared'],
     packageHint:
       'Frontend talks to the Backend only via its public HTTP API — never import the DB directly.',
+  },
+  'apps/mobile': {
+    label: 'Mobile (apps/mobile)',
+    allowedInternal: ['@marketplace/shared'],
+    packageHint:
+      'Mobile talks to the Backend only via its public HTTP API — never import the DB directly.',
   },
   'apps/api': {
     label: 'Backend (apps/api)',
@@ -151,7 +157,8 @@ function checkSpecifier(relFile, spec) {
         spec,
         why: `${domain.label} must not depend on internal package "${cls.name}". Allowed: ${domain.allowedInternal.length ? domain.allowedInternal.join(', ') : '(none)'}. ${domain.packageHint}`,
         fix:
-          sourceDomain === 'apps/web' && cls.name === '@marketplace/db'
+          (sourceDomain === 'apps/web' || sourceDomain === 'apps/mobile') &&
+          cls.name === '@marketplace/db'
             ? 'Call the public HTTP API (apps/api) instead; never import the DB directly.'
             : `Move what is shared into one of: ${domain.allowedInternal.join(', ') || '(none — requires sign-off from both owners before adding)'}.`,
       }
@@ -204,8 +211,8 @@ function checkSpecifier(relFile, spec) {
     spec,
     why: `${DOMAINS[sourceDomain].label} imports into another domain (${DOMAINS[targetDomain].label}) via "${spec}".`,
     fix:
-      sourceDomain === 'apps/web'
-        ? 'Frontend talks to the Backend only via the public HTTP API — no cross-source imports.'
+      sourceDomain === 'apps/web' || sourceDomain === 'apps/mobile'
+        ? 'This client talks to the Backend only via the public HTTP API — no cross-source imports.'
         : 'Move shared contracts/types into @marketplace/shared; no cross-source imports.',
   }
 }
