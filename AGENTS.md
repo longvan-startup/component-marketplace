@@ -54,13 +54,13 @@ Discovery dưới đây là cấu hình trong repo tại HEAD của PR này. Run
 
 `.agents/skills/<id>/SKILL.md` là skill kit. Safety ở file này và `AGENTS.md` của domain vẫn luôn có hiệu lực. Không mở cả thư mục skill.
 
-Bảng dưới là đề xuất ADR-02, chưa được owner chốt. Agent dùng bảng này cho đến khi Long hoặc Văn bác. PR không nhỏ thì ghi skill đã đọc. Task không có dòng "Required skill" thì không nạp skill.
+Owner review và merge là lúc bảng này được chấp nhận làm quy tắc chọn skill. Không dùng bảng như luật tạm, và không giữ bảng cho đến khi bị bác. PR không nhỏ thì ghi skill đã đọc. Task không có skill ở cột bắt buộc thì không nạp skill.
 
 | Task | Required instructions | Required skill | Optional | Trigger | Không nạp |
 |---|---|---|---|---|---|
 | Docs | file này, file đang sửa | không | `diagram-design` nếu có Mermaid | sửa docs | craft UI, `antislop` |
 | Web UI thường | file này, `apps/web/AGENTS.md` | `web-conventions`, `antislop` | `antislop-ui` nếu đụng màu hoặc layout | sửa control, copy, layout | pack motion, Figma |
-| Web motion | như web UI, cộng rule GSAP của web | `interaction-design` hoặc `emil-design-eng` | `reactbits` chỉ khi task nêu React Bits | task nói animation, motion, GSAP | không dùng cho nút tĩnh |
+| Web motion | cùng Web UI: file này, `apps/web/AGENTS.md` | `web-conventions`, `antislop`, rồi một skill motion | `interaction-design` hoặc `emil-design-eng`; `reactbits` chỉ khi task nêu React Bits | task nói animation, motion, GSAP | skill motion không thay convention. Không dùng cho nút tĩnh |
 | Mobile UI | file này, `apps/mobile/AGENTS.md` | `antislop` | `antislop-ui`, `antislop-layoutmobile` | sửa UI mobile | rule GSAP của web, `web-conventions` |
 | API | file này, `apps/api/AGENTS.md` | `api-conventions` | `api-design` khi thiết kế resource mới; `backend-patterns` khi task xin một pattern | sửa route | skill UI |
 | Migration | file này, `packages/db/AGENTS.md` | `changing-the-database-schema` | không | đổi schema | skill UI |

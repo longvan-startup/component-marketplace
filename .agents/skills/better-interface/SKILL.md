@@ -8,11 +8,9 @@ source: https://www.ui-skills.com/skills/jakubkrehel/better-interface
 
 This skill runs a cross-discipline review. It routes the interface to each `better-*` skill, collects their evidence and consolidates one ranked verdict.
 
-Orchestration is all it owns. Accessibility rules belong to `better-accessibility`, structure to `better-layout`, copy to `better-writing`, type to `better-typography`, color to `better-colors`, visual polish and motion to `better-ui`. Never duplicate or override their rules here.
+This file is the whole review. Sibling skills such as `better-accessibility` or `interface-review` are not in this repo. Do not ask the user to run them. Apply the severity scale, fix ladder, and report format in this file yourself.
 
-Change-scoped review of uncommitted work, branches and pull requests belongs to `interface-review`, which resolves the scope and classifies findings before handing the review back.
-
-> **Note (this repo)**: only `better-interface` itself is installed here. The sibling `better-accessibility`/`better-layout`/`better-writing`/`better-typography`/`better-colors`/`better-ui`/`interface-review` skills it delegates to are not present. Treat any step below that names one of those skills as "apply that discipline's judgment yourself, using the shared severity scale, fix ladder, and report format in this file" rather than assuming a real handoff will occur.
+A request that only asks for a review does not edit product code.
 
 ## Evidence, not taste
 
@@ -30,13 +28,9 @@ Cover all of it across every domain skill listed under **Use domain skills as th
 
 When the scope is too large to inspect credibly, narrow it to one complete flow: the one the request centers on, or failing that the entry path every user must pass through. State the boundary and what it excluded. Never imply uninspected surfaces were reviewed.
 
-### 2. Send a change to `interface-review`
+### 2. Review a change in this file
 
-A request naming a branch, pull request, commit range, or uncommitted changes is a change review, not a screen review. Say so and ask the user to run `interface-review`, which is user-invoked and cannot be started from here.
-
-Never resolve a change scope here. Reading a diff, classifying findings and expanding changed files to affected surfaces belong to `interface-review`. Guess at them and the report has a scope nobody can check.
-
-When `interface-review` hands a review back, it supplies the change scope, a status per finding and the change-scoped report format. Severity, ranking, the cap and the verdict stay here, and all three cover `Introduced` and `Regression` only.
+A request naming a branch, pull request, commit range, or uncommitted changes is still reviewed here. Read that diff. State the scope. Classify each finding as `Introduced` or `Regression`. Use the severity scale, cap, and verdict in this file. Do not send the user to another skill.
 
 ### 3. Recon before judgment
 
@@ -46,22 +40,9 @@ Then read what the project has written about its own interface: `CONTRIBUTING.md
 
 Read them to find where a finding belongs, not for permission to drop it. A documented convention is no evidence the convention is good, and "it's in the style guide" does not retire a finding. What they change is **where** you report. When a guideline or shared token is the cause, report it once against that source, with the components as its locations.
 
-### 4. Use domain skills as the sources of truth
+### 4. Review with this file
 
-Before reviewing, confirm that every owning skill below is available. Load and apply every available owner, and complete each domain review before consolidation.
-
-Review in this order so foundational failures are not hidden by polish:
-
-1. `better-accessibility`
-2. `better-layout`
-3. `better-writing`
-4. `better-typography`
-5. `better-colors`
-6. `better-ui`
-
-From a domain skill loaded here, take its principles, its references and its verification checks. Its severity ladder and its format are for standalone use; the consolidated format, shared severity and finding cap in this file replace them.
-
-If an owning skill is unavailable, mark that domain `Not reviewed`, name it and continue with the rest. Do not recreate its rules from memory, substitute a neighbour, or claim holistic coverage.
+The sibling skills named below are not in this repo. Do not stop, and do not mark every domain `Not reviewed` for that reason. Review accessibility, layout, writing, type, color, and polish using the principles, severity scale, and report format in this file. Say that those sibling skills were not loaded. Do not claim they ran.
 
 When two skills appear to cover one issue, assign it to the owner of the underlying rule and note secondary effects in the **Why** cell. Report it once.
 
@@ -180,4 +161,4 @@ End with one of two:
 
 ### Change-scoped reviews
 
-When `interface-review` resolved the scope from version control, it supplies the scope block, a status on every finding and the change-scoped format. Severity, ranking, the cap and the verdict are the ones above, and all four cover `Introduced` and `Regression` only.
+For a change review, state the scope, put `Introduced` or `Regression` on every finding, and use the severity, ranking, cap, and verdict above.
