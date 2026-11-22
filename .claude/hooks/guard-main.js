@@ -14,11 +14,15 @@ const EDIT_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'MultiEdit'])
 const GIT_WRITE = /\bgit\s+(commit|merge|cherry-pick|revert|rebase|am)\b/
 
 if (EDIT_TOOLS.has(tool)) {
-  console.error('Đang ở main: không sửa file trên main. Tạo nhánh từ main trước (git checkout -b <nhánh> main).')
+  console.error(
+    'Đang ở main: không sửa file trên main. Tạo nhánh từ main trước (git checkout -b <nhánh> main).',
+  )
   process.exit(2)
 }
 if (tool === 'Bash' && GIT_WRITE.test(String(input.tool_input?.command || ''))) {
-  console.error('Đang ở main: không chạy lệnh ghi lịch sử (commit/merge/cherry-pick/revert/rebase) trên main.')
+  console.error(
+    'Đang ở main: không chạy lệnh ghi lịch sử (commit/merge/cherry-pick/revert/rebase) trên main.',
+  )
   process.exit(2)
 }
 process.exit(0)
