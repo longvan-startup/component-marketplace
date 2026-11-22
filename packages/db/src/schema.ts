@@ -161,7 +161,54 @@ export const components = pgTable(
   ],
 )
 
+export const componentReleases = pgTable(
+  'component_releases',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    componentId: uuid('component_id')
+      .notNull()
+      .references(() => components.id, { onDelete: 'cascade' }),
+    version: text('version').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('component_releases_component_version_unique').on(table.componentId, table.version),
+    check(
+      'component_releases_version_format_check',
+      sql`${table.version} ~ '^[0-9]+\\.[0-9]+\\.[0-9]+$'`,
+    ),
+  ],
+)
+
+export const componentReleaseFiles = pgTable(
+  'component_release_files',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    releaseId: uuid('release_id')
+      .notNull()
+      .references(() => componentReleases.id, { onDelete: 'cascade' }),
+    // Paths are relative to one versioned release directory, e.g. `src/index.tsx`.
+    path: varchar('path', { length: 240 }).notNull(),
+    checksumSha256: varchar('checksum_sha256', { length: 64 }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('component_release_files_release_path_unique').on(table.releaseId, table.path),
+    check(
+      'component_release_files_path_format_check',
+      sql`${table.path} ~ '^[^/].*$' AND ${table.path} !~ '(^|/)\\.{1,2}(/|$)' AND ${table.path} !~ '(^|/)\\.' AND ${table.path} !~ '//|/$' AND position(chr(92) in ${table.path}) = 0 AND ${table.path} !~ '[[:cntrl:]<>:"|?*]'`,
+    ),
+    check(
+      'component_release_files_checksum_sha256_check',
+      sql`${table.checksumSha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+  ],
+)
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Component = typeof components.$inferSelect
 export type NewComponent = typeof components.$inferInsert
+export type ComponentRelease = typeof componentReleases.$inferSelect
+export type NewComponentRelease = typeof componentReleases.$inferInsert
+export type ComponentReleaseFile = typeof componentReleaseFiles.$inferSelect
+export type NewComponentReleaseFile = typeof componentReleaseFiles.$inferInsert

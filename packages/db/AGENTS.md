@@ -63,8 +63,11 @@ API/domain contract). Backend owner: @NguyenTuMinhLong.
   entitlement. MIT is a product-wide rule, not a column. Add
   `component_releases` and release-file path/checksum tables only with an
   approved version-delivery task; the file bytes stay in git or a build
-  artifact. Payment gating must not be inferred from `latest_version` or the
-  legacy price columns.
+  artifact. Release versions use the same `x.y.z` syntax as the catalog,
+  unique per component. Release-file paths are safe, non-empty paths relative
+  to the versioned release directory; SHA-256 checksums are lowercase hex.
+  Payment gating must not be inferred from `latest_version` or the legacy
+  price columns.
 - CI runs on a blank volume and does not apply migrations automatically; the
   `/health/db` check only pings `select 1` (see issue #15).
 
