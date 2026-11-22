@@ -88,15 +88,15 @@ Ghi chú: một commit gom nhãn (`85af99f`, PR #196) đã đóng và chưa vào
 
 ## 6. Phần việc và thứ tự PR
 
-| Lát | Nội dung | Trạng thái | Ai quyết |
+| Phần | Nội dung | Trạng thái | Ai quyết |
 |---|---|---|---|
 | Phần 1 | Demo sống trên card và popup | Đã merge (#192) | Owner |
 | Phần 2 | Popup: hoạt ảnh, đóng bằng bấm ngoài, nhãn tiếng Việt, kích thước | Đã merge (#194) | Owner |
 | Phần 2b | Popup chuyển sang GSAP | Đã merge (#223) | Owner |
 | Phần 2c | Quy tắc web-conventions khớp bảng skill | Đã merge (#222) | Owner |
-| Phần 3 | Gom nhãn category, tier, trạng thái vào một module | Chưa merge. Commit `85af99f` còn trong lịch sử cục bộ | Owner chốt nhãn viết hoa |
+| Phần 3 | Gom nhãn category, tier, trạng thái vào một module | Chưa merge. Commit `85af99f` còn trong lịch sử cục bộ | Đã chốt: viết hoa chữ cái đầu; chờ làm | Owner (đã quyết) |
 | Phần 4 | Skeleton khớp card đã chọn | Chưa làm | Chờ Phần 5 |
-| Phần 5 | Chốt card chuẩn: thumbnail, version, summary, tác giả, bản nháp | Chưa chốt | **Owner** |
+| Phần 5 | Chốt card chuẩn: thumbnail, version, summary, tác giả, bản nháp | Đã chốt: card gọn, khung demo lớn hơn; chờ làm | Owner (đã quyết) |
 | Phần 6 | Contract demo manifest và knob schema trong `packages/shared` | Chưa làm | **Long** review |
 | Phần 7 | Origin riêng cho demo, pipeline bundle, CSP | Chưa làm | **Long** |
 | Phần 8 | Đo hiệu năng trên production | Chưa làm | Cần deploy từ `main` |
@@ -116,14 +116,13 @@ Ngân sách hiệu năng (đề xuất, chưa đo):
 - INP dưới 200 ms khi kéo thông số.
 - Tôn trọng `prefers-reduced-motion` và dừng khi tab ẩn.
 
-## 8. Quyết định cần owner (Văn)
+## 8. Quyết định của owner (Văn), đã chốt ngày 2026-11-22
 
-1. **Card chuẩn (Phần 5):** giữ hay bỏ version, summary, tác giả trên card.
-2. **Nhãn category (Phần 3):** viết hoa như trang chủ (đề xuất), hay chữ thường như catalog.
-3. **Badge category:** luôn neutral (đề xuất), hay giữ accent cho `animation`.
-4. **Bản nháp trong catalog:** giữ hiển thị như hiện tại, chờ API thật xác nhận.
-5. **Biến thể Free và Pro trong Figma:** đối chiếu với code.
-
+1. **Card chuẩn (Phần 5):** card chỉ hiện khung demo (lớn hơn hiện tại), tên, tag, tier (Pro hoặc Free) và tác giả. Version và summary chuyển sang trang chi tiết. Kích thước khung demo cụ thể chốt khi làm Phần 5.
+2. **Nhãn category (Phần 3):** viết hoa chữ cái đầu của cụm từ: `Animation`, `React component`, `Công cụ`. Khớp với nút lọc trên catalog.
+3. **Badge category (Phần 3):** tất cả badge category đều neutral. Màu tím chỉ dùng cho tier Pro.
+4. **Biến thể Free và Pro trong Figma:** Figma hiện chưa có tier. Code là chuẩn, Figma sẽ được cập nhật theo code sau (việc của Văn, không làm trong PR).
+5. **Bản nháp trong catalog:** chưa quyết trong buổi này. Cần xác nhận hành vi API thật (Long) trước khi chốt.
 ## 9. Quyết định cần Long
 
 1. **Contract demo manifest và knob schema (Phần 6)** trong `packages/shared`.
@@ -141,7 +140,7 @@ Ngân sách hiệu năng (đề xuất, chưa đo):
 - [x] Kiểm kê và baseline (mục 2, 3)
 - [x] Ràng buộc thiết kế và kiến trúc (mục 4, 5)
 - [x] Phần việc đầu tiên đã merge (Phần 1, Phần 2, Phần 2b, Phần 2c)
-- [ ] Owner chốt quyết định mục 8
+- [x] Owner chốt quyết định mục 8
 - [ ] Long review Phần 6 và Phần 7
 - [ ] Phần 3, Phần 4 và Phần 5 theo quyết định của owner
 - [ ] Đo hiệu năng trên production (Phần 8)
