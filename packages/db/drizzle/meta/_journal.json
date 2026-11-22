@@ -50,6 +50,13 @@
       "when": 1794406187860,
       "tag": "0006_yellow_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795354558923,
+      "tag": "0007_blushing_pride",
+      "breakpoints": true
     }
   ]
 }
