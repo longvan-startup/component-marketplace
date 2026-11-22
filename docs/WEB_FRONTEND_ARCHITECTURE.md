@@ -3,11 +3,11 @@
 - Issue: [#176](https://github.com/longvan-startup/component-marketplace/issues/176). Owner: @DaoDungVan. Long review các ranh giới API và shared contract.
 - Căn cứ: `main` tại `73346ae` (sau #222 và #223).
 - Trạng thái: tài liệu đề xuất, chờ owner xác nhận. Mỗi dòng ghi rõ: **[có trong code]**, **[đề xuất]**, hoặc **[chưa có nguồn]**.
-- Phạm vi: toàn bộ frontend `apps/web`. Card catalog và trang chủ là lát cắt đầu tiên để thử cách làm, không phải toàn bộ phạm vi.
+- Phạm vi: toàn bộ frontend `apps/web`. Card catalog và trang chủ là phần việc đầu tiên để thử cách làm, không phải toàn bộ phạm vi.
 
 ## 1. Mục tiêu (theo issue)
 
-Chốt ràng buộc thiết kế và kiến trúc frontend để các trang mới dùng lại component, giữ đúng thiết kế và dễ bảo trì. Làm theo lát cắt nhỏ, không refactor toàn bộ frontend trong một PR. Không coi việc gom component là mục tiêu nếu nó làm mất khác biệt thiết kế.
+Chốt ràng buộc thiết kế và kiến trúc frontend để các trang mới dùng lại component, giữ đúng thiết kế và dễ bảo trì. Làm theo phần việc nhỏ, không refactor toàn bộ frontend trong một PR. Không coi việc gom component là mục tiêu nếu nó làm mất khác biệt thiết kế.
 
 ## 2. Hiện trạng (kiểm kê)
 
@@ -86,20 +86,20 @@ Ghi chú: một commit gom nhãn (`85af99f`, PR #196) đã đóng và chưa vào
 - Mock và production: `API_MODE=mock|live` đổi nguồn dữ liệu bằng env, không sửa code trang **[có trong code]**. Demo manifest hiện chỉ có trong `mocks/demos.ts`. Khi có contract thật, manifest đi từ API **[đề xuất]**.
 - Không thêm UI kit, state store, hay animation stack khác **[có trong code: `AGENTS.md`]**.
 
-## 6. Lát cắt và thứ tự PR
+## 6. Phần việc và thứ tự PR
 
 | Lát | Nội dung | Trạng thái | Ai quyết |
 |---|---|---|---|
-| L1 | Demo sống trên card và popup | Đã merge (#192) | Owner |
-| L2 | Popup: hoạt ảnh, đóng bằng bấm ngoài, nhãn tiếng Việt, kích thước | Đã merge (#194) | Owner |
-| L2b | Popup chuyển sang GSAP | Đã merge (#223) | Owner |
-| L2c | Quy tắc web-conventions khớp bảng skill | Đã merge (#222) | Owner |
-| L3 | Gom nhãn category, tier, trạng thái vào một module | Chưa merge. Commit `85af99f` còn trong lịch sử cục bộ | Owner chốt nhãn viết hoa |
-| L4 | Skeleton khớp card đã chọn | Chưa làm | Chờ L5 |
-| L5 | Chốt card chuẩn: thumbnail, version, summary, tác giả, bản nháp | Chưa chốt | **Owner** |
-| L6 | Contract demo manifest và knob schema trong `packages/shared` | Chưa làm | **Long** review |
-| L7 | Origin riêng cho demo, pipeline bundle, CSP | Chưa làm | **Long** |
-| L8 | Đo hiệu năng trên production | Chưa làm | Cần deploy từ `main` |
+| Phần 1 | Demo sống trên card và popup | Đã merge (#192) | Owner |
+| Phần 2 | Popup: hoạt ảnh, đóng bằng bấm ngoài, nhãn tiếng Việt, kích thước | Đã merge (#194) | Owner |
+| Phần 2b | Popup chuyển sang GSAP | Đã merge (#223) | Owner |
+| Phần 2c | Quy tắc web-conventions khớp bảng skill | Đã merge (#222) | Owner |
+| Phần 3 | Gom nhãn category, tier, trạng thái vào một module | Chưa merge. Commit `85af99f` còn trong lịch sử cục bộ | Owner chốt nhãn viết hoa |
+| Phần 4 | Skeleton khớp card đã chọn | Chưa làm | Chờ Phần 5 |
+| Phần 5 | Chốt card chuẩn: thumbnail, version, summary, tác giả, bản nháp | Chưa chốt | **Owner** |
+| Phần 6 | Contract demo manifest và knob schema trong `packages/shared` | Chưa làm | **Long** review |
+| Phần 7 | Origin riêng cho demo, pipeline bundle, CSP | Chưa làm | **Long** |
+| Phần 8 | Đo hiệu năng trên production | Chưa làm | Cần deploy từ `main` |
 
 ## 7. Tiêu chí hoàn thành và kiểm chứng
 
@@ -118,16 +118,16 @@ Ngân sách hiệu năng (đề xuất, chưa đo):
 
 ## 8. Quyết định cần owner (Văn)
 
-1. **Card chuẩn (L5):** giữ hay bỏ version, summary, tác giả trên card.
-2. **Nhãn category (L3):** viết hoa như trang chủ (đề xuất), hay chữ thường như catalog.
+1. **Card chuẩn (Phần 5):** giữ hay bỏ version, summary, tác giả trên card.
+2. **Nhãn category (Phần 3):** viết hoa như trang chủ (đề xuất), hay chữ thường như catalog.
 3. **Badge category:** luôn neutral (đề xuất), hay giữ accent cho `animation`.
 4. **Bản nháp trong catalog:** giữ hiển thị như hiện tại, chờ API thật xác nhận.
 5. **Biến thể Free và Pro trong Figma:** đối chiếu với code.
 
 ## 9. Quyết định cần Long
 
-1. **Contract demo manifest và knob schema (L6)** trong `packages/shared`.
-2. **Origin riêng cho demo, pipeline bundle, CSP (L7).**
+1. **Contract demo manifest và knob schema (Phần 6)** trong `packages/shared`.
+2. **Origin riêng cho demo, pipeline bundle, CSP (Phần 7).**
 3. **Quyết ADR-01, ADR-03, ADR-04** trong `docs/HARNESS_AUDIT.md` cùng Văn, vì liên quan đến quy tắc chung.
 
 ## 10. Ngoài phạm vi
@@ -140,9 +140,9 @@ Ngân sách hiệu năng (đề xuất, chưa đo):
 
 - [x] Kiểm kê và baseline (mục 2, 3)
 - [x] Ràng buộc thiết kế và kiến trúc (mục 4, 5)
-- [x] Lát cắt đầu tiên đã merge (L1, L2, L2b, L2c)
+- [x] Phần việc đầu tiên đã merge (Phần 1, Phần 2, Phần 2b, Phần 2c)
 - [ ] Owner chốt quyết định mục 8
-- [ ] Long review L6 và L7
-- [ ] L3, L4 và L5 theo quyết định của owner
-- [ ] Đo hiệu năng trên production (L8)
+- [ ] Long review Phần 6 và Phần 7
+- [ ] Phần 3, Phần 4 và Phần 5 theo quyết định của owner
+- [ ] Đo hiệu năng trên production (Phần 8)
 - [ ] Owner xác nhận tài liệu này
