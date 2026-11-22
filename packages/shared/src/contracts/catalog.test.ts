@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  adminComponentListItemSchema,
+  adminComponentsListRequestSchema,
+  adminComponentsListResponseSchema,
   type CatalogComponent,
   type CatalogListResponse,
   componentSchema,
@@ -125,6 +128,55 @@ describe('listResponseSchema', () => {
       items: [{ ...VALID_COMPONENT, isPublished: 'yes' }],
     }
     expect(listResponseSchema.safeParse(broken).success).toBe(false)
+  })
+})
+
+describe('adminComponentsListRequestSchema — status filter and pagination', () => {
+  test('defaults to both publication states and the catalog pagination defaults', () => {
+    expect(adminComponentsListRequestSchema.parse({})).toEqual({ page: 1, pageSize: 12 })
+  })
+
+  test('parses the exact published query strings to booleans', () => {
+    expect(adminComponentsListRequestSchema.parse({ published: 'true' }).published).toBe(true)
+    expect(adminComponentsListRequestSchema.parse({ published: 'false' }).published).toBe(false)
+  })
+
+  test('rejects invalid or repeated published query values', () => {
+    expect(adminComponentsListRequestSchema.safeParse({ published: 'yes' }).success).toBe(false)
+    expect(
+      adminComponentsListRequestSchema.safeParse({ published: ['true', 'false'] }).success,
+    ).toBe(false)
+  })
+})
+
+describe('adminComponentsListResponseSchema — minimal admin list DTO', () => {
+  const item = {
+    slug: 'spring-card-stack',
+    name: 'Spring Card Stack',
+    category: 'animation',
+    accessTier: 'free',
+    isPublished: false,
+    latestVersion: '1.2.0',
+  } as const
+
+  test('accepts both draft and published rows in the paginated response', () => {
+    expect(
+      adminComponentsListResponseSchema.parse({
+        items: [item, { ...item, slug: 'published-card', isPublished: true }],
+        page: 1,
+        pageSize: 12,
+        total: 2,
+      }).items,
+    ).toHaveLength(2)
+  })
+
+  test('rejects an invalid status and strips fields outside the admin DTO', () => {
+    expect(adminComponentListItemSchema.safeParse({ ...item, isPublished: 'false' }).success).toBe(
+      false,
+    )
+    expect(
+      adminComponentListItemSchema.parse({ ...item, authorId: 'internal' }),
+    ).not.toHaveProperty('authorId')
   })
 })
 

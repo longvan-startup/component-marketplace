@@ -106,6 +106,33 @@ export const listResponseSchema = z.object({
   total: z.number().int().min(0),
 })
 
+/** Admin catalog rows expose publication state without returning author data. */
+export const adminComponentListItemSchema = z.object({
+  slug: catalogSlugSchema,
+  name: z.string().min(1).max(120),
+  category: catalogCategorySchema,
+  accessTier: componentAccessTierSchema,
+  isPublished: z.boolean(),
+  latestVersion: semverSchema,
+})
+
+/** Admin list filter and pagination. `published` arrives as a query string. */
+export const adminComponentsListRequestSchema = z.object({
+  published: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+  page: pageNumberSchema.default(1),
+  pageSize: pageSizeNumberSchema.default(12),
+})
+
+export const adminComponentsListResponseSchema = z.object({
+  items: z.array(adminComponentListItemSchema),
+  page: pageNumberSchema,
+  pageSize: pageSizeNumberSchema,
+  total: z.number().int().min(0),
+})
+
 /** Detail responses are wrapped (`{ item }`) so new sibling fields (e.g.
  * next/prev slug) can ship without breaking the envelope later. */
 export const detailResponseSchema = z.object({
@@ -162,6 +189,10 @@ export type RegistryResponse = z.infer<typeof registryResponseSchema>
 export type CatalogListRequest = z.input<typeof listRequestSchema>
 export type CatalogListQuery = z.output<typeof listRequestSchema>
 export type CatalogListResponse = z.infer<typeof listResponseSchema>
+export type AdminComponentListItem = z.infer<typeof adminComponentListItemSchema>
+export type AdminComponentsListRequest = z.input<typeof adminComponentsListRequestSchema>
+export type AdminComponentsListQuery = z.output<typeof adminComponentsListRequestSchema>
+export type AdminComponentsListResponse = z.infer<typeof adminComponentsListResponseSchema>
 export type CatalogDetailResponse = z.infer<typeof detailResponseSchema>
 
 /* ------------------------------------------------------------------ */
