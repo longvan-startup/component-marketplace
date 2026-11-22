@@ -13,12 +13,14 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { fileURLToPath } from 'node:url'
 import { createDbHandle, type DatabaseHandle, schema } from '@marketplace/db'
 import {
   apiErrorSchema,
   componentSchema,
   detailResponseSchema,
   listResponseSchema,
+  registryResponseSchema,
 } from '@marketplace/shared'
 import { eq, inArray } from 'drizzle-orm'
 import express from 'express'
@@ -29,6 +31,9 @@ import { createServer, shutdown } from '../index'
 
 const TEST_DB_URL = process.env.TEST_DATABASE_URL
 const describeIntegration = TEST_DB_URL ? describe : describe.skip
+const REGISTRY_FIXTURE_ROOT = fileURLToPath(
+  new URL('../../test/fixtures/registry', import.meta.url),
+)
 
 const SEED_SLUGS = ['hero-section', 'giant-tooltip', 'hidden-draft', 'anonymous-row']
 const AUTH_TEST_SECRET = 'auth-integration-test-secret-long-enough-32'
@@ -88,6 +93,10 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
         tags: [],
         latestVersion: '0.3.1',
         isPublished: true,
+        priceAmountMinor: 499,
+        priceCurrency: 'USD',
+        requiresPaymentForUpdate: true,
+        accessTier: 'pro',
         authorId: author.id,
       },
       {
@@ -123,6 +132,7 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
         BETTER_AUTH_URL: 'http://127.0.0.1:4000',
       },
       db: dbHandle,
+      registryRoot: REGISTRY_FIXTURE_ROOT,
     })
     if (!configuredAuth) throw new Error('Better Auth was not configured for integration tests')
     auth = configuredAuth
@@ -167,7 +177,7 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     for (const item of parsed.items) {
       // Contrast: parse từ response THẬT (không phải fixture) — contract sống.
       void componentSchema.parse(item)
-      expect(item.accessTier).toBe('free')
+      expect(item.accessTier).toBe(item.slug === 'giant-tooltip' ? 'pro' : 'free')
       expect(Object.keys(item as Record<string, unknown>).some((k) => k === 'createdAt')).toBe(
         false,
       )
@@ -258,6 +268,45 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     const { status, body } = await get('/components/HeroSection')
     expect(status).toBe(404)
     expect(apiErrorSchema.parse(body).code).toBe('NOT_FOUND')
+  })
+
+  test('GET /registry/hero-section → trả đủ source cho bản Free đúng latest_version', async () => {
+    const { status, body } = await get('/registry/hero-section')
+    expect(status).toBe(200)
+    const parsed = registryResponseSchema.parse(body)
+    expect(parsed.item.slug).toBe('hero-section')
+    expect(parsed.item.version).toBe('1.2.3')
+    expect(parsed.item.files).toEqual([
+      {
+        path: 'index.tsx',
+        content:
+          'export function HeroSection() {\n  return <section aria-label="Hero section">Example registry fixture</section>\n}\n',
+      },
+      {
+        path: 'styles.css',
+        content: '.hero-section {\n  display: grid;\n  min-height: 20rem;\n}\n',
+      },
+    ])
+  })
+
+  test('GET /registry/giant-tooltip → Pro error, without returning source', async () => {
+    const { status, body } = await get('/registry/giant-tooltip')
+    expect(status).toBe(403)
+    expect(apiErrorSchema.parse(body).code).toBe('PRO_COMPONENT_UNAVAILABLE')
+    expect(JSON.stringify(body)).not.toContain('PRO_SOURCE_MUST_NOT_BE_EXPOSED')
+  })
+
+  test('GET /registry/hidden-draft → 404 and never exposes draft source', async () => {
+    const { status, body } = await get('/registry/hidden-draft')
+    expect(status).toBe(404)
+    expect(apiErrorSchema.parse(body).code).toBe('NOT_FOUND')
+    expect(JSON.stringify(body)).not.toContain('DRAFT_SOURCE_MUST_NOT_BE_EXPOSED')
+  })
+
+  test('GET /registry/anonymous-row → stable error when a Free release has no git source', async () => {
+    const { status, body } = await get('/registry/anonymous-row')
+    expect(status).toBe(503)
+    expect(apiErrorSchema.parse(body).code).toBe('REGISTRY_SOURCE_UNAVAILABLE')
   })
 
   test('signup returns full user contract (role dropped, no session) while unverified; session arrives after verify+signin', async () => {

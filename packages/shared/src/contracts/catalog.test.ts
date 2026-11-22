@@ -8,6 +8,7 @@ import {
   detailResponseSchema,
   listRequestSchema,
   listResponseSchema,
+  registryResponseSchema,
   updateComponentRequestSchema,
 } from './catalog'
 
@@ -135,6 +136,46 @@ describe('detailResponseSchema — single-item envelope', () => {
 
   test('bare unwrapped entity FAILS (envelope is required)', () => {
     expect(detailResponseSchema.safeParse(VALID_COMPONENT).success).toBe(false)
+  })
+})
+
+describe('registryResponseSchema — versioned source contract', () => {
+  const validRegistryResponse = {
+    item: {
+      slug: 'hero-section',
+      version: '1.2.3',
+      files: [{ path: 'src/index.tsx', content: 'export const Hero = () => null' }],
+    },
+  }
+
+  test('accepts a versioned item with relative text files', () => {
+    expect(registryResponseSchema.parse(validRegistryResponse)).toEqual(validRegistryResponse)
+  })
+
+  test('rejects traversal, hidden segments, absolute paths, and Windows separators', () => {
+    for (const path of [
+      '../secret.ts',
+      'src/../../secret.ts',
+      '.env',
+      '/etc/passwd',
+      'src\\index.ts',
+    ]) {
+      expect(
+        registryResponseSchema.safeParse({
+          ...validRegistryResponse,
+          item: { ...validRegistryResponse.item, files: [{ path, content: 'x' }] },
+        }).success,
+      ).toBe(false)
+    }
+  })
+
+  test('requires a valid version and at least one file', () => {
+    expect(
+      registryResponseSchema.safeParse({
+        ...validRegistryResponse,
+        item: { ...validRegistryResponse.item, version: 'latest', files: [] },
+      }).success,
+    ).toBe(false)
   })
 })
 

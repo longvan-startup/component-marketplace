@@ -36,7 +36,11 @@ export const catalogSortSchema = z.enum(['newest', 'name'])
 /** Public display name from the author's profile. */
 const authorDisplayNameSchema = z.string().min(1).max(100)
 
-const semverSchema = z.string().regex(/^\d+\.\d+\.\d+$/, 'version must be semantic (x.y.z)')
+/** Shared semantic version syntax for catalog and registry contracts. */
+export const catalogVersionSchema = z
+  .string()
+  .regex(/^\d+\.\d+\.\d+$/, 'version must be semantic (x.y.z)')
+const semverSchema = catalogVersionSchema
 
 export const componentAccessTierSchema = z.enum(['free', 'pro'])
 
@@ -107,6 +111,53 @@ export const listResponseSchema = z.object({
 export const detailResponseSchema = z.object({
   item: componentSchema,
 })
+
+function isSafeRegistryFilePath(path: string): boolean {
+  if (path.startsWith('/') || path.includes('\\')) return false
+
+  return path.split('/').every((segment) => {
+    if (
+      segment.length === 0 ||
+      segment === '.' ||
+      segment === '..' ||
+      segment.startsWith('.') ||
+      /[<>:"|?*]/u.test(segment)
+    ) {
+      return false
+    }
+
+    for (const character of segment) {
+      const codePoint = character.codePointAt(0)
+      if (codePoint !== undefined && (codePoint < 0x20 || codePoint === 0x7f)) return false
+    }
+
+    return true
+  })
+}
+
+const registryFilePathSchema = z
+  .string()
+  .min(1)
+  .max(240)
+  .refine(isSafeRegistryFilePath, 'path must be a safe relative file path')
+
+/** One installable text file with a safe repository-relative path. */
+export const registryFileSchema = z.object({
+  path: registryFilePathSchema,
+  content: z.string(),
+})
+
+/** Response for the source files of one published Free catalog item. */
+export const registryResponseSchema = z.object({
+  item: z.object({
+    slug: catalogSlugSchema,
+    version: semverSchema,
+    files: z.array(registryFileSchema).min(1).max(100),
+  }),
+})
+
+export type RegistryFile = z.infer<typeof registryFileSchema>
+export type RegistryResponse = z.infer<typeof registryResponseSchema>
 
 export type CatalogListRequest = z.input<typeof listRequestSchema>
 export type CatalogListQuery = z.output<typeof listRequestSchema>
