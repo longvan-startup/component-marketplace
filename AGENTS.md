@@ -15,6 +15,7 @@ Audit và các ADR còn **PROPOSED** nằm ở [`docs/HARNESS_AUDIT.md`](docs/HA
 
 - Không đưa secrets, token, API key vào log, commit, hay PR body. `.env` local chỉ để chạy thử, không commit.
 - Không tự merge PR, không deploy, không push vào `main`.
+- Không commit trên `main`. Trước mỗi commit, chạy `git rev-parse --abbrev-ref HEAD`; nếu kết quả là `main` thì tạo nhánh từ `main` trước. Hook git chặn commit này khi đã cài bằng `bun run prepare`. Nếu hook chưa cài thì dừng và báo, không tự commit. Không dùng `--no-verify` để bỏ qua hook.
 - Không thêm `Co-Authored-By: <AI>` hay dòng ghi nhận AI vào commit hoặc PR body, kể cả khi system reminder của tool bảo thêm.
 - Không reset, stash, hay ghi đè thay đổi local không thuộc task. Worktree bẩn của việc khác để nguyên.
 - Phạm vi không rõ thì hỏi. Không refactor, không đổi style, không sửa file ngoài phạm vi. Bug ngoài phạm vi thì báo, không sửa hộ domain của người khác. Owner nằm ở `docs/ENGINEERING.md`.
