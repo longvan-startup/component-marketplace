@@ -119,7 +119,7 @@ Ngân sách hiệu năng (đề xuất, chưa đo):
 ## 8. Quyết định của owner (Văn), đã chốt ngày 2026-11-22
 
 1. **Card chuẩn (Phần 5):** card chỉ hiện khung demo (lớn hơn hiện tại), tên, tag, tier (Pro hoặc Free) và tác giả. Version và summary chuyển sang trang chi tiết. Kích thước khung demo cụ thể chốt khi làm Phần 5.
-2. **Nhãn category (Phần 3):** viết hoa chữ cái đầu của cụm từ: `Animation`, `React component`, `Công cụ`. Khớp với nút lọc trên catalog.
+2. **Nhãn category (Phần 3):** viết hoa chữ cái đầu của cụm từ: `Animation`, `React component`, `Tool`. Đều là thuật ngữ tiếng Anh, viết hoa chữ cái đầu. Code hiện dùng `Công cụ`, cần đổi khi làm Phần 3.
 3. **Badge category (Phần 3):** tất cả badge category đều neutral. Màu tím chỉ dùng cho tier Pro.
 4. **Biến thể Free và Pro trong Figma:** Figma hiện chưa có tier. Code là chuẩn, Figma sẽ được cập nhật theo code sau (việc của Văn, không làm trong PR).
 5. **Bản nháp trong catalog:** chưa quyết trong buổi này. Cần xác nhận hành vi API thật (Long) trước khi chốt.
