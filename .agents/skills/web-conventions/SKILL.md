@@ -36,12 +36,18 @@ patterns from older Next versions from memory.
 
 ## 4. Component craft standards (apply the right design skills)
 
-Rendering defaults: use Server Components for static reads; add
-`"use client"` only where a skill-driven interaction needs it. This is an
-animation marketplace — motion is product content, so animation-flavored
-skills (`emil-design-eng`, `interaction-design`, `reactbits`) are relevant on
-most UI work. User-facing copy in the UI is Vietnamese-first while everything
-committed elsewhere stays English (root rule).
+Rendering defaults: use Server Components by default. Add `"use client"` only
+for interaction or a browser API, as `apps/web/AGENTS.md` says. Client islands
+are the only place motion runs, and they call GSAP through `lib/gsap.ts`
+(`useGsapScope`).
+
+Motion skills follow the task, not the whole UI. Load one of
+`emil-design-eng` or `interaction-design` only when the task asks for
+animation, motion, or GSAP. Load `reactbits` only when the task names React
+Bits. A static control does not load a motion skill. The task-to-skill table
+in the root `AGENTS.md` is the source for this.
+
+User-facing copy in the UI is Vietnamese.
 
 ## 5. Quality gates (Definition of Done)
 
