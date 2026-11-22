@@ -6,8 +6,16 @@
  * tiết issue Zod (path + message only — không echo giá trị client gửi).
  */
 
-import type { CreateComponentRequest, UpdateComponentRequest } from '@marketplace/shared'
-import { createComponentRequestSchema, updateComponentRequestSchema } from '@marketplace/shared'
+import type {
+  AdminComponentsListQuery,
+  CreateComponentRequest,
+  UpdateComponentRequest,
+} from '@marketplace/shared'
+import {
+  adminComponentsListRequestSchema,
+  createComponentRequestSchema,
+  updateComponentRequestSchema,
+} from '@marketplace/shared'
 
 import { ApiHttpError } from '../errors'
 
@@ -33,6 +41,23 @@ export function parseCreateComponentRequest(body: unknown): CreateComponentReque
 
 export function parseUpdateComponentRequest(body: unknown): UpdateComponentRequest {
   return parseWithSchema(updateComponentRequestSchema, body)
+}
+
+export function parseAdminComponentsListRequest(query: unknown): AdminComponentsListQuery {
+  const parsed = adminComponentsListRequestSchema.safeParse(query)
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.map(String).join('.') : '(root)'
+      return `${path}: ${issue.message}`
+    })
+    throw new ApiHttpError(
+      422,
+      'VALIDATION_QUERY',
+      'Invalid query parameters',
+      details.slice(0, 20),
+    )
+  }
+  return parsed.data
 }
 
 /**

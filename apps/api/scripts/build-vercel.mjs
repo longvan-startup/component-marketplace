@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 
 const build = spawnSync(
   'bun',
@@ -23,3 +23,14 @@ const outfile = 'dist/index.js'
 // The service entry scan also requires this file to mention express.
 const source = readFileSync(outfile)
 writeFileSync(outfile, Buffer.concat([Buffer.from('// require("express")\n'), source]))
+
+// Docker runs the bundle from dist/, so keep its runtime source tree adjacent.
+// Vercel separately includes the repository registry/ tree with includeFiles.
+const registrySource = 'registry'
+const registryOutput = 'dist/registry'
+if (!existsSync(registrySource)) {
+  throw new Error(`Missing component registry source directory: ${registrySource}`)
+}
+rmSync(registryOutput, { recursive: true, force: true })
+mkdirSync('dist', { recursive: true })
+cpSync(registrySource, registryOutput, { recursive: true })

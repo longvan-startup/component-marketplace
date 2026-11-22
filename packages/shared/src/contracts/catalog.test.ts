@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  adminComponentListItemSchema,
+  adminComponentsListRequestSchema,
+  adminComponentsListResponseSchema,
   type CatalogComponent,
   type CatalogListResponse,
   componentSchema,
@@ -8,6 +11,7 @@ import {
   detailResponseSchema,
   listRequestSchema,
   listResponseSchema,
+  registryResponseSchema,
   updateComponentRequestSchema,
 } from './catalog'
 
@@ -127,6 +131,55 @@ describe('listResponseSchema', () => {
   })
 })
 
+describe('adminComponentsListRequestSchema — status filter and pagination', () => {
+  test('defaults to both publication states and the catalog pagination defaults', () => {
+    expect(adminComponentsListRequestSchema.parse({})).toEqual({ page: 1, pageSize: 12 })
+  })
+
+  test('parses the exact published query strings to booleans', () => {
+    expect(adminComponentsListRequestSchema.parse({ published: 'true' }).published).toBe(true)
+    expect(adminComponentsListRequestSchema.parse({ published: 'false' }).published).toBe(false)
+  })
+
+  test('rejects invalid or repeated published query values', () => {
+    expect(adminComponentsListRequestSchema.safeParse({ published: 'yes' }).success).toBe(false)
+    expect(
+      adminComponentsListRequestSchema.safeParse({ published: ['true', 'false'] }).success,
+    ).toBe(false)
+  })
+})
+
+describe('adminComponentsListResponseSchema — minimal admin list DTO', () => {
+  const item = {
+    slug: 'spring-card-stack',
+    name: 'Spring Card Stack',
+    category: 'animation',
+    accessTier: 'free',
+    isPublished: false,
+    latestVersion: '1.2.0',
+  } as const
+
+  test('accepts both draft and published rows in the paginated response', () => {
+    expect(
+      adminComponentsListResponseSchema.parse({
+        items: [item, { ...item, slug: 'published-card', isPublished: true }],
+        page: 1,
+        pageSize: 12,
+        total: 2,
+      }).items,
+    ).toHaveLength(2)
+  })
+
+  test('rejects an invalid status and strips fields outside the admin DTO', () => {
+    expect(adminComponentListItemSchema.safeParse({ ...item, isPublished: 'false' }).success).toBe(
+      false,
+    )
+    expect(
+      adminComponentListItemSchema.parse({ ...item, authorId: 'internal' }),
+    ).not.toHaveProperty('authorId')
+  })
+})
+
 describe('detailResponseSchema — single-item envelope', () => {
   test('valid wrapped detail PASSES', () => {
     const parsed = detailResponseSchema.parse({ item: VALID_COMPONENT })
@@ -135,6 +188,46 @@ describe('detailResponseSchema — single-item envelope', () => {
 
   test('bare unwrapped entity FAILS (envelope is required)', () => {
     expect(detailResponseSchema.safeParse(VALID_COMPONENT).success).toBe(false)
+  })
+})
+
+describe('registryResponseSchema — versioned source contract', () => {
+  const validRegistryResponse = {
+    item: {
+      slug: 'hero-section',
+      version: '1.2.3',
+      files: [{ path: 'src/index.tsx', content: 'export const Hero = () => null' }],
+    },
+  }
+
+  test('accepts a versioned item with relative text files', () => {
+    expect(registryResponseSchema.parse(validRegistryResponse)).toEqual(validRegistryResponse)
+  })
+
+  test('rejects traversal, hidden segments, absolute paths, and Windows separators', () => {
+    for (const path of [
+      '../secret.ts',
+      'src/../../secret.ts',
+      '.env',
+      '/etc/passwd',
+      'src\\index.ts',
+    ]) {
+      expect(
+        registryResponseSchema.safeParse({
+          ...validRegistryResponse,
+          item: { ...validRegistryResponse.item, files: [{ path, content: 'x' }] },
+        }).success,
+      ).toBe(false)
+    }
+  })
+
+  test('requires a valid version and at least one file', () => {
+    expect(
+      registryResponseSchema.safeParse({
+        ...validRegistryResponse,
+        item: { ...validRegistryResponse.item, version: 'latest', files: [] },
+      }).success,
+    ).toBe(false)
   })
 })
 
