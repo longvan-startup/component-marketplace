@@ -14,26 +14,26 @@ import {
   type DemoValues,
   defaultValues,
 } from '../../features/demo/demo-manifest'
+import { type GsapScopeApi, prefersReducedMotion, useGsapScope } from '../../lib/gsap'
 import { buttonClasses } from '../ui/button'
 import { KnobControls } from './knob-controls'
 
-/* Ease-in-out on both ways: an ease-out front-loads the motion, so the bench
-   jumps to near full size in the first frames and reads as a pop. */
-const OPEN_MS = 560
-const CLOSE_MS = 400
-const EASE_MOVE = 'cubic-bezier(0.65, 0, 0.35, 1)'
+/* Ease-in-out on both ways. An ease-out front-loads the motion, so the bench
+   reads as a pop. Motion runs through GSAP, the approved animation entry. */
+const OPEN_S = 0.56
+const CLOSE_S = 0.4
+const EASE = 'power2.inOut'
+/* Fallback if a hidden tab pauses GSAP: the demo must still appear. */
+const OPEN_FALLBACK_MS = 710
 
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-/* The transform that places `target` on top of `origin`, scaled down to the
-   origin's width. Animating from it makes the bench grow out of the card. */
-function transformFromOrigin(origin: DOMRect, target: DOMRect): string {
-  const dx = origin.left + origin.width / 2 - (target.left + target.width / 2)
-  const dy = origin.top + origin.height / 2 - (target.top + target.height / 2)
-  const scale = origin.width / target.width
-  return `translate(${dx}px, ${dy}px) scale(${scale})`
+/* The offset and scale that place `target` on top of `origin`. Tweening from
+   them makes the bench grow out of the card and shrink back into it. */
+function originOffset(origin: DOMRect, target: DOMRect) {
+  return {
+    x: origin.left + origin.width / 2 - (target.left + target.width / 2),
+    y: origin.top + origin.height / 2 - (target.top + target.height / 2),
+    scale: origin.width / target.width,
+  }
 }
 
 export function DemoBench({
@@ -67,6 +67,7 @@ export function DemoBench({
     return () => cancelAnimationFrame(frame)
   }, [values])
 
+  /* Declared before the GSAP hook, so the dialog is open when the hook runs. */
   useEffect(() => {
     /* showModal throws when the dialog is already open, so it runs once. It
        focuses the demo iframe first, so move focus to the close button: Esc
@@ -75,31 +76,37 @@ export function DemoBench({
     if (!dialog) return
     dialog.showModal()
     closeRef.current?.focus()
-    /* Strict Mode runs this effect twice. Cancel the first run's animation before
-       measuring, or the second run measures the already-moved dialog and
-       animates from its final place: the bench then appears with no motion. */
-    for (const running of dialog.getAnimations()) running.cancel()
+    /* With reduced motion the GSAP setup never runs, so show the demo now. */
+    if (prefersReducedMotion()) setShowFrame(true)
+  }, [])
 
-    /* The demo iframe loads only after the opening move ends. Loading it during
-       the animation makes the frame stall and the move look like a pop. */
+  /* The GSAP setup runs once, after mount. The demo iframe loads only after the
+     opening move ends, so the frame does not stall the animation. */
+  const gsapRef = useRef<GsapScopeApi['gsap'] | null>(null)
+  useGsapScope(dialogRef, ({ gsap }) => {
+    gsapRef.current = gsap
+    const dialog = dialogRef.current
     const origin = originRef.current?.getBoundingClientRect()
-    if (!origin || prefersReducedMotion()) {
+    if (!dialog || !origin) {
       setShowFrame(true)
       return
     }
-    const animation = dialog.animate(
-      [
-        { transform: transformFromOrigin(origin, dialog.getBoundingClientRect()), opacity: 0.6 },
-        { transform: 'none', opacity: 1 },
-      ],
-      { duration: OPEN_MS, easing: EASE_MOVE },
+    const from = originOffset(origin, dialog.getBoundingClientRect())
+    gsap.fromTo(
+      dialog,
+      { x: from.x, y: from.y, scale: from.scale, opacity: 0.6 },
+      {
+        x: 0,
+        y: 0,
+        scale: 1,
+        opacity: 1,
+        duration: OPEN_S,
+        ease: EASE,
+        onComplete: () => setShowFrame(true),
+      },
     )
-    /* The timer is a fallback: a hidden tab can pause the animation, and the
-       demo must still appear. */
-    animation.onfinish = () => setShowFrame(true)
-    const fallback = window.setTimeout(() => setShowFrame(true), OPEN_MS + 150)
-    return () => window.clearTimeout(fallback)
-  }, [originRef])
+    window.setTimeout(() => setShowFrame(true), OPEN_FALLBACK_MS)
+  })
 
   /* Every way out goes through here, so the bench shrinks back into its card
      before the dialog closes. Esc (the native cancel) is intercepted for the
@@ -109,19 +116,22 @@ export function DemoBench({
     const dialog = dialogRef.current
     if (!dialog || closingRef.current) return
     closingRef.current = true
+    const gsap = gsapRef.current
     const origin = originRef.current?.getBoundingClientRect()
-    if (!origin || prefersReducedMotion()) {
+    if (!gsap || !origin) {
       dialog.close()
       return
     }
-    const animation = dialog.animate(
-      [
-        { transform: 'none', opacity: 1 },
-        { transform: transformFromOrigin(origin, dialog.getBoundingClientRect()), opacity: 0.6 },
-      ],
-      { duration: CLOSE_MS, easing: EASE_MOVE, fill: 'forwards' },
-    )
-    animation.onfinish = () => dialog.close()
+    const to = originOffset(origin, dialog.getBoundingClientRect())
+    gsap.to(dialog, {
+      x: to.x,
+      y: to.y,
+      scale: to.scale,
+      opacity: 0.6,
+      duration: CLOSE_S,
+      ease: EASE,
+      onComplete: () => dialog.close(),
+    })
   }, [originRef])
 
   useEffect(() => {
