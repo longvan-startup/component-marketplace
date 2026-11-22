@@ -8,6 +8,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { createDbHandle, type DatabaseHandle, schema } from '@marketplace/db'
 import {
+  adminComponentsListResponseSchema,
   apiErrorSchema,
   componentSchema,
   detailResponseSchema,
@@ -103,8 +104,10 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
     return { status: res.status, body: await res.json() }
   }
 
-  const get = async (path: string) => {
-    const res = await fetch(`${baseUrl}${path}`)
+  const get = async (path: string, cookie?: string) => {
+    const res = await fetch(`${baseUrl}${path}`, {
+      headers: cookie ? { cookie } : undefined,
+    })
     return { status: res.status, body: await res.json() }
   }
 
@@ -154,6 +157,66 @@ describeIntegration('admin catalog CRUD (integration, requires TEST_DATABASE_URL
 
     const draft = await createDraft({ name: 'Role Matrix Component' })
     expect(componentSchema.parse(draft).isPublished).toBe(false)
+  })
+
+  test('GET /admin/components — role guard, drafts, filter, pagination and public isolation', async () => {
+    const guest = await get('/admin/components')
+    expect(guest.status).toBe(401)
+    expect(apiErrorSchema.parse(guest.body).code).toBe('UNAUTHENTICATED')
+
+    const asUser = await get('/admin/components', userCookie)
+    expect(asUser.status).toBe(403)
+    expect(apiErrorSchema.parse(asUser.body).code).toBe('FORBIDDEN')
+
+    const draft = await createDraft({ name: 'Admin List Draft' })
+    const published = await createDraft({ name: 'Admin List Published' })
+    const publishedSlug = published.slug as string
+    expect((await post(`/admin/components/${publishedSlug}/publish`, adminCookie)).status).toBe(200)
+
+    const all = await get('/admin/components?pageSize=48', adminCookie)
+    expect(all.status).toBe(200)
+    const allResponse = adminComponentsListResponseSchema.parse(all.body)
+    expect(allResponse.page).toBe(1)
+    expect(allResponse.pageSize).toBe(48)
+    expect(allResponse.total).toBeGreaterThanOrEqual(allResponse.items.length)
+    expect(allResponse.items.some((item) => item.slug === draft.slug && !item.isPublished)).toBe(
+      true,
+    )
+    expect(allResponse.items.some((item) => item.slug === publishedSlug && item.isPublished)).toBe(
+      true,
+    )
+
+    const drafts = await get('/admin/components?published=false&pageSize=48', adminCookie)
+    const draftItems = adminComponentsListResponseSchema.parse(drafts.body).items
+    expect(draftItems.every((item) => !item.isPublished)).toBe(true)
+    expect(draftItems.some((item) => item.slug === draft.slug)).toBe(true)
+
+    const firstDraftPage = adminComponentsListResponseSchema.parse(
+      (await get('/admin/components?published=false&page=1&pageSize=1', adminCookie)).body,
+    )
+    const secondDraftPage = adminComponentsListResponseSchema.parse(
+      (await get('/admin/components?published=false&page=2&pageSize=1', adminCookie)).body,
+    )
+    expect(firstDraftPage.total).toBeGreaterThan(1)
+    expect(secondDraftPage.total).toBe(firstDraftPage.total)
+    expect(firstDraftPage.items).toHaveLength(1)
+    expect(secondDraftPage.items).toHaveLength(1)
+    expect(firstDraftPage.items[0]?.slug).not.toBe(secondDraftPage.items[0]?.slug)
+
+    const publishedOnly = await get('/admin/components?published=true&pageSize=48', adminCookie)
+    const publishedItems = adminComponentsListResponseSchema.parse(publishedOnly.body).items
+    expect(publishedItems.every((item) => item.isPublished)).toBe(true)
+    expect(publishedItems.some((item) => item.slug === publishedSlug)).toBe(true)
+
+    const invalidFilter = await get('/admin/components?published=maybe', adminCookie)
+    expect(invalidFilter.status).toBe(422)
+    expect(apiErrorSchema.parse(invalidFilter.body).code).toBe('VALIDATION_QUERY')
+
+    const publicList = await get(`/components?q=${draft.slug}`)
+    expect(
+      listResponseSchema.parse(publicList.body).items.some((item) => item.slug === draft.slug),
+    ).toBe(false)
+    expect((await get(`/components/${draft.slug}`)).status).toBe(404)
   })
 
   test('Create ignores client-sent isPublished/role — always a draft', async () => {

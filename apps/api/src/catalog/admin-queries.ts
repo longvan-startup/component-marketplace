@@ -1,20 +1,21 @@
 /**
- * apps/api/src/catalog/admin-queries.ts — ghi dữ liệu catalog cho admin (#111).
+ * apps/api/src/catalog/admin-queries.ts — truy vấn catalog dành cho admin.
  *
- * Tách khỏi queries.ts (chỉ đọc công khai): các hàm ở đây GHI DB và chỉ được
- * gọi sau `requireRole('admin')` ở route. Mọi hàm trả `CatalogRow` (shape an
- * toàn, không authorId/timestamps) qua `getComponentAnyStatus`, không bao giờ
- * trả thẳng kết quả `.returning()`/`.update()` của Drizzle.
+ * Tách khỏi queries.ts (chỉ đọc công khai). Các route gọi module này sau
+ * `requireRole('admin')`; list query chỉ chọn admin DTO fields, còn write
+ * operations trả `CatalogRow` qua `getComponentAnyStatus` để tránh lộ model DB.
  */
 
 import { type DatabaseHandle, schema } from '@marketplace/db'
 import type {
+  AdminComponentListItem,
+  AdminComponentsListQuery,
   CatalogCategory,
   CreateComponentRequest,
   UpdateComponentRequest,
 } from '@marketplace/shared'
 import { isValidPriceFlagCombo } from '@marketplace/shared'
-import { eq } from 'drizzle-orm'
+import { and, asc, count, desc, eq, type SQL } from 'drizzle-orm'
 
 import { ApiHttpError } from '../errors'
 import { slugify } from './admin-requests'
@@ -22,6 +23,43 @@ import type { CatalogRow } from './mapper'
 import { getComponentAnyStatus } from './queries'
 
 const { components } = schema
+
+/**
+ * Lists only the catalog fields required by the admin table and counts the
+ * same filtered dataset for offset pagination.
+ *
+ * @param db - Configured database handle.
+ * @param request - Validated publication filter and pagination.
+ * @returns Page rows and the total matching row count.
+ */
+export async function listAdminComponents(
+  db: DatabaseHandle,
+  request: AdminComponentsListQuery,
+): Promise<{ rows: AdminComponentListItem[]; total: number }> {
+  const filters: SQL[] = []
+  if (request.published !== undefined) {
+    filters.push(eq(components.isPublished, request.published))
+  }
+  const where = filters.length > 0 ? and(...filters) : undefined
+
+  const rows = await db.db
+    .select({
+      slug: components.slug,
+      name: components.name,
+      category: components.category,
+      accessTier: components.accessTier,
+      isPublished: components.isPublished,
+      latestVersion: components.latestVersion,
+    })
+    .from(components)
+    .where(where)
+    .orderBy(desc(components.createdAt), asc(components.slug))
+    .limit(request.pageSize)
+    .offset((request.page - 1) * request.pageSize)
+
+  const countRows = await db.db.select({ value: count() }).from(components).where(where)
+  return { rows, total: Number(countRows[0]?.value ?? 0) }
+}
 
 /** Postgres unique-violation error code (`unique_violation`). */
 function isUniqueViolation(error: unknown): boolean {

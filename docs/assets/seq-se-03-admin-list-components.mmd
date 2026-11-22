@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor AD as Admin Client
+    participant A as API (Express)
+    participant BA as Better Auth
+    participant DB as PostgreSQL
+
+    Note over AD,DB: SE-03 · GET /admin/components · published=true|false lọc tùy chọn; bỏ trống trả cả hai trạng thái
+    AD->>A: GET /admin/components?page=1&pageSize=12&published=false
+    A->>BA: requireAuth gọi auth.api.getSession
+    BA->>DB: Tìm sessions + users theo cookie
+    DB-->>BA: Kết quả
+    BA-->>A: session hoặc null
+    alt Không có phiên
+        A-->>AD: 401 UNAUTHENTICATED
+    else Phiên không có role admin
+        A-->>AD: 403 FORBIDDEN
+    else role = admin
+        A->>A: parseAdminComponentsListRequest
+        alt Query sai hợp đồng
+            A-->>AD: 422 VALIDATION_QUERY
+        else Query hợp lệ
+            A->>DB: SELECT trang dữ liệu + COUNT với cùng filter published
+            DB-->>A: items, page, pageSize, total
+            A-->>AD: 200 items gồm draft và published theo filter
+        end
+    end
