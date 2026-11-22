@@ -5,6 +5,8 @@
 pre-commit:
   parallel: true
   commands:
+    guard-main:
+      run: sh scripts/guard-main.sh
     lint:
       run: bun run lint
 
