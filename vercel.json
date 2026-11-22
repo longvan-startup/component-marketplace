@@ -6,7 +6,12 @@
   "services": {
     "api": {
       "root": "apps/api",
-      "framework": "express"
+      "framework": "express",
+      "functions": {
+        "dist/index.js": {
+          "includeFiles": "registry/**/*"
+        }
+      }
     },
     "web": {
       "root": "apps/web",

@@ -23,10 +23,11 @@
  * (issue #29 §D).
  */
 
-import { dirname } from 'node:path'
+import { existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDbHandle, type DatabaseHandle } from '@marketplace/db'
-import { getAppInfo } from '@marketplace/shared'
+import { getAppInfo, registryResponseSchema } from '@marketplace/shared'
 import { toNodeHandler } from 'better-auth/node'
 import { sql } from 'drizzle-orm'
 import express from 'express'
@@ -45,6 +46,7 @@ import {
 } from './catalog/admin-requests'
 import { toCatalogComponent } from './catalog/mapper'
 import { getComponentBySlug, listComponents } from './catalog/queries'
+import { RegistrySourceUnavailableError, readRegistryFiles } from './catalog/registry'
 import { parseListRequest, parseSlugParam } from './catalog/requests'
 import { type ApiEnv, applyDotEnvFile, parseApiEnv, resolveRootDotEnvPath } from './env'
 import { ApiHttpError, errorHandler, notFoundHandler, sendError } from './errors'
@@ -67,10 +69,13 @@ export interface ServerOptions {
    * sinh từ DATABASE_URL trong env (nếu có).
    */
   db?: DatabaseHandle | undefined
+  /** Root of the checked-in registry source tree (tests may inject a fixture). */
+  registryRoot?: string
 }
 
 export function createServer(options: ServerOptions = {}) {
   const env = options.env ?? parseApiEnv()
+  const registryRoot = options.registryRoot ?? resolveRegistryRoot(import.meta.url)
 
   // postgres.js lazy-connect: tạo handle KHÔNG mở socket — socket mở ở truy
   // vấn đầu tiên (/health/db, endpoint #31...).
@@ -229,6 +234,44 @@ export function createServer(options: ServerOptions = {}) {
     res.status(200).json({ item: toCatalogComponent(row) })
   })
 
+  // GET /registry/:slug — cài source của đúng latestVersion cho Free đã
+  // publish. Pro bị từ chối trước khi filesystem được đọc; draft không khác
+  // với component không tồn tại.
+  apiRouter.get('/registry/:slug', async (req, res) => {
+    const slug = parseSlugParam(req.params.slug)
+    const row = await getComponentBySlug(requireDb(), slug)
+    if (!row) {
+      throw new ApiHttpError(404, 'NOT_FOUND', 'Component not found')
+    }
+    if (row.accessTier === 'pro') {
+      throw new ApiHttpError(
+        403,
+        'PRO_COMPONENT_UNAVAILABLE',
+        'Pro components are not available in the Free registry',
+      )
+    }
+
+    try {
+      const response = registryResponseSchema.parse({
+        item: {
+          slug: row.slug,
+          version: row.latestVersion,
+          files: await readRegistryFiles(registryRoot, row.slug, row.latestVersion),
+        },
+      })
+      res.status(200).json(response)
+    } catch (error) {
+      if (error instanceof RegistrySourceUnavailableError) {
+        throw new ApiHttpError(
+          503,
+          'REGISTRY_SOURCE_UNAVAILABLE',
+          'Component source is not available',
+        )
+      }
+      throw error
+    }
+  })
+
   /* --- Catalog admin write endpoints (issue #111) ------------------------
    * `adminGuard`: when auth isn't configured (missing DB/secret/url in this
    * environment), respond 503 AUTH_UNAVAILABLE same as the /api/auth/*
@@ -320,6 +363,23 @@ export async function shutdown(options: {
   if (options.db) {
     await options.db.close()
   }
+}
+
+/**
+ * Source runs from `src/`, Docker from `dist/`, and Vercel from the function
+ * root. The build copies registry next to the Docker bundle and Vercel's API
+ * service explicitly includes `registry/**` next to its function entrypoint.
+ */
+function resolveRegistryRoot(moduleUrl: string): string {
+  const moduleDirectory = dirname(fileURLToPath(moduleUrl))
+  const candidates = [
+    resolve(moduleDirectory, 'registry'),
+    resolve(moduleDirectory, '../registry'),
+    resolve(process.cwd(), 'registry'),
+    resolve(process.cwd(), 'apps/api/registry'),
+  ]
+  const fallback = resolve(moduleDirectory, 'registry')
+  return candidates.find((candidate) => existsSync(candidate)) ?? fallback
 }
 
 /* ------------------------------------------------------------------ */
