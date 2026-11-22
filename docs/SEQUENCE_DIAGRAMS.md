@@ -1,6 +1,6 @@
 # Sequence diagrams — Component Marketplace
 
-15 sơ đồ tuần tự cho các chức năng được đánh dấu **Sequence** trong bảng
+16 sơ đồ tuần tự cho các chức năng được đánh dấu **Sequence** trong bảng
 "Danh sách functions" (cột Diagram). Mỗi sơ đồ bám theo code đang chạy; chức
 năng chưa có code thì bám theo tài liệu thiết kế và ghi rõ **DỰ KIẾN**.
 
@@ -10,7 +10,7 @@ năng chưa có code thì bám theo tài liệu thiết kế và ghi rõ **DỰ 
 - Repo chưa có pipeline render PNG (xem skill `diagram-design`); cần ảnh cho
   báo cáo thì mở file `.mmd` trên GitHub hoặc dán vào <https://mermaid.live>
   rồi xuất ảnh.
-- Kiểm tra cú pháp: cả 15 sơ đồ đã được parse + render bằng Mermaid 11.4.1.
+- Kiểm tra cú pháp: 15 sơ đồ trước đã được parse + render bằng Mermaid 11.4.1. SE-03 là sơ đồ mới, chưa render vì repo chưa có pipeline render.
 
 ## Bảng tổng hợp
 
@@ -23,6 +23,7 @@ năng chưa có code thì bám theo tài liệu thiết kế và ghi rõ **DỰ 
 | AU-05 | Quên / đặt lại mật khẩu | Đã chạy đủ | [`seq-au-05-reset-password.mmd`](assets/seq-au-05-reset-password.mmd) |
 | CT-07 | Xem chi tiết component | Đã chạy (có 1 lỗi đã biết ở chế độ live) | [`seq-ct-07-component-detail.mmd`](assets/seq-ct-07-component-detail.mmd) |
 | SE-01 | Tạo listing (bản nháp) | API đã chạy, chỉ admin · chưa có màn Admin | [`seq-se-01-create-listing.mmd`](assets/seq-se-01-create-listing.mmd) |
+| SE-03 | Admin liệt kê component và draft | API đã chạy, chỉ admin · chưa có màn Admin | [`seq-se-03-admin-list-components.mmd`](assets/seq-se-03-admin-list-components.mmd) |
 | CM-01 | Đăng ký gói Pro | DỰ KIẾN (RFC-02) | [`seq-cm-01-subscribe-pro.mmd`](assets/seq-cm-01-subscribe-pro.mmd) |
 | CM-02 | Xem trạng thái gói | DỰ KIẾN (RFC-02) | [`seq-cm-02-membership-status.mmd`](assets/seq-cm-02-membership-status.mmd) |
 | CM-03 | Cài component Pro | DỰ KIẾN (RFC-02) | [`seq-cm-03-install-pro-component.mmd`](assets/seq-cm-03-install-pro-component.mmd) |
@@ -304,6 +305,40 @@ sequenceDiagram
         end
     end
     Note over A,DB: Publish là bước riêng: POST /admin/components/:slug/publish
+```
+
+### SE-03 — Admin liệt kê component, gồm cả draft
+
+Nguồn: route `GET /admin/components` trong `apps/api/src/index.ts`, contract `adminComponentsListRequestSchema` và `adminComponentsListResponseSchema` trong `packages/shared/src/contracts/catalog.ts`, truy vấn `listAdminComponents` trong `apps/api/src/catalog/admin-queries.ts`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor AD as Admin Client
+    participant A as API (Express)
+    participant BA as Better Auth
+    participant DB as PostgreSQL
+
+    Note over AD,DB: SE-03 · GET /admin/components · published=true|false lọc tùy chọn; bỏ trống trả cả hai trạng thái
+    AD->>A: GET /admin/components?page=1&pageSize=12&published=false
+    A->>BA: requireAuth gọi auth.api.getSession
+    BA->>DB: Tìm sessions + users theo cookie
+    DB-->>BA: Kết quả
+    BA-->>A: session hoặc null
+    alt Không có phiên
+        A-->>AD: 401 UNAUTHENTICATED
+    else Phiên không có role admin
+        A-->>AD: 403 FORBIDDEN
+    else role = admin
+        A->>A: parseAdminComponentsListRequest
+        alt Query sai hợp đồng
+            A-->>AD: 422 VALIDATION_QUERY
+        else Query hợp lệ
+            A->>DB: SELECT trang dữ liệu + COUNT với cùng filter published
+            DB-->>A: items, page, pageSize, total
+            A-->>AD: 200 items gồm draft và published theo filter
+        end
+    end
 ```
 
 ## Nhóm: Membership (dự kiến)

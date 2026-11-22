@@ -32,8 +32,17 @@ import { sql } from 'drizzle-orm'
 import express from 'express'
 import { configuredSocialProviderIds, createAuth } from './auth/config'
 import { requireAuth, requireRole } from './auth/guards'
-import { insertComponent, setPublished, updateComponent } from './catalog/admin-queries'
-import { parseCreateComponentRequest, parseUpdateComponentRequest } from './catalog/admin-requests'
+import {
+  insertComponent,
+  listAdminComponents,
+  setPublished,
+  updateComponent,
+} from './catalog/admin-queries'
+import {
+  parseAdminComponentsListRequest,
+  parseCreateComponentRequest,
+  parseUpdateComponentRequest,
+} from './catalog/admin-requests'
 import { toCatalogComponent } from './catalog/mapper'
 import { getComponentBySlug, listComponents } from './catalog/queries'
 import { parseListRequest, parseSlugParam } from './catalog/requests'
@@ -236,6 +245,17 @@ export function createServer(options: ServerOptions = {}) {
           })
         },
       ]
+
+  apiRouter.get('/admin/components', ...adminGuard, async (req, res) => {
+    const request = parseAdminComponentsListRequest(req.query as unknown as Record<string, unknown>)
+    const { rows, total } = await listAdminComponents(requireDb(), request)
+    res.status(200).json({
+      items: rows,
+      page: request.page,
+      pageSize: request.pageSize,
+      total,
+    })
+  })
 
   // POST /admin/components — tạo draft; isPublished luôn false bất kể body.
   apiRouter.post('/admin/components', ...adminGuard, async (req, res) => {
