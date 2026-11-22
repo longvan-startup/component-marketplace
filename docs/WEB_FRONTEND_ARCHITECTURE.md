@@ -145,3 +145,48 @@ Ngân sách hiệu năng (đề xuất, chưa đo):
 - [ ] Phần 3, Phần 4 và Phần 5 theo quyết định của owner
 - [ ] Đo hiệu năng trên production (Phần 8)
 - [ ] Owner xác nhận tài liệu này
+
+## 12. Kiểm kê toàn bộ frontend (bổ sung theo title #176)
+
+Phần này bao phủ toàn bộ `apps/web`, không chỉ card. Dữ liệu lấy từ danh sách file và lệnh tìm kiếm trên `main` tại thời điểm viết. Các điểm dưới đây là quan sát, chưa phải lỗi đã kiểm chứng trên trình duyệt.
+
+### 12.1 Trang
+
+| Trang | Đường dẫn | Ghi chú |
+|---|---|---|
+| Trang chủ | `/` | Có loading, không có `error.tsx` |
+| Catalog | `/components` | Có `loading.tsx` |
+| Chi tiết component | `/components/[slug]` | Có `loading.tsx`; slug không tồn tại gọi `notFound()` |
+| Đăng nhập | `/login` | Không có loading riêng |
+| Đăng ký | `/register` | Không có loading riêng |
+| Quên mật khẩu | `/forgot-password` | Không có loading riêng |
+| Đặt lại mật khẩu | `/reset-password` | Không có loading riêng |
+| Xác minh email | `/verify-email`, `/verify-email/success` | Không có loading riêng |
+| Bảng giá | `/pricing` | Không có loading riêng |
+| Bảo mật tài khoản | `/account/security` | Không có loading riêng |
+
+Không có `not-found.tsx` và không có `error.tsx` trong toàn bộ `app/`. Trang 404 đang dùng mặc định của Next.js.
+
+### 12.2 Thành phần chia nhóm
+
+- **Layout:** `nav-bar`, `nav-auth`, `nav-session`, `mobile-menu`, `search-form`, `footer`, `footer-dot-field`, `newsletter-form`, `logo`, `site-shell`.
+- **Auth:** `sign-in-form`, `sign-up-form`, `forgot-password-form`, `reset-password-form`, `verify-email-result`, `security-settings`, `social-buttons`, `auth-shell`, `auth-showcase`, `auth-status-banner`.
+- **Catalog:** `component-card`, `catalog-search`, `catalog-skeleton`, `demo-preview`, `demo-bench`, `knob-controls`.
+- **Home:** `hero-backdrop`, `hero-bubbles`, `hero-bubble-motion`, `hero-dot-field`.
+- **Primitive** (`components/ui/`): `button`, `card`, `badge`, `chip`, `field`, `input`, `nav-link`, `page-button`, `icons`.
+
+### 12.3 Điểm không nhất quán quan sát được
+
+1. **Primitive không được dùng đều.** Có `Button`, `Input`, `Field` nhưng nhiều nơi vẫn dùng `<button>` và `<input>` trực tiếp: `social-buttons`, `mobile-menu`, `newsletter-form`, `search-form`, `catalog-search`.
+2. **Màu hardcode ngoài token.** Ngoài `globals.css` và icon, màu hex nằm trong `hero-bubble-motion.ts` (ba màu tím).
+3. **Chuyển động không đi qua GSAP.** Hero dùng CSS keyframes và vòng lặp `requestAnimationFrame` riêng (`hero-bubbles`, `hero-bubble-motion`, `hero-dot-field`). `apps/web/AGENTS.md` quy định GSAP là entry duy nhất. Đây là điểm cần quyết định: chuyển sang GSAP, hay ghi ngoại lệ có lý do.
+4. **Copy tiếng Anh lẫn trong giao diện.** Ví dụ: nhãn "Latest version", "← Back to catalog" trên trang chi tiết. Quy tắc giao diện là tiếng Việt, cần rà soát toàn bộ.
+5. **Trạng thái loading và lỗi chưa đồng đều.** Chỉ catalog và chi tiết có `loading.tsx`. Các trang auth, pricing và bảo mật không có. Không có trang lỗi chung.
+
+### 12.4 Quyết định cần owner cho toàn bộ frontend
+
+1. Hero và footer: dùng GSAP hết, hay cho phép ngoại lệ cho canvas và hiệu ứng nền?
+2. Quy tắc dùng primitive: bắt buộc `Button`, `Input`, `Field` cho mọi nơi, hay chỉ cho form?
+3. Trang 404 và trang lỗi: thiết kế riêng, copy tiếng Việt.
+4. Trạng thái loading cho các trang auth, pricing, bảo mật: cần không, và cần kiểu nào.
+5. Các màu hardcode trong hero: chuyển sang token, hay giữ vì là phần minh họa.
