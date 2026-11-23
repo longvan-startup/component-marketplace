@@ -45,8 +45,8 @@ import {
   parseUpdateComponentRequest,
 } from './catalog/admin-requests'
 import { toCatalogComponent } from './catalog/mapper'
-import { getComponentBySlug, listComponents } from './catalog/queries'
-import { RegistrySourceUnavailableError, readRegistryFiles } from './catalog/registry'
+import { getComponentBySlug, getRegistryReleaseByVersion, listComponents } from './catalog/queries'
+import { RegistryReleaseIntegrityError, readRegistryReleaseFiles } from './catalog/registry'
 import { parseListRequest, parseSlugParam } from './catalog/requests'
 import { type ApiEnv, applyDotEnvFile, parseApiEnv, resolveRootDotEnvPath } from './env'
 import { ApiHttpError, errorHandler, notFoundHandler, sendError } from './errors'
@@ -251,22 +251,28 @@ export function createServer(options: ServerOptions = {}) {
       )
     }
 
+    const release = await getRegistryReleaseByVersion(requireDb(), row.id, row.latestVersion)
+    if (!release) {
+      throw new ApiHttpError(404, 'NOT_FOUND', 'Component release not found')
+    }
+
     try {
       const response = registryResponseSchema.parse({
         item: {
           slug: row.slug,
           version: row.latestVersion,
-          files: await readRegistryFiles(registryRoot, row.slug, row.latestVersion),
+          files: await readRegistryReleaseFiles(
+            registryRoot,
+            row.slug,
+            row.latestVersion,
+            release.files,
+          ),
         },
       })
       res.status(200).json(response)
     } catch (error) {
-      if (error instanceof RegistrySourceUnavailableError) {
-        throw new ApiHttpError(
-          503,
-          'REGISTRY_SOURCE_UNAVAILABLE',
-          'Component source is not available',
-        )
+      if (error instanceof RegistryReleaseIntegrityError) {
+        throw new ApiHttpError(500, 'REGISTRY_RELEASE_INVALID', 'Component release is invalid')
       }
       throw error
     }

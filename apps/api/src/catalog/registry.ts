@@ -1,4 +1,5 @@
-import { lstat, readdir, readFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { lstat, readFile } from 'node:fs/promises'
 import { resolve, sep } from 'node:path'
 import {
   catalogSlugSchema,
@@ -34,122 +35,134 @@ const MAX_FILES = 100
 const MAX_FILE_BYTES = 512 * 1024
 const MAX_TOTAL_BYTES = 2 * 1024 * 1024
 
-/** Deliberately generic: callers can return one stable API error without leaking paths. */
-export class RegistrySourceUnavailableError extends Error {
+/** A release-ledger path and the SHA-256 digest of its tracked bytes. */
+export interface RegistryReleaseFileRecord {
+  path: string
+  checksumSha256: string
+}
+
+/** Deliberately generic so filesystem paths and file contents never reach the client. */
+export class RegistryReleaseIntegrityError extends Error {
   constructor() {
-    super('Registry source is unavailable')
-    this.name = 'RegistrySourceUnavailableError'
+    super('Registry release integrity check failed')
+    this.name = 'RegistryReleaseIntegrityError'
   }
 }
 
-/**
- * Load the immutable files for one catalog release from the checked-in
- * `registry/<slug>/<version>/` tree. Identity values are revalidated here as
- * defense in depth before they become filesystem path segments.
+/** Reads only paths listed in the release ledger and verifies raw bytes first.
  *
- * @param registryRoot Absolute or relative path to the checked-in registry.
- * @param slug Validated catalog slug.
- * @param version Exact catalog release version.
- * @returns Every supported text file in deterministic path order.
- * @throws {RegistrySourceUnavailableError} If the release is missing or unsafe.
+ * @param registryRoot Directory containing component release source folders.
+ * @param slug Validated component slug.
+ * @param version Exact release version selected from the component row.
+ * @param releaseFiles Paths and expected checksums read from the release ledger.
+ * @returns Validated text files in deterministic path order.
+ * @throws {RegistryReleaseIntegrityError} When a path, file, checksum, or content is invalid.
  */
-export async function readRegistryFiles(
+export async function readRegistryReleaseFiles(
   registryRoot: string,
   slug: string,
   version: string,
+  releaseFiles: RegistryReleaseFileRecord[],
 ): Promise<RegistryFile[]> {
   if (
     !catalogSlugSchema.safeParse(slug).success ||
-    !catalogVersionSchema.safeParse(version).success
+    !catalogVersionSchema.safeParse(version).success ||
+    releaseFiles.length === 0 ||
+    releaseFiles.length > MAX_FILES
   ) {
-    throw new RegistrySourceUnavailableError()
+    throw new RegistryReleaseIntegrityError()
   }
 
   const root = resolve(registryRoot)
   const releaseDir = resolve(root, slug, version)
   if (!releaseDir.startsWith(`${root}${sep}`)) {
-    throw new RegistrySourceUnavailableError()
+    throw new RegistryReleaseIntegrityError()
   }
 
+  const seenPaths = new Set<string>()
   const files: RegistryFile[] = []
   let totalBytes = 0
 
-  const visit = async (directory: string, prefix: string): Promise<void> => {
-    const entries = await readdir(directory, { withFileTypes: true })
-    entries.sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0))
+  try {
+    const rootMetadata = await lstat(root)
+    const componentMetadata = await lstat(resolve(root, slug))
+    const releaseMetadata = await lstat(releaseDir)
+    if (
+      !rootMetadata.isDirectory() ||
+      rootMetadata.isSymbolicLink() ||
+      !componentMetadata.isDirectory() ||
+      componentMetadata.isSymbolicLink() ||
+      !releaseMetadata.isDirectory() ||
+      releaseMetadata.isSymbolicLink()
+    ) {
+      throw new RegistryReleaseIntegrityError()
+    }
 
-    for (const entry of entries) {
-      if (entry.name.startsWith('.') || entry.name.includes('\\')) {
-        throw new RegistrySourceUnavailableError()
+    const orderedFiles = [...releaseFiles].sort((left, right) =>
+      left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+    )
+
+    for (const releaseFile of orderedFiles) {
+      const segments = releaseFile.path.split('/')
+      const parsedPath = registryFileSchema.shape.path.safeParse(releaseFile.path)
+      if (
+        !parsedPath.success ||
+        !/^[0-9a-f]{64}$/.test(releaseFile.checksumSha256) ||
+        seenPaths.has(releaseFile.path) ||
+        !TEXT_FILE_EXTENSIONS.has(extensionOf(segments.at(-1) ?? ''))
+      ) {
+        throw new RegistryReleaseIntegrityError()
+      }
+      seenPaths.add(releaseFile.path)
+
+      const absolutePath = resolve(releaseDir, ...segments)
+      if (!absolutePath.startsWith(`${releaseDir}${sep}`)) {
+        throw new RegistryReleaseIntegrityError()
       }
 
-      const absolutePath = resolve(directory, entry.name)
-      const filePath = prefix ? `${prefix}/${entry.name}` : entry.name
-
-      const metadata = await lstat(absolutePath)
-      if (metadata.isSymbolicLink()) {
-        throw new RegistrySourceUnavailableError()
-      }
-
-      if (metadata.isDirectory()) {
-        await visit(absolutePath, filePath)
-        continue
-      }
-
-      if (!metadata.isFile() || !TEXT_FILE_EXTENSIONS.has(extensionOf(entry.name))) {
-        throw new RegistrySourceUnavailableError()
-      }
-
-      if (metadata.size > MAX_FILE_BYTES) {
-        throw new RegistrySourceUnavailableError()
+      let currentPath = releaseDir
+      let fileSize = 0
+      for (const [index, segment] of segments.entries()) {
+        currentPath = resolve(currentPath, segment)
+        const metadata = await lstat(currentPath)
+        if (metadata.isSymbolicLink()) throw new RegistryReleaseIntegrityError()
+        if (index === segments.length - 1) {
+          if (!metadata.isFile() || metadata.size > MAX_FILE_BYTES) {
+            throw new RegistryReleaseIntegrityError()
+          }
+          fileSize = metadata.size
+          totalBytes += fileSize
+          if (totalBytes > MAX_TOTAL_BYTES) throw new RegistryReleaseIntegrityError()
+        } else if (!metadata.isDirectory()) {
+          throw new RegistryReleaseIntegrityError()
+        }
       }
 
       const bytes = await readFile(absolutePath)
-      totalBytes += bytes.byteLength
-      if (totalBytes > MAX_TOTAL_BYTES || files.length >= MAX_FILES) {
-        throw new RegistrySourceUnavailableError()
+      if (bytes.byteLength !== fileSize) {
+        throw new RegistryReleaseIntegrityError()
       }
+
+      const checksum = createHash('sha256').update(bytes).digest('hex')
+      if (checksum !== releaseFile.checksumSha256) throw new RegistryReleaseIntegrityError()
 
       let content: string
       try {
         content = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
       } catch {
-        throw new RegistrySourceUnavailableError()
+        throw new RegistryReleaseIntegrityError()
       }
 
-      if (hasDisallowedControlCharacter(content)) {
-        throw new RegistrySourceUnavailableError()
-      }
+      if (hasDisallowedControlCharacter(content)) throw new RegistryReleaseIntegrityError()
 
-      const file = registryFileSchema.safeParse({ path: filePath, content })
-      if (!file.success) throw new RegistrySourceUnavailableError()
+      const file = registryFileSchema.safeParse({ path: releaseFile.path, content })
+      if (!file.success) throw new RegistryReleaseIntegrityError()
       files.push(file.data)
     }
-  }
-
-  try {
-    const rootMetadata = await lstat(root)
-    if (!rootMetadata.isDirectory() || rootMetadata.isSymbolicLink()) {
-      throw new RegistrySourceUnavailableError()
-    }
-
-    const componentDir = resolve(root, slug)
-    const componentMetadata = await lstat(componentDir)
-    if (!componentMetadata.isDirectory() || componentMetadata.isSymbolicLink()) {
-      throw new RegistrySourceUnavailableError()
-    }
-
-    const metadata = await lstat(releaseDir)
-    if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
-      throw new RegistrySourceUnavailableError()
-    }
-    await visit(releaseDir, '')
   } catch (error) {
-    if (error instanceof RegistrySourceUnavailableError) throw error
-    throw new RegistrySourceUnavailableError()
+    if (error instanceof RegistryReleaseIntegrityError) throw error
+    throw new RegistryReleaseIntegrityError()
   }
-
-  if (files.length === 0) throw new RegistrySourceUnavailableError()
 
   return files
 }
