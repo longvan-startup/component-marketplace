@@ -1,6 +1,7 @@
 import type { CatalogCategory } from '@marketplace/shared'
 import Link from 'next/link'
 import { ComponentCard } from '@/components/catalog/component-card'
+import { FeaturedCarousel } from '@/components/home/featured-carousel'
 import { HeroBackdrop } from '@/components/home/hero-backdrop'
 import { HeroText } from '@/components/home/hero-text'
 import { Words } from '@/components/home/hero-words'
@@ -20,6 +21,9 @@ import { getDemoManifest } from '@/features/demo/demo-source'
 export const revalidate = 60
 
 const CATEGORIES = CATEGORY_OPTIONS
+
+/* The featured row slides, so it carries more than the four a grid would fit. */
+const FEATURED_COUNT = 8
 
 const WHY_ITEMS = [
   {
@@ -49,10 +53,16 @@ export default async function HomePage() {
       unavailable: true,
     }))
   const [featured, ...counts] = await Promise.all([
-    list({ pageSize: 4 }),
+    list({ pageSize: FEATURED_COUNT }),
     ...CATEGORIES.map((category) => list({ category: category.value, pageSize: 1 })),
   ])
-  const highlights = featured.items.slice(0, 4)
+  const highlights = featured.items.slice(0, FEATURED_COUNT)
+  const featuredHeading = (
+    <div className="flex flex-col gap-2">
+      <h2 className="text-2xl font-semibold tracking-tight">Component nổi bật</h2>
+      <p className="text-sm text-muted-foreground">Một số component đã publish trên thư viện.</p>
+    </div>
+  )
 
   return (
     <div className="flex flex-col gap-24 pb-8">
@@ -96,24 +106,19 @@ export default async function HomePage() {
       </section>
 
       <section className="flex flex-col gap-8">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Component nổi bật</h2>
-          <p className="text-sm text-muted-foreground">
-            Một số component đã publish trên thư viện.
-          </p>
-        </div>
         {featured.unavailable ? (
-          <p className="rounded-card border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            Catalog tạm thời chưa tải được. Vui lòng thử lại sau.
-          </p>
+          <>
+            {featuredHeading}
+            <p className="rounded-card border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              Catalog tạm thời chưa tải được. Vui lòng thử lại sau.
+            </p>
+          </>
         ) : (
-          <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <FeaturedCarousel heading={featuredHeading}>
             {highlights.map((item) => (
-              <li key={item.id} className="min-w-0">
-                <ComponentCard item={item} demo={getDemoManifest(item.slug)} />
-              </li>
+              <ComponentCard key={item.id} item={item} demo={getDemoManifest(item.slug)} />
             ))}
-          </ul>
+          </FeaturedCarousel>
         )}
       </section>
 
