@@ -13,7 +13,10 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { fileURLToPath } from 'node:url'
+import { createHash } from 'node:crypto'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { createDbHandle, type DatabaseHandle, schema } from '@marketplace/db'
 import {
   apiErrorSchema,
@@ -31,13 +34,24 @@ import { createServer, shutdown } from '../index'
 
 const TEST_DB_URL = process.env.TEST_DATABASE_URL
 const describeIntegration = TEST_DB_URL ? describe : describe.skip
-const REGISTRY_FIXTURE_ROOT = fileURLToPath(
-  new URL('../../test/fixtures/registry', import.meta.url),
-)
-
-const SEED_SLUGS = ['hero-section', 'giant-tooltip', 'hidden-draft', 'anonymous-row']
+const SEED_SLUGS = [
+  'hero-section',
+  'giant-tooltip',
+  'hidden-draft',
+  'anonymous-row',
+  'checksum-mismatch',
+]
 const AUTH_TEST_SECRET = 'auth-integration-test-secret-long-enough-32'
 const AUTH_TEST_EMAILS: string[] = []
+const HERO_SOURCE =
+  'export function HeroSection() {\n  return <section aria-label="Hero section">Example registry fixture</section>\n}\n'
+const HERO_STYLES = '.hero-section {\n  display: grid;\n  min-height: 20rem;\n}\n'
+const MISMATCH_SOURCE = 'CHECKSUM_MISMATCH_SOURCE_MUST_NOT_BE_RETURNED'
+const ANONYMOUS_LATEST_SOURCE = 'UNRECORDED_LATEST_SOURCE_MUST_NOT_BE_RETURNED'
+
+function checksum(content: string): string {
+  return createHash('sha256').update(content).digest('hex')
+}
 
 type SignUpPayload = { token: string | null; user: AuthUserPayload }
 
@@ -47,6 +61,7 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
   let dbHandle: DatabaseHandle
   let auth: MarketplaceAuth
   let baseUrl: string
+  let registryRoot: string | undefined
   let closeServer: () => Promise<void> = async () => {}
 
   beforeAll(async () => {
@@ -63,7 +78,7 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
 
     dbHandle = createDbHandle(TEST_DB_URL, { connectTimeout: 10 })
 
-    // 2. Seed nhỏ: 1 author + 3 published + 1 draft (1 row description null).
+    // 2. Seed catalog rows and release-ledger cases.
     await dbHandle.db.delete(schema.components).where(inArray(schema.components.slug, SEED_SLUGS))
     await dbHandle.db
       .delete(schema.users)
@@ -110,6 +125,16 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
         authorId: null,
       },
       {
+        slug: 'checksum-mismatch',
+        name: 'Checksum Mismatch',
+        description: 'Its release ledger checksum is intentionally wrong.',
+        category: 'tool',
+        tags: [],
+        latestVersion: '1.0.0',
+        isPublished: true,
+        authorId: author.id,
+      },
+      {
         slug: 'hidden-draft',
         name: 'Hidden Draft',
         description: 'Not published yet.',
@@ -119,6 +144,76 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
         isPublished: false,
         authorId: author.id,
       },
+    ])
+
+    const registryComponents = await dbHandle.db
+      .select({ id: schema.components.id, slug: schema.components.slug })
+      .from(schema.components)
+      .where(inArray(schema.components.slug, SEED_SLUGS))
+    const componentId = (slug: string): string => {
+      const row = registryComponents.find((component) => component.slug === slug)
+      if (!row) throw new Error(`Missing registry test component: ${slug}`)
+      return row.id
+    }
+
+    const registryReleases = await dbHandle.db
+      .insert(schema.componentReleases)
+      .values([
+        { componentId: componentId('hero-section'), version: '1.2.3' },
+        { componentId: componentId('checksum-mismatch'), version: '1.0.0' },
+        { componentId: componentId('anonymous-row'), version: '0.9.0' },
+      ])
+      .returning({
+        id: schema.componentReleases.id,
+        componentId: schema.componentReleases.componentId,
+      })
+    const releaseId = (slug: string): string => {
+      const release = registryReleases.find((entry) => entry.componentId === componentId(slug))
+      if (!release) throw new Error(`Missing registry test release: ${slug}`)
+      return release.id
+    }
+
+    await dbHandle.db.insert(schema.componentReleaseFiles).values([
+      {
+        releaseId: releaseId('hero-section'),
+        path: 'index.tsx',
+        checksumSha256: checksum(HERO_SOURCE),
+      },
+      {
+        releaseId: releaseId('hero-section'),
+        path: 'styles.css',
+        checksumSha256: checksum(HERO_STYLES),
+      },
+      {
+        releaseId: releaseId('checksum-mismatch'),
+        path: 'index.tsx',
+        checksumSha256: '0'.repeat(64),
+      },
+      {
+        releaseId: releaseId('anonymous-row'),
+        path: 'index.tsx',
+        checksumSha256: checksum('OLDER_RELEASE_SOURCE'),
+      },
+    ])
+
+    const testRegistryRoot = await mkdtemp(join(tmpdir(), 'marketplace-registry-integration-'))
+    registryRoot = testRegistryRoot
+    const writeRegistryFile = async (
+      slug: string,
+      version: string,
+      path: string,
+      content: string,
+    ): Promise<void> => {
+      const filePath = join(testRegistryRoot, slug, version, ...path.split('/'))
+      await mkdir(dirname(filePath), { recursive: true })
+      await writeFile(filePath, content)
+    }
+    await Promise.all([
+      writeRegistryFile('hero-section', '1.2.3', 'index.tsx', HERO_SOURCE),
+      writeRegistryFile('hero-section', '1.2.3', 'styles.css', HERO_STYLES),
+      writeRegistryFile('checksum-mismatch', '1.0.0', 'index.tsx', MISMATCH_SOURCE),
+      writeRegistryFile('anonymous-row', '0.9.0', 'index.tsx', 'OLDER_RELEASE_SOURCE'),
+      writeRegistryFile('anonymous-row', '1.0.0', 'index.tsx', ANONYMOUS_LATEST_SOURCE),
     ])
 
     // 3. HTTP thật trên port ephemeral (pattern #29).
@@ -132,7 +227,7 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
         BETTER_AUTH_URL: 'http://127.0.0.1:4000',
       },
       db: dbHandle,
-      registryRoot: REGISTRY_FIXTURE_ROOT,
+      registryRoot: testRegistryRoot,
     })
     if (!configuredAuth) throw new Error('Better Auth was not configured for integration tests')
     auth = configuredAuth
@@ -149,6 +244,7 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
       .delete(schema.users)
       .where(inArray(schema.users.email, ['catalog-author@test.local', ...AUTH_TEST_EMAILS]))
     await closeServer()
+    if (registryRoot) await rm(registryRoot, { recursive: true, force: true })
   })
 
   /** Helpers: fetch + envelope parse. */
@@ -166,9 +262,10 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     const { status, body } = await get('/components')
     expect(status).toBe(200)
     const parsed = listResponseSchema.parse(body)
-    expect(parsed).toEqual({ items: parsed.items, page: 1, pageSize: 12, total: 3 })
+    expect(parsed).toEqual({ items: parsed.items, page: 1, pageSize: 12, total: 4 })
     expect(parsed.items.map((item) => item.slug).sort()).toEqual([
       'anonymous-row',
+      'checksum-mismatch',
       'giant-tooltip',
       'hero-section',
     ])
@@ -223,8 +320,8 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     const parsed = listResponseSchema.parse((await get('/components?page=2&pageSize=2')).body)
     expect(parsed.page).toBe(2)
     expect(parsed.pageSize).toBe(2)
-    expect(parsed.total).toBe(3) // total là tổng, không phải page size
-    expect(parsed.items).toHaveLength(1)
+    expect(parsed.total).toBe(4) // total là tổng, không phải page size
+    expect(parsed.items).toHaveLength(2)
   })
 
   test('GET /components?category=general — 422 VALIDATION_QUERY envelope', async () => {
@@ -277,15 +374,8 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     expect(parsed.item.slug).toBe('hero-section')
     expect(parsed.item.version).toBe('1.2.3')
     expect(parsed.item.files).toEqual([
-      {
-        path: 'index.tsx',
-        content:
-          'export function HeroSection() {\n  return <section aria-label="Hero section">Example registry fixture</section>\n}\n',
-      },
-      {
-        path: 'styles.css',
-        content: '.hero-section {\n  display: grid;\n  min-height: 20rem;\n}\n',
-      },
+      { path: 'index.tsx', content: HERO_SOURCE },
+      { path: 'styles.css', content: HERO_STYLES },
     ])
   })
 
@@ -303,10 +393,18 @@ describeIntegration('catalog endpoints (integration, requires TEST_DATABASE_URL)
     expect(JSON.stringify(body)).not.toContain('DRAFT_SOURCE_MUST_NOT_BE_EXPOSED')
   })
 
-  test('GET /registry/anonymous-row → stable error when a Free release has no git source', async () => {
+  test('GET /registry/checksum-mismatch → 500 without exposing unverified file bytes', async () => {
+    const { status, body } = await get('/registry/checksum-mismatch')
+    expect(status).toBe(500)
+    expect(apiErrorSchema.parse(body).code).toBe('REGISTRY_RELEASE_INVALID')
+    expect(JSON.stringify(body)).not.toContain(MISMATCH_SOURCE)
+  })
+
+  test('GET /registry/anonymous-row → 404 when only an older release is recorded', async () => {
     const { status, body } = await get('/registry/anonymous-row')
-    expect(status).toBe(503)
-    expect(apiErrorSchema.parse(body).code).toBe('REGISTRY_SOURCE_UNAVAILABLE')
+    expect(status).toBe(404)
+    expect(apiErrorSchema.parse(body).code).toBe('NOT_FOUND')
+    expect(JSON.stringify(body)).not.toContain(ANONYMOUS_LATEST_SOURCE)
   })
 
   test('signup returns full user contract (role dropped, no session) while unverified; session arrives after verify+signin', async () => {
