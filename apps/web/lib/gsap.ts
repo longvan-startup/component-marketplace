@@ -105,3 +105,15 @@ export function useGsapScope(
     // what a future mount would run; a changed scopeRef re-binds cleanly.
   }, [scopeRef])
 }
+
+/**
+ * Fades an element to `opacity` with GSAP. Under prefers-reduced-motion the
+ * change is applied at once, with no tween.
+ */
+export function tweenOpacity(element: Element, opacity: number, duration: number): void {
+  if (prefersReducedMotion()) {
+    ;(element as HTMLElement).style.opacity = String(opacity)
+    return
+  }
+  gsap.to(element, { opacity, duration, ease: 'power2.inOut', overwrite: 'auto' })
+}
