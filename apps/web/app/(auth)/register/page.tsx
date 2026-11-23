@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AuthShell } from '@/components/auth/auth-shell'
+import { AuthHeading } from '@/components/auth/auth-shell'
 import { SignUpForm } from '@/components/auth/sign-up-form'
 import { SocialButtons } from '@/components/auth/social-buttons'
 import { loadSocialProviders, resolveApiMode } from '@/features/auth/auth-source'
@@ -14,12 +14,11 @@ export default async function RegisterPage() {
   const apiMode = resolveApiMode()
   const providers = await loadSocialProviders(apiMode)
   return (
-    <AuthShell
-      title="Tạo tài khoản miễn phí"
-      subtitle="Khám phá và tải hàng trăm component UI, miễn phí."
-      showcaseTitle="Component UI chất lượng, sẵn dùng ngay"
-      showcaseSubtitle="Khám phá các component UI trong thư viện."
-    >
+    <>
+      <AuthHeading
+        title="Tạo tài khoản miễn phí"
+        subtitle="Khám phá và tải hàng trăm component UI, miễn phí."
+      />
       <SocialButtons providers={providers} />
       <SignUpForm apiMode={apiMode} />
       <p className="text-center text-[13px] text-muted-foreground">
@@ -31,6 +30,6 @@ export default async function RegisterPage() {
           Đăng nhập
         </Link>
       </p>
-    </AuthShell>
+    </>
   )
 }
