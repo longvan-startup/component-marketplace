@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ComponentCard } from '@/components/catalog/component-card'
+import { CATEGORY_OPTIONS } from '@/features/catalog/catalog-labels'
 import {
   type CatalogListQuery,
   getCatalogSource,
@@ -16,12 +17,7 @@ interface CatalogPageProps {
   }>
 }
 
-const CATEGORY_FILTERS = [
-  { value: undefined, label: 'Tất cả' },
-  { value: 'animation', label: 'Animation' },
-  { value: 'react-component', label: 'React component' },
-  { value: 'tool', label: 'Công cụ' },
-] as const
+const CATEGORY_FILTERS = [{ value: undefined, label: 'Tất cả' }, ...CATEGORY_OPTIONS] as const
 
 function catalogHref(query: Pick<CatalogListQuery, 'q' | 'category'>) {
   const params = new URLSearchParams()
