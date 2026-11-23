@@ -5,7 +5,7 @@
  */
 export const NAV_LINKS = [
   { href: '/components', label: 'Danh mục' },
-  { href: '/pricing', label: 'Bảng giá' },
+  { href: '/pricing', label: 'Gói thành viên' },
 ] as const
 
 export const NAV_ACTIONS = {
