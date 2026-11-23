@@ -48,3 +48,55 @@ export function makeBubbles(): Bubble[] {
     pulseMax: Number(randomBetween(1.05, 1.15).toFixed(2)),
   }))
 }
+
+/* The path a bubble follows for `totalS` seconds, one point per `stepS`. It moves
+   at a constant speed, turns now and then, and reflects off the hero's edges.
+   Points are the bubble's top-left corner in px, measured from the hero's
+   top-left corner. */
+export function driftPath(
+  width: number,
+  height: number,
+  bubble: Bubble,
+  startX: number,
+  startY: number,
+  totalS: number,
+  stepS: number,
+): { x: number; y: number }[] {
+  const angle = Math.random() * Math.PI * 2
+  const speed = randomBetween(SPEED_MIN, SPEED_MAX)
+  let vx = Math.cos(angle) * speed
+  let vy = Math.sin(angle) * speed
+  let x = startX
+  let y = startY
+  let turnIn = randomBetween(TURN_WAIT_MIN, TURN_WAIT_MAX)
+  const maxX = Math.max(0, width - bubble.size)
+  const maxY = Math.max(0, height - bubble.size)
+  const points: { x: number; y: number }[] = []
+  for (let t = 0; t < totalS; t += stepS) {
+    turnIn -= stepS
+    if (turnIn <= 0) {
+      const heading = Math.atan2(vy, vx) + randomBetween(-TURN_MAX, TURN_MAX)
+      vx = Math.cos(heading) * speed
+      vy = Math.sin(heading) * speed
+      turnIn = randomBetween(TURN_WAIT_MIN, TURN_WAIT_MAX)
+    }
+    x += vx * stepS
+    y += vy * stepS
+    if (x < 0) {
+      x = -x
+      vx = Math.abs(vx)
+    } else if (x > maxX) {
+      x = 2 * maxX - x
+      vx = -Math.abs(vx)
+    }
+    if (y < 0) {
+      y = -y
+      vy = Math.abs(vy)
+    } else if (y > maxY) {
+      y = 2 * maxY - y
+      vy = -Math.abs(vy)
+    }
+    points.push({ x, y })
+  }
+  return points
+}
