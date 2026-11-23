@@ -8,15 +8,15 @@ import { createFrameLoop } from '../../lib/gsap'
 const DOT_FRAME = { width: 1440, height: 480 }
 const DOT_SRC = '/hero/halftone-dots.svg'
 /* Small press radius, as in the reference. */
-const PRESS_RADIUS = 56
+export const PRESS_RADIUS = 56
 /* How far a dot is pulled toward the pointer and pushed down at the centre.
    Kept small so the dots dent instead of following the pointer. */
 const PULL = 2.5
 const SINK = 3
 /* Spring that returns a dot to rest: k sets speed, c sets damping, so the
    return overshoots a little. */
-const SPRING_K = 320
-const SPRING_C = 15
+export const SPRING_K = 320
+export const SPRING_C = 15
 const FADE_IN = 0.35
 const FADE_OUT = 0.12
 export const DOT_SCALE = 1.4

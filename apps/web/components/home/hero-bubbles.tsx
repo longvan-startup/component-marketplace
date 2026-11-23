@@ -14,7 +14,6 @@ const PATH_S = 60
    Each bubble sits at its own left and top, so the static markup is already in
    place when motion is off (prefers-reduced-motion). */
 export function HeroBubbles() {
-  const layerRef = useRef<HTMLDivElement>(null)
   const [bubbles, setBubbles] = useState<Bubble[]>([])
 
   /* Layout effects run before the browser paints, so the bubbles appear at
@@ -23,9 +22,18 @@ export function HeroBubbles() {
     setBubbles(makeBubbles())
   }, [])
 
+  /* The layer mounts only once the bubbles exist. useGsapScope runs its setup
+     once on mount, so the setup must already see the bubbles to tween them. */
+  if (bubbles.length === 0) return null
+  return <BubbleLayer bubbles={bubbles} />
+}
+
+function BubbleLayer({ bubbles }: { bubbles: Bubble[] }) {
+  const layerRef = useRef<HTMLDivElement>(null)
+
   useGsapScope(layerRef, ({ gsap, qa, scope }) => {
     const section = scope.closest('section')
-    if (!section || bubbles.length === 0) return
+    if (!section) return
     const bounds = section.getBoundingClientRect()
     qa<HTMLElement>('.hero-bubble').forEach((el, index) => {
       const bubble = bubbles[index]

@@ -2,6 +2,8 @@ import type { CatalogCategory } from '@marketplace/shared'
 import Link from 'next/link'
 import { ComponentCard } from '@/components/catalog/component-card'
 import { HeroBackdrop } from '@/components/home/hero-backdrop'
+import { HeroText } from '@/components/home/hero-text'
+import { Words } from '@/components/home/hero-words'
 import { buttonClasses } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { CATEGORY_OPTIONS } from '@/features/catalog/catalog-labels'
@@ -54,14 +56,25 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col gap-24 pb-8">
-      <section className="relative left-1/2 isolate flex w-screen -translate-x-1/2 flex-col items-center gap-6 overflow-hidden py-24 text-center">
+      {/* The hero reaches up under the transparent navbar, so the bubbles are not
+          cut by a hard edge below it: -mt-26 is the navbar (72px) plus the main
+          padding (32px), and pt-50 gives that height back to the content. */}
+      <section className="relative left-1/2 isolate -mt-26 flex w-screen -translate-x-1/2 flex-col items-center gap-6 overflow-hidden pb-24 pt-50 text-center">
         <HeroBackdrop />
-        <h1 className="max-w-[800px] text-4xl font-bold leading-[1.125] md:text-[64px] md:leading-[72px]">
-          Thư viện <span className="text-primary">component</span> sẵn dùng cho dự án của bạn
-        </h1>
-        <p className="max-w-[640px] text-base leading-6 text-muted-foreground">
-          Khám phá các component UI đã publish và tìm thông tin phù hợp cho dự án của bạn.
-        </p>
+        <HeroText>
+          <h1 className="max-w-[800px] text-4xl font-bold leading-[1.125] md:text-[64px] md:leading-[72px]">
+            <Words>Thư viện</Words>{' '}
+            <span className="text-primary">
+              <Words>component</Words>
+            </span>{' '}
+            <Words>sẵn dùng cho dự án của bạn</Words>
+          </h1>
+          <p className="max-w-[640px] text-base leading-6 text-muted-foreground">
+            <Words>
+              Khám phá các component UI đã publish và tìm thông tin phù hợp cho dự án của bạn.
+            </Words>
+          </p>
+        </HeroText>
         <div className="flex flex-wrap justify-center gap-3 pt-2">
           <Link
             href="/components"
