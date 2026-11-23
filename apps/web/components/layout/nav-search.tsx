@@ -17,7 +17,7 @@ const OPEN_WIDTH = 360
 const OPEN_S = 0.65
 const CLOSE_S = 0.45
 /* Visible strip = the icon's width; the rest of the panel is clipped away. */
-const CLOSED_CLIP = `inset(0 ${OPEN_WIDTH - ICON_WIDTH}px 0 0 round 9999px)`
+const CLOSED_CLIP = `inset(0 0 0 ${OPEN_WIDTH - ICON_WIDTH}px round 9999px)`
 const OPEN_CLIP = 'inset(0 0px 0 0 round 9999px)'
 
 export function NavSearch({ className = '' }: { className?: string }) {
@@ -106,9 +106,8 @@ export function NavSearch({ className = '' }: { className?: string }) {
         ref={panelRef}
         inert={!open}
         style={{ width: OPEN_WIDTH, clipPath: CLOSED_CLIP }}
-        className="absolute left-0 top-0 flex h-11 items-center rounded-badge border border-border bg-card"
+        className="absolute right-0 top-0 flex h-11 items-center rounded-badge border border-border bg-card"
       >
-        <div aria-hidden="true" className="w-11 shrink-0" />
         <form
           ref={formRef}
           action="/components"
@@ -126,6 +125,7 @@ export function NavSearch({ className = '' }: { className?: string }) {
             className="h-full min-w-0 flex-1 bg-transparent text-base text-foreground outline-none"
           />
         </form>
+        <div aria-hidden="true" className="w-11 shrink-0" />
       </div>
       <IconButton
         label={open ? 'Đóng tìm kiếm' : 'Mở tìm kiếm'}
