@@ -90,7 +90,7 @@ export function NavSearch({ className = '' }: { className?: string }) {
     <div
       ref={boxRef}
       style={{ width: ICON_WIDTH }}
-      className={`flex h-11 shrink-0 items-center overflow-hidden rounded-badge ${open ? 'border border-border bg-card' : ''} ${className}`}
+      className={`flex h-11 shrink-0 items-center overflow-hidden rounded-badge ${open ? 'border border-border bg-card focus-within:border-ring focus-within:ring-1 focus-within:ring-ring' : ''} ${className}`}
     >
       <IconButton
         label={open ? 'Đóng tìm kiếm' : 'Mở tìm kiếm'}

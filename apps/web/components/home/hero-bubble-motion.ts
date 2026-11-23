@@ -22,8 +22,8 @@ export const BUBBLE_COUNT = 5
 
 /* Ping-pong motion: each bubble keeps its own constant speed, bounces off the
    hero's edges, and now and then turns to a new random heading. */
-export const SPEED_MIN = 12
-export const SPEED_MAX = 22
+export const SPEED_MIN = 30
+export const SPEED_MAX = 50
 export const TURN_WAIT_MIN = 1.5
 export const TURN_WAIT_MAX = 4.5
 /* largest turn in one step, in radians (about 80 degrees) */
