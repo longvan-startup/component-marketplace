@@ -25,7 +25,11 @@ import { and, arrayContains, asc, count, desc, eq, ilike, or, type SQL } from 'd
 
 import type { CatalogRow } from './mapper'
 
-const { components, users } = schema
+const { components, users, componentReleases, componentReleaseFiles } = schema
+
+export interface RegistryReleaseLedger {
+  files: Array<{ path: string; checksumSha256: string }>
+}
 
 /**
  * SELECT shape dùng chung cho list + detail: đủ trường public + authorName.
@@ -109,6 +113,40 @@ export async function getComponentBySlug(
     .where(and(eq(components.slug, slug), eq(components.isPublished, true)))
     .limit(1)) as unknown as CatalogRow[]
   return rows[0] ?? null
+}
+
+/** Finds the exact recorded release and file ledger for one component version.
+ *
+ * @param db Database handle for the current request.
+ * @param componentId Catalog row identifier.
+ * @param version Exact version selected from the component's latestVersion.
+ * @returns File paths and expected SHA-256 checksums, or null when no release matches.
+ */
+export async function getRegistryReleaseByVersion(
+  db: DatabaseHandle,
+  componentId: string,
+  version: string,
+): Promise<RegistryReleaseLedger | null> {
+  const [release] = await db.db
+    .select({ id: componentReleases.id })
+    .from(componentReleases)
+    .where(
+      and(eq(componentReleases.componentId, componentId), eq(componentReleases.version, version)),
+    )
+    .limit(1)
+
+  if (!release) return null
+
+  const files = await db.db
+    .select({
+      path: componentReleaseFiles.path,
+      checksumSha256: componentReleaseFiles.checksumSha256,
+    })
+    .from(componentReleaseFiles)
+    .where(eq(componentReleaseFiles.releaseId, release.id))
+    .orderBy(asc(componentReleaseFiles.path))
+
+  return { files }
 }
 
 /** Lấy 1 component THEO SLUG bất kể trạng thái publish — chỉ dùng cho admin. */

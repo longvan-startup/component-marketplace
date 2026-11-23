@@ -8,12 +8,11 @@
  */
 import { useId, useState } from 'react'
 import { type ApiMode, getAuthSource, ResetPasswordError } from '../../features/auth/auth-source'
+import { MIN_PASSWORD_LENGTH, validateNewPassword } from '../../features/auth/form-validation'
 import { Button } from '../ui/button'
 import { Field } from '../ui/field'
 import { Input } from '../ui/input'
 import { AuthStatusBanner } from './auth-status-banner'
-
-const MIN_PASSWORD_LENGTH = 8
 
 type FormState = { kind: 'idle' | 'submitting' | 'done' | 'error'; message?: string }
 
@@ -21,11 +20,14 @@ export function ResetPasswordForm({ token, apiMode }: { token: string; apiMode: 
   const passwordId = useId()
   const [password, setPassword] = useState('')
   const [state, setState] = useState<FormState>({ kind: 'idle' })
+  const [passwordError, setPasswordError] = useState<string | undefined>()
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setState({ kind: 'error', message: `Mật khẩu phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự.` })
+    const found = validateNewPassword(password)
+    setPasswordError(found)
+    if (found) {
+      requestAnimationFrame(() => document.getElementById(passwordId)?.focus())
       return
     }
     setState({ kind: 'submitting' })
@@ -61,15 +63,17 @@ export function ResetPasswordForm({ token, apiMode }: { token: string; apiMode: 
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
-      <Field label="Mật khẩu mới" htmlFor={passwordId}>
+    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+      <Field label="Mật khẩu mới" htmlFor={passwordId} error={passwordError}>
         <Input
           id={passwordId}
           type="password"
-          required
-          minLength={MIN_PASSWORD_LENGTH}
+          aria-invalid={Boolean(passwordError)}
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value)
+            setPasswordError(undefined)
+          }}
           placeholder="Ít nhất 8 ký tự"
         />
       </Field>

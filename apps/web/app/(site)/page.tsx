@@ -1,11 +1,16 @@
 import type { CatalogCategory } from '@marketplace/shared'
 import Link from 'next/link'
-import { DemoPreview } from '@/components/catalog/demo-preview'
+import { ComponentCard } from '@/components/catalog/component-card'
+import { CategoryFan } from '@/components/home/category-fan'
+import { FeaturedCarousel } from '@/components/home/featured-carousel'
 import { HeroBackdrop } from '@/components/home/hero-backdrop'
-import { Badge } from '@/components/ui/badge'
+import { HeroText } from '@/components/home/hero-text'
+import { Words } from '@/components/home/hero-words'
+import { WhyGrid } from '@/components/home/why-grid'
 import { buttonClasses } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { type CatalogItem, getCatalogSource } from '@/features/catalog/catalog-source'
+import { CATEGORY_OPTIONS } from '@/features/catalog/catalog-labels'
+import { getCatalogSource } from '@/features/catalog/catalog-source'
 import { getDemoManifest } from '@/features/demo/demo-source'
 
 /* Home — Server Component. Layout follows the Figma Home frame (13:18): hero,
@@ -17,11 +22,10 @@ import { getDemoManifest } from '@/features/demo/demo-source'
    regeneration after the API recovers (at most about a minute). */
 export const revalidate = 60
 
-const CATEGORIES = [
-  { value: 'animation', label: 'Animation' },
-  { value: 'react-component', label: 'React component' },
-  { value: 'tool', label: 'Công cụ' },
-] as const
+const CATEGORIES = CATEGORY_OPTIONS
+
+/* The featured row slides, so it carries more than the four a grid would fit. */
+const FEATURED_COUNT = 8
 
 const WHY_ITEMS = [
   {
@@ -38,39 +42,6 @@ const WHY_ITEMS = [
   },
 ] as const
 
-const CATEGORY_LABEL: Record<CatalogItem['category'], string> = {
-  animation: 'Animation',
-  'react-component': 'React component',
-  tool: 'Công cụ',
-}
-
-const TIER_LABEL = { free: 'Free', pro: 'Pro' } as const
-
-function FeaturedCard({ item }: { item: CatalogItem }) {
-  return (
-    <Card className="flex h-full w-full flex-col overflow-hidden rounded-[16px] bg-muted">
-      <DemoPreview demo={getDemoManifest(item.slug)} name={item.name} summary={item.summary} />
-      <div className="flex flex-col gap-1.5 px-4 pb-4 pt-3.5">
-        <Link
-          href={`/components/${item.slug}`}
-          className="truncate text-base font-semibold leading-[22px] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {item.name}
-        </Link>
-        <p className="truncate text-sm leading-5 text-muted-foreground">by {item.author}</p>
-      </div>
-      <div className="mt-auto flex flex-wrap gap-2 px-4 pb-4">
-        <Badge variant="neutral">{CATEGORY_LABEL[item.category]}</Badge>
-        {item.accessTier ? (
-          <Badge variant={item.accessTier === 'pro' ? 'accent' : 'success'}>
-            {TIER_LABEL[item.accessTier]}
-          </Badge>
-        ) : null}
-      </div>
-    </Card>
-  )
-}
-
 export default async function HomePage() {
   const source = getCatalogSource()
   /* Any failure (not just 503 or a network error) becomes an unavailable
@@ -84,21 +55,38 @@ export default async function HomePage() {
       unavailable: true,
     }))
   const [featured, ...counts] = await Promise.all([
-    list({ pageSize: 4 }),
+    list({ pageSize: FEATURED_COUNT }),
     ...CATEGORIES.map((category) => list({ category: category.value, pageSize: 1 })),
   ])
-  const highlights = featured.items.slice(0, 4)
+  const highlights = featured.items.slice(0, FEATURED_COUNT)
+  const featuredHeading = (
+    <div className="flex flex-col gap-2">
+      <h2 className="text-2xl font-semibold tracking-tight">Component nổi bật</h2>
+      <p className="text-sm text-muted-foreground">Một số component đã publish trên thư viện.</p>
+    </div>
+  )
 
   return (
     <div className="flex flex-col gap-24 pb-8">
-      <section className="relative left-1/2 isolate flex w-screen -translate-x-1/2 flex-col items-center gap-6 overflow-hidden py-24 text-center">
+      {/* The hero reaches up under the transparent navbar, so the bubbles are not
+          cut by a hard edge below it: -mt-26 is the navbar (72px) plus the main
+          padding (32px), and pt-50 gives that height back to the content. */}
+      <section className="relative left-1/2 isolate -mt-26 flex w-screen -translate-x-1/2 flex-col items-center gap-6 overflow-hidden pb-24 pt-50 text-center">
         <HeroBackdrop />
-        <h1 className="max-w-[800px] text-4xl font-bold leading-[1.125] md:text-[64px] md:leading-[72px]">
-          Thư viện <span className="text-primary">component</span> sẵn dùng cho dự án của bạn
-        </h1>
-        <p className="max-w-[640px] text-base leading-6 text-muted-foreground">
-          Khám phá các component UI đã publish và tìm thông tin phù hợp cho dự án của bạn.
-        </p>
+        <HeroText>
+          <h1 className="max-w-[800px] text-4xl font-bold leading-[1.125] md:text-[64px] md:leading-[72px]">
+            <Words>Thư viện</Words>{' '}
+            <span className="text-primary">
+              <Words>component</Words>
+            </span>{' '}
+            <Words>sẵn dùng cho dự án của bạn</Words>
+          </h1>
+          <p className="max-w-[640px] text-base leading-6 text-muted-foreground">
+            <Words>
+              Khám phá các component UI đã publish và tìm thông tin phù hợp cho dự án của bạn.
+            </Words>
+          </p>
+        </HeroText>
         <div className="flex flex-wrap justify-center gap-3 pt-2">
           <Link
             href="/components"
@@ -120,48 +108,48 @@ export default async function HomePage() {
       </section>
 
       <section className="flex flex-col gap-8">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Component nổi bật</h2>
-          <p className="text-sm text-muted-foreground">
-            Một số component đã publish trên thư viện.
-          </p>
-        </div>
         {featured.unavailable ? (
-          <p className="rounded-card border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            Catalog tạm thời chưa tải được. Vui lòng thử lại sau.
-          </p>
+          <>
+            {featuredHeading}
+            <p className="rounded-card border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              Catalog tạm thời chưa tải được. Vui lòng thử lại sau.
+            </p>
+          </>
         ) : (
-          <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <FeaturedCarousel heading={featuredHeading}>
             {highlights.map((item) => (
-              <li key={item.id} className="min-w-0">
-                <FeaturedCard item={item} />
-              </li>
+              <ComponentCard key={item.id} item={item} demo={getDemoManifest(item.slug)} />
             ))}
-          </ul>
+          </FeaturedCarousel>
         )}
       </section>
 
       <section className="flex flex-col gap-8">
         <h2 className="text-2xl font-semibold tracking-tight">Duyệt theo danh mục</h2>
-        <ul className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <CategoryFan>
           {CATEGORIES.map((category, index) => (
-            <li key={category.value} className="min-w-0">
-              <Link
-                href={`/components?category=${category.value}`}
-                className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Card className="flex flex-col gap-2 p-6 transition-colors hover:border-primary/40 hover:bg-muted">
-                  <span className="font-semibold tracking-tight">{category.label}</span>
+            <Link
+              key={category.value}
+              href={`/components?category=${category.value}`}
+              className="block h-full rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {/* the text sits on the right: in the fan, the card before covers the left edge */}
+              <Card className="flex h-full min-h-48 flex-col items-end justify-between p-6 text-right shadow-lg transition-colors hover:border-primary/40">
+                <span className="font-mono text-xs text-muted-foreground">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div className="flex flex-col gap-2">
+                  <span className="text-xl font-semibold tracking-tight">{category.label}</span>
                   <span className="text-sm text-muted-foreground">
                     {counts[index]?.unavailable
                       ? 'Đang cập nhật'
                       : `${counts[index]?.total ?? 0} component`}
                   </span>
-                </Card>
-              </Link>
-            </li>
+                </div>
+              </Card>
+            </Link>
           ))}
-        </ul>
+        </CategoryFan>
       </section>
 
       <section className="flex flex-col gap-10">
@@ -171,17 +159,7 @@ export default async function HomePage() {
             Mọi thứ bạn cần để tìm và dùng component nhanh hơn.
           </p>
         </div>
-        <ol className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          {WHY_ITEMS.map((item, index) => (
-            <li key={item.title} className="flex flex-col gap-3">
-              <span className="font-mono text-xs text-muted-foreground">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <h3 className="text-lg font-semibold tracking-tight">{item.title}</h3>
-              <p className="text-sm leading-6 text-muted-foreground">{item.body}</p>
-            </li>
-          ))}
-        </ol>
+        <WhyGrid items={WHY_ITEMS} />
       </section>
     </div>
   )

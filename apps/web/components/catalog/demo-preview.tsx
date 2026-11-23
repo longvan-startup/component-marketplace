@@ -70,14 +70,14 @@ export function DemoPreview({
 
   if (!demo) {
     return (
-      <div className="flex h-40 items-center justify-center bg-muted text-sm text-muted-foreground">
+      <div className="flex h-48 items-center justify-center bg-muted text-sm text-muted-foreground">
         Chưa có demo
       </div>
     )
   }
 
   return (
-    <div ref={containerRef} className="relative h-40 overflow-hidden bg-muted">
+    <div ref={containerRef} className="relative h-48 overflow-hidden bg-muted">
       {live ? (
         <iframe
           src={demo.src}

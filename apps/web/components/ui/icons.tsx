@@ -140,3 +140,45 @@ export function IconClose({ className = '' }: IconProps) {
     </svg>
   )
 }
+
+export function IconChevronLeft({ className = '' }: IconProps) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <path
+        d="M11 4L6 9L11 14"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function IconChevronRight({ className = '' }: IconProps) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <path
+        d="M7 4L12 9L7 14"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}

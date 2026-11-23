@@ -4,12 +4,20 @@ import { changePasswordRequestSchema } from '@marketplace/shared'
 import Link from 'next/link'
 import { useEffect, useId, useState } from 'react'
 import { type ApiMode, AuthRequestError, getAuthSource } from '../../features/auth/auth-source'
+import {
+  type FieldErrors,
+  hasErrors,
+  validateNewPassword,
+} from '../../features/auth/form-validation'
 import { useNavSession } from '../layout/nav-session'
 import { Button, buttonClasses } from '../ui/button'
 import { Card } from '../ui/card'
 import { Field } from '../ui/field'
 import { Input } from '../ui/input'
 import { AuthStatusBanner } from './auth-status-banner'
+import { focusFirstInvalid } from './focus-first-invalid'
+
+type PasswordField = 'current' | 'new' | 'confirm'
 
 function passwordChangeError(error: unknown): string {
   if (error instanceof AuthRequestError) {
@@ -30,7 +38,7 @@ export function SecuritySettings({ apiMode }: { apiMode: ApiMode }) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordSubmitting, setPasswordSubmitting] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [confirmError, setConfirmError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<FieldErrors<PasswordField>>({})
   const [passwordChanged, setPasswordChanged] = useState(false)
   const [confirmingSignOutEverywhere, setConfirmingSignOutEverywhere] = useState(false)
   const [signedOutEverywhere, setSignedOutEverywhere] = useState(false)
@@ -45,25 +53,31 @@ export function SecuritySettings({ apiMode }: { apiMode: ApiMode }) {
   async function submitPasswordChange(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setPasswordError(null)
-    setConfirmError(null)
     setPasswordChanged(false)
 
+    const found: FieldErrors<PasswordField> = {
+      current: currentPassword ? undefined : 'Vui lòng nhập mật khẩu hiện tại.',
+      new: validateNewPassword(newPassword),
+      confirm: !confirmPassword
+        ? 'Vui lòng nhập lại mật khẩu mới.'
+        : newPassword !== confirmPassword
+          ? 'Mật khẩu xác nhận chưa khớp.'
+          : undefined,
+    }
+    setErrors(found)
+    if (hasErrors(found)) {
+      requestAnimationFrame(() =>
+        focusFirstInvalid([currentPasswordId, newPasswordId, confirmPasswordId]),
+      )
+      return
+    }
     const request = changePasswordRequestSchema.safeParse({
       currentPassword,
       newPassword,
       revokeOtherSessions: true,
     })
     if (!request.success) {
-      const issue = request.error.issues[0]
-      setPasswordError(
-        issue?.path.includes('newPassword')
-          ? 'Mật khẩu mới cần dài từ 8 đến 128 ký tự.'
-          : 'Vui lòng nhập mật khẩu hiện tại.',
-      )
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setConfirmError('Mật khẩu xác nhận chưa khớp.')
+      setPasswordError('Mật khẩu mới cần dài từ 8 đến 128 ký tự.')
       return
     }
 
@@ -142,50 +156,54 @@ export function SecuritySettings({ apiMode }: { apiMode: ApiMode }) {
             </p>
           </header>
 
-          <form onSubmit={submitPasswordChange} className="flex flex-col gap-5">
-            <Field label="Mật khẩu hiện tại" htmlFor={currentPasswordId}>
+          <form onSubmit={submitPasswordChange} noValidate className="flex flex-col gap-5">
+            <Field label="Mật khẩu hiện tại" htmlFor={currentPasswordId} error={errors.current}>
               <Input
                 id={currentPasswordId}
                 type="password"
                 autoComplete="current-password"
                 maxLength={128}
                 disabled={passwordSubmitting || pendingAction !== null}
-                required
+                aria-invalid={Boolean(errors.current)}
                 value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
+                onChange={(event) => {
+                  setCurrentPassword(event.target.value)
+                  setErrors((prev) => ({ ...prev, current: undefined }))
+                }}
               />
             </Field>
-            <Field label="Mật khẩu mới" htmlFor={newPasswordId} hint="Từ 8 đến 128 ký tự.">
+            <Field
+              label="Mật khẩu mới"
+              htmlFor={newPasswordId}
+              hint="Từ 8 đến 128 ký tự."
+              error={errors.new}
+            >
               <Input
                 id={newPasswordId}
                 type="password"
                 autoComplete="new-password"
-                minLength={8}
                 maxLength={128}
                 disabled={passwordSubmitting || pendingAction !== null}
-                required
+                aria-invalid={Boolean(errors.new)}
                 value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
+                onChange={(event) => {
+                  setNewPassword(event.target.value)
+                  setErrors((prev) => ({ ...prev, new: undefined }))
+                }}
               />
             </Field>
-            <Field
-              label="Xác nhận mật khẩu mới"
-              htmlFor={confirmPasswordId}
-              error={confirmError ?? undefined}
-            >
+            <Field label="Xác nhận mật khẩu mới" htmlFor={confirmPasswordId} error={errors.confirm}>
               <Input
                 id={confirmPasswordId}
                 type="password"
                 autoComplete="new-password"
-                minLength={8}
                 maxLength={128}
                 disabled={passwordSubmitting || pendingAction !== null}
-                required
-                aria-invalid={Boolean(confirmError)}
+                aria-invalid={Boolean(errors.confirm)}
                 value={confirmPassword}
                 onChange={(event) => {
                   setConfirmPassword(event.target.value)
-                  setConfirmError(null)
+                  setErrors((prev) => ({ ...prev, confirm: undefined }))
                 }}
               />
             </Field>
