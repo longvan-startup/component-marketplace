@@ -1,10 +1,11 @@
 'use client'
 
 /**
- * Desktop header search. Shows only a search icon; a click opens the field
- * with GSAP, focuses it, and closes again on Esc, on a click away with an empty
- * field, or when the field is left empty. Submitting is a plain GET to the
- * catalog. Reduced motion skips the tween and switches at once.
+ * Desktop header search. Only the search icon takes room in the navbar. The
+ * field opens as a panel laid over the nav: GSAP animates its clip-path, which
+ * repaints without re-running the navbar's layout on every frame. Esc, or leaving
+ * the empty field, closes it. Submitting is a plain GET to the catalog. Reduced
+ * motion switches at once.
  */
 import { type FormEvent, useLayoutEffect, useRef, useState } from 'react'
 import { type GsapScopeApi, prefersReducedMotion, useGsapScope } from '../../lib/gsap'
@@ -13,37 +14,41 @@ import { IconSearch } from '../ui/icons'
 
 const ICON_WIDTH = 44
 const OPEN_WIDTH = 360
-const OPEN_S = 0.35
-const CLOSE_S = 0.25
+const OPEN_S = 0.4
+const CLOSE_S = 0.3
+/* Visible strip = the icon's width; the rest of the panel is clipped away. */
+const CLOSED_CLIP = `inset(0 ${OPEN_WIDTH - ICON_WIDTH}px 0 0 round 9999px)`
+const OPEN_CLIP = 'inset(0 0px 0 0 round 9999px)'
 
 export function NavSearch({ className = '' }: { className?: string }) {
   const [open, setOpen] = useState(false)
-  const boxRef = useRef<HTMLDivElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const gsapRef = useRef<GsapScopeApi['gsap'] | null>(null)
-  /* Which way the next width change goes, so the layout effect knows what to animate. */
-  const pending = useRef<'open' | 'close' | null>(null)
+  /* Set by expand(), read by the layout effect that runs after the panel's
+     `inert` flag has been cleared. */
+  const pending = useRef<'open' | null>(null)
 
-  useGsapScope(boxRef, ({ gsap }) => {
+  useGsapScope(wrapRef, ({ gsap }) => {
     gsapRef.current = gsap
   })
 
-  /* After the field mounts, animate it open and focus it. */
   useLayoutEffect(() => {
     if (pending.current !== 'open') return
     pending.current = null
-    const box = boxRef.current
-    if (!box) return
+    const panel = panelRef.current
+    if (!panel) return
     const gsap = gsapRef.current
     if (gsap && !prefersReducedMotion()) {
       gsap.fromTo(
-        box,
-        { width: ICON_WIDTH },
-        { width: OPEN_WIDTH, duration: OPEN_S, ease: 'power3.out' },
+        panel,
+        { clipPath: CLOSED_CLIP },
+        { clipPath: OPEN_CLIP, duration: OPEN_S, ease: 'power3.out' },
       )
     } else {
-      box.style.width = `${OPEN_WIDTH}px`
+      panel.style.clipPath = OPEN_CLIP
     }
     inputRef.current?.focus()
   })
@@ -56,16 +61,21 @@ export function NavSearch({ className = '' }: { className?: string }) {
 
   function collapse() {
     if (!open) return
-    const box = boxRef.current
+    const panel = panelRef.current
     const gsap = gsapRef.current
     const done = () => {
       formRef.current?.reset()
       setOpen(false)
     }
-    if (box && gsap && !prefersReducedMotion()) {
-      gsap.to(box, { width: ICON_WIDTH, duration: CLOSE_S, ease: 'power2.in', onComplete: done })
+    if (panel && gsap && !prefersReducedMotion()) {
+      gsap.to(panel, {
+        clipPath: CLOSED_CLIP,
+        duration: CLOSE_S,
+        ease: 'power2.in',
+        onComplete: done,
+      })
     } else {
-      if (box) box.style.width = `${ICON_WIDTH}px`
+      if (panel) panel.style.clipPath = CLOSED_CLIP
       done()
     }
   }
@@ -88,18 +98,17 @@ export function NavSearch({ className = '' }: { className?: string }) {
 
   return (
     <div
-      ref={boxRef}
+      ref={wrapRef}
+      className={`relative flex h-11 shrink-0 items-center ${className}`}
       style={{ width: ICON_WIDTH }}
-      className={`flex h-11 shrink-0 items-center overflow-hidden rounded-badge ${open ? 'border border-border bg-card' : ''} ${className}`}
     >
-      <IconButton
-        label={open ? 'Đóng tìm kiếm' : 'Mở tìm kiếm'}
-        onClick={open ? collapse : expand}
-        className="shrink-0"
+      <div
+        ref={panelRef}
+        inert={!open}
+        style={{ width: OPEN_WIDTH, clipPath: CLOSED_CLIP }}
+        className="absolute left-0 top-0 flex h-11 items-center rounded-badge border border-border bg-card"
       >
-        <IconSearch />
-      </IconButton>
-      {open ? (
+        <div aria-hidden="true" className="w-11 shrink-0" />
         <form
           ref={formRef}
           action="/components"
@@ -117,7 +126,14 @@ export function NavSearch({ className = '' }: { className?: string }) {
             className="h-full min-w-0 flex-1 bg-transparent text-base text-foreground outline-none"
           />
         </form>
-      ) : null}
+      </div>
+      <IconButton
+        label={open ? 'Đóng tìm kiếm' : 'Mở tìm kiếm'}
+        onClick={open ? collapse : expand}
+        className="relative z-10 shrink-0"
+      >
+        <IconSearch />
+      </IconButton>
     </div>
   )
 }
