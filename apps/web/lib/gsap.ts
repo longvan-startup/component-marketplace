@@ -105,3 +105,35 @@ export function useGsapScope(
     // what a future mount would run; a changed scopeRef re-binds cleanly.
   }, [scopeRef])
 }
+
+/**
+ * Runs `onFrame(seconds)` on every animation frame, driven by GSAP's ticker, and
+ * only while awake. Canvas effects use it so that GSAP stays the one frame source.
+ * `wake()` starts the loop, `sleep()` stops it. `prefers-reduced-motion` callers
+ * should not wake it at all.
+ */
+export function createFrameLoop(onFrame: (dtSeconds: number) => void): {
+  wake: () => void
+  sleep: () => void
+} {
+  let awake = false
+  let last = 0
+  const tick = (time: number) => {
+    const dt = last ? time - last : 0
+    last = time
+    onFrame(dt)
+  }
+  return {
+    wake: () => {
+      if (awake) return
+      awake = true
+      last = 0
+      gsap.ticker.add(tick)
+    },
+    sleep: () => {
+      if (!awake) return
+      awake = false
+      gsap.ticker.remove(tick)
+    },
+  }
+}
