@@ -120,9 +120,11 @@ export function NavSearch({ className = '' }: { className?: string }) {
             type="search"
             name="q"
             aria-label="Tìm kiếm component"
+            spellCheck={false}
+            autoComplete="off"
             onKeyDown={onKeyDown}
             onBlur={onBlur}
-            className="h-full min-w-0 flex-1 bg-transparent text-base text-foreground outline-none"
+            className="h-full min-w-0 flex-1 bg-transparent text-base text-foreground outline-none [&::-webkit-search-cancel-button]:hidden"
           />
         </form>
         <div aria-hidden="true" className="w-11 shrink-0" />
