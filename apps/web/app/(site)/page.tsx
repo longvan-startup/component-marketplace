@@ -6,6 +6,7 @@ import { FeaturedCarousel } from '@/components/home/featured-carousel'
 import { HeroBackdrop } from '@/components/home/hero-backdrop'
 import { HeroText } from '@/components/home/hero-text'
 import { Words } from '@/components/home/hero-words'
+import { WhyGrid } from '@/components/home/why-grid'
 import { buttonClasses } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { CATEGORY_OPTIONS } from '@/features/catalog/catalog-labels'
@@ -158,17 +159,7 @@ export default async function HomePage() {
             Mọi thứ bạn cần để tìm và dùng component nhanh hơn.
           </p>
         </div>
-        <ol className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          {WHY_ITEMS.map((item, index) => (
-            <li key={item.title} className="flex flex-col gap-3">
-              <span className="font-mono text-xs text-muted-foreground">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <h3 className="text-lg font-semibold tracking-tight">{item.title}</h3>
-              <p className="text-sm leading-6 text-muted-foreground">{item.body}</p>
-            </li>
-          ))}
-        </ol>
+        <WhyGrid items={WHY_ITEMS} />
       </section>
     </div>
   )
