@@ -39,9 +39,6 @@ export function NewsletterForm() {
             aria-label="Email"
             autoComplete="email"
           />
-          <kbd className="rounded-md bg-muted px-1.5 py-0.5 font-sans text-[11px] font-medium text-muted-foreground">
-            ⌘K
-          </kbd>
         </div>
         <Button type="submit" size="md">
           Đăng ký

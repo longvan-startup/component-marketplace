@@ -1,11 +1,11 @@
 import type { CatalogCategory } from '@marketplace/shared'
 import Link from 'next/link'
-import { DemoPreview } from '@/components/catalog/demo-preview'
+import { ComponentCard } from '@/components/catalog/component-card'
 import { HeroBackdrop } from '@/components/home/hero-backdrop'
-import { Badge } from '@/components/ui/badge'
 import { buttonClasses } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { type CatalogItem, getCatalogSource } from '@/features/catalog/catalog-source'
+import { CATEGORY_OPTIONS } from '@/features/catalog/catalog-labels'
+import { getCatalogSource } from '@/features/catalog/catalog-source'
 import { getDemoManifest } from '@/features/demo/demo-source'
 
 /* Home — Server Component. Layout follows the Figma Home frame (13:18): hero,
@@ -17,11 +17,7 @@ import { getDemoManifest } from '@/features/demo/demo-source'
    regeneration after the API recovers (at most about a minute). */
 export const revalidate = 60
 
-const CATEGORIES = [
-  { value: 'animation', label: 'Animation' },
-  { value: 'react-component', label: 'React component' },
-  { value: 'tool', label: 'Công cụ' },
-] as const
+const CATEGORIES = CATEGORY_OPTIONS
 
 const WHY_ITEMS = [
   {
@@ -37,39 +33,6 @@ const WHY_ITEMS = [
     body: 'Tham gia forum, đặt câu hỏi, nhận phản hồi trực tiếp từ cộng đồng dev.',
   },
 ] as const
-
-const CATEGORY_LABEL: Record<CatalogItem['category'], string> = {
-  animation: 'Animation',
-  'react-component': 'React component',
-  tool: 'Công cụ',
-}
-
-const TIER_LABEL = { free: 'Free', pro: 'Pro' } as const
-
-function FeaturedCard({ item }: { item: CatalogItem }) {
-  return (
-    <Card className="flex h-full w-full flex-col overflow-hidden rounded-[16px] bg-muted">
-      <DemoPreview demo={getDemoManifest(item.slug)} name={item.name} summary={item.summary} />
-      <div className="flex flex-col gap-1.5 px-4 pb-4 pt-3.5">
-        <Link
-          href={`/components/${item.slug}`}
-          className="truncate text-base font-semibold leading-[22px] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {item.name}
-        </Link>
-        <p className="truncate text-sm leading-5 text-muted-foreground">by {item.author}</p>
-      </div>
-      <div className="mt-auto flex flex-wrap gap-2 px-4 pb-4">
-        <Badge variant="neutral">{CATEGORY_LABEL[item.category]}</Badge>
-        {item.accessTier ? (
-          <Badge variant={item.accessTier === 'pro' ? 'accent' : 'success'}>
-            {TIER_LABEL[item.accessTier]}
-          </Badge>
-        ) : null}
-      </div>
-    </Card>
-  )
-}
 
 export default async function HomePage() {
   const source = getCatalogSource()
@@ -134,7 +97,7 @@ export default async function HomePage() {
           <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {highlights.map((item) => (
               <li key={item.id} className="min-w-0">
-                <FeaturedCard item={item} />
+                <ComponentCard item={item} demo={getDemoManifest(item.slug)} />
               </li>
             ))}
           </ul>
