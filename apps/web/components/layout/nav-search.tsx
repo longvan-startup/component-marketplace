@@ -13,8 +13,8 @@ import { IconSearch } from '../ui/icons'
 
 const ICON_WIDTH = 44
 const OPEN_WIDTH = 360
-const OPEN_S = 0.35
-const CLOSE_S = 0.25
+const OPEN_S = 0.7
+const CLOSE_S = 0.5
 
 export function NavSearch({ className = '' }: { className?: string }) {
   const [open, setOpen] = useState(false)
@@ -40,7 +40,7 @@ export function NavSearch({ className = '' }: { className?: string }) {
       gsap.fromTo(
         box,
         { width: ICON_WIDTH },
-        { width: OPEN_WIDTH, duration: OPEN_S, ease: 'power3.out' },
+        { width: OPEN_WIDTH, duration: OPEN_S, ease: 'power2.inOut' },
       )
     } else {
       box.style.width = `${OPEN_WIDTH}px`
@@ -63,7 +63,7 @@ export function NavSearch({ className = '' }: { className?: string }) {
       setOpen(false)
     }
     if (box && gsap && !prefersReducedMotion()) {
-      gsap.to(box, { width: ICON_WIDTH, duration: CLOSE_S, ease: 'power2.in', onComplete: done })
+      gsap.to(box, { width: ICON_WIDTH, duration: CLOSE_S, ease: 'power2.inOut', onComplete: done })
     } else {
       if (box) box.style.width = `${ICON_WIDTH}px`
       done()
