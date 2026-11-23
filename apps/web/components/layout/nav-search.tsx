@@ -45,7 +45,7 @@ export function NavSearch({ className = '' }: { className?: string }) {
     } else {
       box.style.width = `${OPEN_WIDTH}px`
     }
-    inputRef.current?.focus()
+    inputRef.current?.focus({ preventScroll: true })
   })
 
   function expand() {
@@ -99,25 +99,24 @@ export function NavSearch({ className = '' }: { className?: string }) {
       >
         <IconSearch />
       </IconButton>
-      {open ? (
-        <form
-          ref={formRef}
-          action="/components"
-          method="get"
-          onSubmit={onSubmit}
-          className="flex h-full min-w-0 flex-1 items-center pr-3"
-        >
-          <input
-            ref={inputRef}
-            type="search"
-            name="q"
-            aria-label="Tìm kiếm component"
-            onKeyDown={onKeyDown}
-            onBlur={onBlur}
-            className="h-full min-w-0 flex-1 bg-transparent text-base text-foreground outline-none"
-          />
-        </form>
-      ) : null}
+      <form
+        ref={formRef}
+        action="/components"
+        method="get"
+        onSubmit={onSubmit}
+        inert={!open}
+        className={`flex h-full min-w-0 flex-1 items-center pr-3 ${open ? '' : 'invisible'}`}
+      >
+        <input
+          ref={inputRef}
+          type="search"
+          name="q"
+          aria-label="Tìm kiếm component"
+          onKeyDown={onKeyDown}
+          onBlur={onBlur}
+          className="h-full min-w-0 flex-1 bg-transparent text-base text-foreground outline-none"
+        />
+      </form>
     </div>
   )
 }
