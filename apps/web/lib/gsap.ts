@@ -137,3 +137,15 @@ export function createFrameLoop(onFrame: (dtSeconds: number) => void): {
     },
   }
 }
+
+/**
+ * Fades an element to `opacity` with GSAP. Under prefers-reduced-motion the
+ * change is applied at once, with no tween.
+ */
+export function tweenOpacity(element: Element, opacity: number, duration: number): void {
+  if (prefersReducedMotion()) {
+    ;(element as HTMLElement).style.opacity = String(opacity)
+    return
+  }
+  gsap.to(element, { opacity, duration, ease: 'power2.inOut', overwrite: 'auto' })
+}
