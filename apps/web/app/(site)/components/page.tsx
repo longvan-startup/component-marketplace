@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { CatalogSearch } from '@/components/catalog/catalog-search'
 import { ComponentCard } from '@/components/catalog/component-card'
 import { CATEGORY_OPTIONS } from '@/features/catalog/catalog-labels'
 import {
@@ -54,7 +53,6 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
             {query.q ? ` matching “${query.q}”` : ''} · page {result.page}
           </p>
         </div>
-        <CatalogSearch initialQuery={query.q ?? ''} category={query.category} />
       </header>
 
       <nav aria-label="Lọc danh mục" className="flex flex-wrap gap-2">

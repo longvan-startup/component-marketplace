@@ -25,3 +25,23 @@ export function NavLink({
     </Link>
   )
 }
+
+/* A planned nav item whose route does not exist yet. It looks like a link and
+   shows "Sắp ra mắt" on hover, but it cannot be followed. */
+export function ComingSoonLink({
+  children,
+  className = '',
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <span
+      aria-disabled="true"
+      title="Sắp ra mắt"
+      className={`${NAV_LINK_BASE} cursor-not-allowed ${className}`}
+    >
+      {children}
+    </span>
+  )
+}

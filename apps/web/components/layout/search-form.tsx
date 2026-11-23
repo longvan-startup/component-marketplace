@@ -17,7 +17,6 @@ export function SearchForm({ className = '' }: { className?: string }) {
         type="search"
         name="q"
         aria-label="Tìm kiếm component"
-        placeholder="Tìm kiếm component..."
         className="h-full min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
       />
     </form>
