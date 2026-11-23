@@ -14,13 +14,14 @@
  * nothing is warm.
  */
 import { useEffect, useRef } from 'react'
+import { readTokenRgb } from '../../lib/color'
+import { createFrameLoop } from '../../lib/gsap'
 
 const VIEW_W = 1440
 const VIEW_H = 350
 const TRAIL_S = 0.7
 const WAKE = 60
 const WARM = 0.01
-const RGB = '124, 58, 237'
 /* lightest to densest, the same ramp bencho's "Classic" glyphs use */
 const RAMP = [' ', '.', ':', '-', '=', '+', '*', '#', '%', '@']
 const FONT_FAMILY = `ui-monospace, "SF Mono", Menlo, Consolas, monospace`
@@ -40,15 +41,15 @@ export function FooterDotField({ src }: { src: string }) {
     const img = art.current
     if (!host || !cv || !img) return
     const ctx = cv.getContext('2d')
+    const RGB = readTokenRgb(cv, '--color-violet-600')
     if (!ctx) return
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     let dots: Dot[] = []
-    let frame = 0
-    let last = 0
     let tickCount = 0
     let pointer: { x: number; y: number } | null = null
     let dead = false
+    const loop = createFrameLoop((dt) => draw(dt))
 
     const fit = () => {
       const w = host.clientWidth
@@ -126,17 +127,8 @@ export function FooterDotField({ src }: { src: string }) {
         ctx.fillStyle = `rgba(${RGB}, ${Math.min(1, 0.55 + 0.45 * e)})`
         ctx.fillText(RAMP[index], px + lx, py + ly)
       }
-      if (warm || pointer) {
-        frame = requestAnimationFrame(tick)
-      } else {
-        frame = 0
-      }
-    }
-
-    const tick = (now: number) => {
-      const dt = last ? (now - last) / 1000 : 0
-      last = now
-      draw(dt)
+      if (warm || pointer) loop.wake()
+      else loop.sleep()
     }
 
     const onMove = (event: PointerEvent) => {
@@ -153,10 +145,7 @@ export function FooterDotField({ src }: { src: string }) {
       } else {
         stamp(x, y)
       }
-      if (!frame) {
-        last = 0
-        frame = requestAnimationFrame(tick)
-      }
+      loop.wake()
     }
 
     const onLeave = () => {
@@ -198,8 +187,7 @@ export function FooterDotField({ src }: { src: string }) {
       ro.disconnect()
       host.removeEventListener('pointermove', onMove)
       host.removeEventListener('pointerleave', onLeave)
-      cancelAnimationFrame(frame)
-      frame = 0
+      loop.sleep()
     }
   }, [src])
 

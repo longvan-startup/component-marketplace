@@ -17,7 +17,7 @@ import { NewsletterForm } from './newsletter-form'
 const REPO_URL = 'https://github.com/longvan-startup/component-marketplace'
 
 const COLUMNS = [
-  { title: 'Sản phẩm', items: ['Danh mục', 'Bảng giá', 'Cộng đồng'] },
+  { title: 'Sản phẩm', items: ['Danh mục', 'Gói thành viên', 'Cộng đồng'] },
   { title: 'Công ty', items: ['Điều khoản', 'Bảo mật', 'Liên hệ'] },
   { title: 'Tài nguyên', items: ['Hướng dẫn', 'Câu hỏi thường gặp', 'Blog'] },
 ] as const

@@ -1,6 +1,8 @@
 'use client'
 
 import { type RefObject, useEffect } from 'react'
+import { readTokenRgb } from '../../lib/color'
+import { createFrameLoop } from '../../lib/gsap'
 
 /* Figma frame the dots come from (node 185:4442). */
 const DOT_FRAME = { width: 1440, height: 480 }
@@ -18,7 +20,6 @@ const SPRING_C = 15
 const FADE_IN = 0.35
 const FADE_OUT = 0.12
 export const DOT_SCALE = 1.4
-export const DOT_RGB = '124, 58, 237'
 
 type Dot = {
   x: number
@@ -46,12 +47,11 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
     if (!canvas || !section) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    const rgb = readTokenRgb(canvas, '--color-violet-600')
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     let dots: Dot[] = []
     let pointer: Point | null = null
-    let frame = 0
-    let last = 0
     let dead = false
 
     /* Canvas size and the artwork's cover mapping. */
@@ -75,9 +75,7 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
       }
     }
 
-    const tick = (now: number) => {
-      const dt = Math.min(1 / 30, last ? (now - last) / 1000 : 1 / 60)
-      last = now
+    const tick = (dt: number) => {
       const l = layout()
       const radius2 = PRESS_RADIUS * PRESS_RADIUS
       let moving = false
@@ -137,19 +135,16 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
           0,
           Math.PI * 2,
         )
-        ctx.fillStyle = `rgba(${DOT_RGB}, ${Math.min(1, d.show) * 0.9})`
+        ctx.fillStyle = `rgba(${rgb}, ${Math.min(1, d.show) * 0.9})`
         ctx.fill()
       }
 
-      frame = moving || pointer ? requestAnimationFrame(tick) : 0
+      if (moving || pointer) loop.wake()
+      else loop.sleep()
     }
 
-    const wake = () => {
-      if (!frame) {
-        last = 0
-        frame = requestAnimationFrame(tick)
-      }
-    }
+    const loop = createFrameLoop((dt) => tick(Math.min(1 / 30, dt || 1 / 60)))
+    const wake = () => loop.wake()
 
     const onMove = (event: PointerEvent) => {
       const rect = section.getBoundingClientRect()
@@ -188,7 +183,7 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
 
     return () => {
       dead = true
-      if (frame) cancelAnimationFrame(frame)
+      loop.sleep()
       section.removeEventListener('pointermove', onMove)
       section.removeEventListener('pointerleave', onLeave)
     }
