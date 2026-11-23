@@ -14,8 +14,8 @@ import { IconSearch } from '../ui/icons'
 
 const ICON_WIDTH = 44
 const OPEN_WIDTH = 360
-const OPEN_S = 0.4
-const CLOSE_S = 0.3
+const OPEN_S = 0.65
+const CLOSE_S = 0.45
 /* Visible strip = the icon's width; the rest of the panel is clipped away. */
 const CLOSED_CLIP = `inset(0 ${OPEN_WIDTH - ICON_WIDTH}px 0 0 round 9999px)`
 const OPEN_CLIP = 'inset(0 0px 0 0 round 9999px)'
@@ -45,7 +45,7 @@ export function NavSearch({ className = '' }: { className?: string }) {
       gsap.fromTo(
         panel,
         { clipPath: CLOSED_CLIP },
-        { clipPath: OPEN_CLIP, duration: OPEN_S, ease: 'power3.out' },
+        { clipPath: OPEN_CLIP, duration: OPEN_S, ease: 'power2.out' },
       )
     } else {
       panel.style.clipPath = OPEN_CLIP
