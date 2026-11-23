@@ -1,6 +1,7 @@
 'use client'
 
 import { type RefObject, useEffect } from 'react'
+import { readTokenRgb } from '../../lib/color'
 
 /* Figma frame the dots come from (node 185:4442). */
 const DOT_FRAME = { width: 1440, height: 480 }
@@ -18,7 +19,6 @@ const SPRING_C = 15
 const FADE_IN = 0.35
 const FADE_OUT = 0.12
 export const DOT_SCALE = 1.4
-export const DOT_RGB = '124, 58, 237'
 
 type Dot = {
   x: number
@@ -46,6 +46,7 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
     if (!canvas || !section) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    const rgb = readTokenRgb(canvas, '--color-violet-600')
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     let dots: Dot[] = []
@@ -137,7 +138,7 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
           0,
           Math.PI * 2,
         )
-        ctx.fillStyle = `rgba(${DOT_RGB}, ${Math.min(1, d.show) * 0.9})`
+        ctx.fillStyle = `rgba(${rgb}, ${Math.min(1, d.show) * 0.9})`
         ctx.fill()
       }
 

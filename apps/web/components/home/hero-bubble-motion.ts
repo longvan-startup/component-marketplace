@@ -13,7 +13,11 @@ export type Bubble = {
 
 /* Only purple tones that stay visible on white. The very light #ddd6fe made
    bubbles look like they had disappeared. */
-const BUBBLE_COLORS = ['#c4b5fd', '#a78bfa', '#8b5cf6'] as const
+const BUBBLE_COLORS = [
+  'var(--color-violet-300)',
+  'var(--color-violet-400)',
+  'var(--color-violet-500)',
+] as const
 export const BUBBLE_COUNT = 5
 
 /* Ping-pong motion: each bubble keeps its own constant speed, bounces off the
@@ -36,7 +40,8 @@ export function makeBubbles(): Bubble[] {
     size: randomBetween(160, 260),
     left: index * slot + randomBetween(0, slot * 0.6) - slot * 0.3,
     top: randomBetween(-10, 75),
-    color: BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)] ?? '#a78bfa',
+    color:
+      BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)] ?? 'var(--color-violet-400)',
     /* swell and shrink run on their own rhythm, independent of the drift */
     pulseDuration: randomBetween(4, 6),
     pulseDelay: -randomBetween(0, 6),

@@ -14,13 +14,13 @@
  * nothing is warm.
  */
 import { useEffect, useRef } from 'react'
+import { readTokenRgb } from '../../lib/color'
 
 const VIEW_W = 1440
 const VIEW_H = 350
 const TRAIL_S = 0.7
 const WAKE = 60
 const WARM = 0.01
-const RGB = '124, 58, 237'
 /* lightest to densest, the same ramp bencho's "Classic" glyphs use */
 const RAMP = [' ', '.', ':', '-', '=', '+', '*', '#', '%', '@']
 const FONT_FAMILY = `ui-monospace, "SF Mono", Menlo, Consolas, monospace`
@@ -40,6 +40,7 @@ export function FooterDotField({ src }: { src: string }) {
     const img = art.current
     if (!host || !cv || !img) return
     const ctx = cv.getContext('2d')
+    const RGB = readTokenRgb(cv, '--color-violet-600')
     if (!ctx) return
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
