@@ -9,10 +9,17 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useId, useState } from 'react'
 import { type ApiMode, AuthRequestError, getAuthSource } from '../../features/auth/auth-source'
+import {
+  type FieldErrors,
+  hasErrors,
+  validateCurrentPassword,
+  validateEmail,
+} from '../../features/auth/form-validation'
 import { Button } from '../ui/button'
 import { Field } from '../ui/field'
 import { Input } from '../ui/input'
 import { AuthStatusBanner } from './auth-status-banner'
+import { focusFirstInvalid } from './focus-first-invalid'
 
 function signInErrorMessage(error: unknown): string {
   if (error instanceof AuthRequestError) {
@@ -34,9 +41,19 @@ export function SignInForm({ apiMode }: { apiMode: ApiMode }) {
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<FieldErrors<'email' | 'password'>>({})
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const found: FieldErrors<'email' | 'password'> = {
+      email: validateEmail(email),
+      password: validateCurrentPassword(password),
+    }
+    setErrors(found)
+    if (hasErrors(found)) {
+      requestAnimationFrame(() => focusFirstInvalid([emailId, passwordId]))
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -50,26 +67,32 @@ export function SignInForm({ apiMode }: { apiMode: ApiMode }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5">
-      <Field label="Email" htmlFor={emailId}>
+    <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+      <Field label="Email" htmlFor={emailId} error={errors.email}>
         <Input
           id={emailId}
           type="email"
           autoComplete="email"
-          required
+          aria-invalid={Boolean(errors.email)}
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value)
+            setErrors((prev) => ({ ...prev, email: undefined }))
+          }}
           placeholder="ban@email.com"
         />
       </Field>
-      <Field label="Mật khẩu" htmlFor={passwordId}>
+      <Field label="Mật khẩu" htmlFor={passwordId} error={errors.password}>
         <Input
           id={passwordId}
           type="password"
           autoComplete="current-password"
-          required
+          aria-invalid={Boolean(errors.password)}
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value)
+            setErrors((prev) => ({ ...prev, password: undefined }))
+          }}
           placeholder="Nhập mật khẩu"
         />
       </Field>
