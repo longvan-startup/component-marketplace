@@ -8,7 +8,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useId, useState } from 'react'
-import { buttonClasses } from '../ui/button'
+import { Button, buttonClasses } from '../ui/button'
+import { IconButton } from '../ui/icon-button'
 import { IconClose, IconMenu } from '../ui/icons'
 import { NAV_ACTIONS, NAV_LINKS, NAV_SOON } from './nav-items'
 import { useNavSession } from './nav-session'
@@ -36,16 +37,14 @@ export function MobileMenu() {
 
   return (
     <div className="md:hidden">
-      <button
-        type="button"
+      <IconButton
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label={open ? 'Đóng menu' : 'Mở menu'}
+        label={open ? 'Đóng menu' : 'Mở menu'}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex size-11 items-center justify-center rounded-badge text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {open ? <IconClose /> : <IconMenu />}
-      </button>
+      </IconButton>
 
       <div
         id={panelId}
@@ -90,18 +89,15 @@ export function MobileMenu() {
               >
                 Bảo mật
               </Link>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="md"
+                className="min-h-11"
                 onClick={() => void signOut()}
                 disabled={pendingAction !== null}
-                className={buttonClasses({
-                  variant: 'ghost',
-                  size: 'md',
-                  className: 'min-h-11',
-                })}
               >
                 {pendingAction === 'signOut' ? 'Đang đăng xuất…' : 'Đăng xuất'}
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
