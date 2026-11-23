@@ -8,7 +8,7 @@ import { Logo } from './logo'
 import { MobileMenu } from './mobile-menu'
 import { NavAuth } from './nav-auth'
 import { NAV_LINKS } from './nav-items'
-import { SearchForm } from './search-form'
+import { NavSearch } from './nav-search'
 
 export function NavBar() {
   return (
@@ -26,7 +26,7 @@ export function NavBar() {
         </div>
 
         <div className="hidden items-center gap-4 md:flex">
-          <SearchForm className="hidden w-80 lg:flex" />
+          <NavSearch className="hidden lg:flex" />
           <NavAuth />
         </div>
         <MobileMenu />
