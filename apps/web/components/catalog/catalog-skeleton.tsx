@@ -1,13 +1,11 @@
+import { Skeleton } from '../ui/skeleton'
+
 /* Placeholders shown while a catalog page streams its data. They match the
    final layout so the page does not jump when the real content arrives. */
 
 const CARD_IDS = ['card-a', 'card-b', 'card-c', 'card-d', 'card-e', 'card-f'] as const
 
-function Bar({ className = '' }: { className?: string }) {
-  return (
-    <span aria-hidden="true" className={`block animate-pulse rounded-md bg-muted ${className}`} />
-  )
-}
+const Bar = Skeleton
 
 export function CatalogListSkeleton() {
   return (
