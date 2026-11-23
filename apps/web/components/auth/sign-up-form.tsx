@@ -10,11 +10,21 @@ import { useEffect, useId, useState } from 'react'
 const RESEND_COOLDOWN_SECONDS = 30
 
 import { type ApiMode, AuthRequestError, getAuthSource } from '../../features/auth/auth-source'
+import {
+  type FieldErrors,
+  hasErrors,
+  TERMS_REQUIRED_MESSAGE,
+  validateEmail,
+  validateName,
+  validateNewPassword,
+} from '../../features/auth/form-validation'
 import { verifyEmailCallbackUrl } from '../../features/auth/safe-callback-url'
 import { Button } from '../ui/button'
+import { Checkbox } from '../ui/checkbox'
 import { Field } from '../ui/field'
 import { Input } from '../ui/input'
 import { AuthStatusBanner } from './auth-status-banner'
+import { focusFirstInvalid } from './focus-first-invalid'
 
 function signUpErrorMessage(error: unknown): string {
   if (error instanceof AuthRequestError) {
@@ -28,6 +38,8 @@ function signUpErrorMessage(error: unknown): string {
   return 'Có lỗi xảy ra, thử lại sau.'
 }
 
+type SignUpField = 'name' | 'email' | 'password' | 'terms'
+
 type FormState = { kind: 'idle' | 'submitting' | 'done' | 'error'; message?: string }
 
 export function SignUpForm({ apiMode }: { apiMode: ApiMode }) {
@@ -37,6 +49,9 @@ export function SignUpForm({ apiMode }: { apiMode: ApiMode }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [agreed, setAgreed] = useState(false)
+  const [errors, setErrors] = useState<FieldErrors<SignUpField>>({})
+  const termsId = useId()
   const [state, setState] = useState<FormState>({ kind: 'idle' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [cooldown, setCooldown] = useState(0)
@@ -61,6 +76,18 @@ export function SignUpForm({ apiMode }: { apiMode: ApiMode }) {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const found: FieldErrors<SignUpField> = {
+      name: validateName(name),
+      email: validateEmail(email),
+      password: validateNewPassword(password),
+      terms: agreed ? undefined : TERMS_REQUIRED_MESSAGE,
+    }
+    setErrors(found)
+    if (hasErrors(found)) {
+      /* the inputs are marked invalid on the next render, so look after it */
+      requestAnimationFrame(() => focusFirstInvalid([nameId, emailId, passwordId, termsId]))
+      return
+    }
     setState({ kind: 'submitting' })
     try {
       await getAuthSource(apiMode).signUp(
@@ -106,51 +133,66 @@ export function SignUpForm({ apiMode }: { apiMode: ApiMode }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5">
-      <Field label="Họ và tên" htmlFor={nameId}>
+    <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+      <Field label="Họ và tên" htmlFor={nameId} error={errors.name}>
         <Input
           id={nameId}
           type="text"
           autoComplete="name"
-          required
+          aria-invalid={Boolean(errors.name)}
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            setName(event.target.value)
+            setErrors((prev) => ({ ...prev, name: undefined }))
+          }}
           placeholder="Nguyễn Văn A"
         />
       </Field>
-      <Field label="Email" htmlFor={emailId}>
+      <Field label="Email" htmlFor={emailId} error={errors.email}>
         <Input
           id={emailId}
           type="email"
           autoComplete="email"
-          required
+          aria-invalid={Boolean(errors.email)}
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value)
+            setErrors((prev) => ({ ...prev, email: undefined }))
+          }}
           placeholder="ban@email.com"
         />
       </Field>
-      <Field label="Mật khẩu" htmlFor={passwordId}>
+      <Field label="Mật khẩu" htmlFor={passwordId} error={errors.password}>
         <Input
           id={passwordId}
           type="password"
           autoComplete="new-password"
-          required
-          minLength={8}
           maxLength={128}
+          aria-invalid={Boolean(errors.password)}
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value)
+            setErrors((prev) => ({ ...prev, password: undefined }))
+          }}
           placeholder="Tối thiểu 8 ký tự"
         />
       </Field>
       {state.kind === 'error' && (
         <AuthStatusBanner variant="error">{state.message}</AuthStatusBanner>
       )}
+      <Checkbox
+        id={termsId}
+        checked={agreed}
+        error={errors.terms}
+        onChange={(event) => {
+          setAgreed(event.target.checked)
+          setErrors((prev) => ({ ...prev, terms: undefined }))
+        }}
+        label="Đồng ý Điều khoản và Chính sách bảo mật"
+      />
       <Button type="submit" size="lg" className="w-full" loading={state.kind === 'submitting'}>
         Tạo tài khoản
       </Button>
-      <p className="text-center text-xs text-muted-foreground">
-        Bằng việc tiếp tục, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật.
-      </p>
     </form>
   )
 }
