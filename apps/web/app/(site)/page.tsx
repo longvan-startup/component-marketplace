@@ -1,6 +1,7 @@
 import type { CatalogCategory } from '@marketplace/shared'
 import Link from 'next/link'
 import { ComponentCard } from '@/components/catalog/component-card'
+import { CategoryFan } from '@/components/home/category-fan'
 import { FeaturedCarousel } from '@/components/home/featured-carousel'
 import { HeroBackdrop } from '@/components/home/hero-backdrop'
 import { HeroText } from '@/components/home/hero-text'
@@ -124,25 +125,30 @@ export default async function HomePage() {
 
       <section className="flex flex-col gap-8">
         <h2 className="text-2xl font-semibold tracking-tight">Duyệt theo danh mục</h2>
-        <ul className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <CategoryFan>
           {CATEGORIES.map((category, index) => (
-            <li key={category.value} className="min-w-0">
-              <Link
-                href={`/components?category=${category.value}`}
-                className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Card className="flex flex-col gap-2 p-6 transition-colors hover:border-primary/40 hover:bg-muted">
-                  <span className="font-semibold tracking-tight">{category.label}</span>
+            <Link
+              key={category.value}
+              href={`/components?category=${category.value}`}
+              className="block h-full rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {/* the text sits on the right: in the fan, the card before covers the left edge */}
+              <Card className="flex h-full min-h-48 flex-col items-end justify-between p-6 text-right shadow-lg transition-colors hover:border-primary/40">
+                <span className="font-mono text-xs text-muted-foreground">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div className="flex flex-col gap-2">
+                  <span className="text-xl font-semibold tracking-tight">{category.label}</span>
                   <span className="text-sm text-muted-foreground">
                     {counts[index]?.unavailable
                       ? 'Đang cập nhật'
                       : `${counts[index]?.total ?? 0} component`}
                   </span>
-                </Card>
-              </Link>
-            </li>
+                </div>
+              </Card>
+            </Link>
           ))}
-        </ul>
+        </CategoryFan>
       </section>
 
       <section className="flex flex-col gap-10">
