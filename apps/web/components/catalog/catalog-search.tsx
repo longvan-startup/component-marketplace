@@ -8,6 +8,8 @@
  */
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 
 export function CatalogSearch({
   initialQuery = '',
@@ -32,20 +34,16 @@ export function CatalogSearch({
   return (
     <search className="flex w-full max-w-md items-center gap-2">
       <form onSubmit={submit} className="flex w-full items-center gap-2">
-        <input
+        <Input
           type="search"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="Search components…"
-          aria-label="Search components"
-          className="min-h-11 w-full rounded-card border border-border bg-card px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          placeholder="Tìm component…"
+          aria-label="Tìm component"
         />
-        <button
-          type="submit"
-          className="inline-flex min-h-11 shrink-0 items-center rounded-card bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          Search
-        </button>
+        <Button type="submit" size="md">
+          Tìm kiếm
+        </Button>
       </form>
     </search>
   )

@@ -16,6 +16,7 @@ import {
 } from '../../features/demo/demo-manifest'
 import { type GsapScopeApi, prefersReducedMotion, useGsapScope } from '../../lib/gsap'
 import { buttonClasses } from '../ui/button'
+import { IconButton } from '../ui/icon-button'
 import { KnobControls } from './knob-controls'
 
 /* Ease-in-out on both ways. An ease-out front-loads the motion, so the bench
@@ -218,13 +219,7 @@ export function DemoBench({
             <h2 id="demo-bench-title" className="text-lg font-semibold tracking-tight">
               {name}
             </h2>
-            <button
-              ref={closeRef}
-              type="button"
-              aria-label="Đóng"
-              onClick={requestClose}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-badge text-muted-foreground hover:bg-muted-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
+            <IconButton ref={closeRef} label="Đóng" onClick={requestClose}>
               <svg
                 aria-hidden="true"
                 width="16"
@@ -237,7 +232,7 @@ export function DemoBench({
               >
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
-            </button>
+            </IconButton>
           </div>
           {summary ? <p className="text-sm leading-5 text-muted-foreground">{summary}</p> : null}
           <KnobControls knobs={demo.knobs} values={values} onChange={handleChange} />
