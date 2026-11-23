@@ -1,41 +1,59 @@
 /**
  * AuthShowcase — Figma "Showcase" (154:6097): dark panel with a seam fade,
  * moving blurred bubbles and a field of dots that dent under the mouse (both
- * shared with the home hero), a fanned cluster of three
- * component cards and a headline. Purely decorative, so it is hidden from
- * assistive tech and below `lg`.
+ * shared with the home hero), real catalog components circling an imaginary
+ * centre, and a headline. Purely decorative, so it is hidden from assistive tech,
+ * ignores the pointer (apart from the dots) and is dropped below `lg`.
  */
-import Image from 'next/image'
+import { CATEGORY_LABEL, TIER_LABEL, tierVariant } from '../../features/catalog/catalog-labels'
+import {
+  type CatalogItem,
+  createMockCatalogSource,
+  getCatalogSource,
+} from '../../features/catalog/catalog-source'
 import { HeroBubbles } from '../home/hero-bubbles'
 import { HeroDotField } from '../home/hero-dot-field'
 import { ShowcaseCopy } from './showcase-copy'
+import { type OrbitCard, ShowcaseOrbit } from './showcase-orbit'
+import { ORBIT_CARD_COUNT } from './showcase-orbit-pose'
 
-const CARDS = [
-  {
-    title: 'Copyable Slug Field',
-    author: 'long',
-    image: '/auth/showcase-1.jpg',
-    position: 'left-[2px] top-[76px] rotate-[7deg]',
-  },
-  {
-    title: 'Version Diff Previewer',
-    author: 'van',
-    image: '/auth/showcase-2.jpg',
-    position: 'left-[174px] top-[45px] -rotate-6',
-  },
-  {
-    title: 'Badge Row',
-    author: 'long',
-    image: '/auth/showcase-3.jpg',
-    position: 'left-[140px] top-0',
-  },
-] as const
+/* The three artworks, handed out in turn: the catalog has no preview images yet. */
+const ARTWORK = ['/auth/showcase-1.jpg', '/auth/showcase-2.jpg', '/auth/showcase-3.jpg'] as const
+
+/* The real components, or none when the catalog cannot be read. Only when running
+   locally is the mock catalog used instead, so the panel is not empty while the API
+   is down; in production it never shows made-up components. */
+async function loadOrbitCards(): Promise<OrbitCard[]> {
+  let items: CatalogItem[] = []
+  try {
+    items = (await getCatalogSource().list({ pageSize: ORBIT_CARD_COUNT })).items
+  } catch {
+    items = []
+  }
+  if (items.length === 0 && process.env.NODE_ENV !== 'production') {
+    items = (await createMockCatalogSource().list({ pageSize: ORBIT_CARD_COUNT })).items
+  }
+  if (items.length === 0) return []
+  return Array.from({ length: ORBIT_CARD_COUNT }, (_, index) => {
+    const item = items[index % items.length] as CatalogItem
+    return {
+      id: `${item.id}-${index}`,
+      name: item.name,
+      author: item.author,
+      categoryLabel: CATEGORY_LABEL[item.category],
+      tierLabel: item.accessTier ? TIER_LABEL[item.accessTier] : undefined,
+      tierVariant: item.accessTier ? tierVariant(item.accessTier) : undefined,
+      image: ARTWORK[index % ARTWORK.length] as string,
+    }
+  })
+}
 
 /* As dense as the hero's halftone (a dot about every 13px, about 1.3px across), so
    the mouse presses the same number of dots. Hidden until pressed, as in the hero. */
 const DOT_PRESS_GRID = { spacing: 13, offset: 6.5, radius: 1.3 }
 
-export function AuthShowcase() {
+export async function AuthShowcase() {
+  const cards = await loadOrbitCards()
   return (
     <aside aria-hidden="true" className="relative hidden overflow-hidden bg-foreground lg:block">
       <div className="absolute inset-y-0 left-0 w-[220px] bg-gradient-to-r from-white/[0.18] to-transparent" />
@@ -49,43 +67,7 @@ export function AuthShowcase() {
       </div>
 
       <div className="relative flex h-full min-h-screen flex-col items-center justify-center gap-5">
-        <div className="relative h-[420px] w-[560px] shrink-0 scale-75 xl:scale-100">
-          {CARDS.map((card) => (
-            <div
-              key={card.title}
-              className={`absolute w-[280px] overflow-hidden rounded-card border border-border bg-muted shadow-[0_24px_48px_-8px_rgba(0,0,0,0.4)] ${card.position}`}
-            >
-              <div className="relative h-40 w-full">
-                {/* Public file. /_next/image currently 404s on this deployment. */}
-                <Image
-                  src={card.image}
-                  alt=""
-                  width={280}
-                  height={160}
-                  unoptimized
-                  className="h-40 w-full object-cover"
-                />
-                <span className="absolute right-3 top-3 flex size-6 items-center justify-center text-xs text-muted-foreground">
-                  ⤢
-                </span>
-              </div>
-              <div className="flex flex-col gap-1.5 px-4 pb-4 pt-3.5">
-                <p className="text-base font-semibold leading-[22px] text-foreground">
-                  {card.title}
-                </p>
-                <p className="text-sm leading-5 text-muted-foreground">by {card.author}</p>
-                <div className="flex items-center gap-2 pt-2 text-xs font-medium leading-4">
-                  <span className="rounded-badge bg-card px-2.5 py-1 text-muted-foreground">
-                    UI Kit
-                  </span>
-                  <span className="rounded-badge bg-accent px-2.5 py-1 text-accent-foreground">
-                    Miễn phí
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {cards.length > 0 ? <ShowcaseOrbit cards={cards} /> : null}
         <ShowcaseCopy />
       </div>
     </aside>
