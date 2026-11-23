@@ -21,7 +21,8 @@ FROM deps AS builder
 COPY packages/shared packages/shared
 COPY apps/web apps/web
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_OUTPUT_STANDALONE=1
 RUN bun run --cwd apps/web build
 
 # --- Stage 3: runner (image tối giản, không source, không secrets) ---
