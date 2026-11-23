@@ -4,7 +4,7 @@ import { buttonClasses } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
 export const metadata: Metadata = {
-  title: 'Bảng giá',
+  title: 'Gói thành viên',
   description: 'Gói Free và Pro của Luva UI. Giá Pro chưa chốt, chưa có thanh toán.',
 }
 
@@ -24,7 +24,7 @@ export default function PricingPage() {
   return (
     <section className="flex flex-col gap-8">
       <header className="flex max-w-2xl flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Bảng giá</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Gói thành viên</h1>
         <p className="text-sm leading-6 text-muted-foreground">
           Hai gói. Không mua từng component. Giá Pro chưa chốt, và trang này không thu tiền.
         </p>

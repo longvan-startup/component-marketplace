@@ -45,6 +45,13 @@
   --color-primary-pressed: #4d1ca6;
   --color-primary-light: #a78bfa;
   --color-primary-dark: #5b21b6;
+  /* Violet scale, named by lightness so code can pick a shade without a
+     brand word. The primary and primary-light tokens above use these values. */
+  --color-violet-300: #c4b5fd;
+  --color-violet-400: #a78bfa;
+  --color-violet-500: #8b5cf6;
+  --color-violet-600: #7c3aed;
+  --color-violet-800: #5b21b6;
   --color-muted-hover: #ebebed;
   --color-muted-pressed: #dedee3;
   --color-danger-hover: #991414;
@@ -59,7 +66,7 @@ body {
 }
 
 ::selection {
-  background-color: rgb(124 58 237 / 0.18);
+  background-color: color-mix(in srgb, var(--color-violet-600) 18%, transparent);
 }
 
 /* Page-level guard against stray horizontal overflow on small screens — the
@@ -67,31 +74,4 @@ body {
 html,
 body {
   overflow-x: clip;
-}
-
-/* Home hero: each purple bubble swells and shrinks on its own rhythm. The
-   position (drift and bounce) is driven from hero-backdrop.tsx through
-   `transform`; `scale` here is separate, so the two never overwrite each other. */
-@keyframes hero-bubble-pulse {
-  0%,
-  100% {
-    scale: 1;
-  }
-  50% {
-    scale: var(--pulse-max, 1.15);
-  }
-}
-
-.hero-bubble {
-  animation-name: hero-bubble-pulse;
-  animation-duration: var(--pulse-dur, 2.5s);
-  animation-delay: var(--pulse-delay, 0s);
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-bubble {
-    animation: none;
-  }
 }
