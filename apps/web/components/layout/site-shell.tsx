@@ -14,7 +14,11 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen flex-col bg-background text-foreground">
         <NavBar />
         <NavSessionFeedback />
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
+        {/* min-h: the viewport minus the navbar (72px), so a short page still
+            pushes the footer below the first screen; it shows after scrolling. */}
+        <main className="mx-auto min-h-[calc(100svh-4.5rem)] w-full max-w-5xl flex-1 px-4 py-8">
+          {children}
+        </main>
         <Footer />
       </div>
     </NavSessionProvider>
