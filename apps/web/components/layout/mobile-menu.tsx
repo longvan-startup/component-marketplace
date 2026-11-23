@@ -10,7 +10,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useId, useState } from 'react'
 import { buttonClasses } from '../ui/button'
 import { IconClose, IconMenu } from '../ui/icons'
-import { NAV_ACTIONS, NAV_LINKS } from './nav-items'
+import { NAV_ACTIONS, NAV_LINKS, NAV_SOON } from './nav-items'
 import { useNavSession } from './nav-session'
 import { SearchForm } from './search-form'
 
@@ -62,6 +62,16 @@ export function MobileMenu() {
             >
               {link.label}
             </Link>
+          ))}
+          {NAV_SOON.map((item) => (
+            <span
+              key={item.label}
+              aria-disabled="true"
+              title="Sắp ra mắt"
+              className="inline-flex min-h-11 cursor-not-allowed items-center rounded-sm text-sm font-medium text-muted-foreground"
+            >
+              {item.label}
+            </span>
           ))}
         </nav>
         {user ? (

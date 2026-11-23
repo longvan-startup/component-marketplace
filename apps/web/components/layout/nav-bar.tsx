@@ -3,12 +3,12 @@
  * 1440. Server Component; the only client part is the mobile menu island.
  * Below `md` the links, search and actions collapse into that menu.
  */
-import { NavLink } from '../ui/nav-link'
+import { ComingSoonLink, NavLink } from '../ui/nav-link'
 import { Logo } from './logo'
 import { MobileMenu } from './mobile-menu'
 import { NavAuth } from './nav-auth'
 import { NavBackdrop } from './nav-backdrop'
-import { NAV_LINKS } from './nav-items'
+import { NAV_LINKS, NAV_SOON } from './nav-items'
 import { SearchForm } from './search-form'
 
 export function NavBar() {
@@ -23,6 +23,9 @@ export function NavBar() {
               <NavLink key={link.href} href={link.href}>
                 {link.label}
               </NavLink>
+            ))}
+            {NAV_SOON.map((item) => (
+              <ComingSoonLink key={item.label}>{item.label}</ComingSoonLink>
             ))}
           </nav>
         </div>
