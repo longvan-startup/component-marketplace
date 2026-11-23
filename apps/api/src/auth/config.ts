@@ -4,7 +4,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { createAuthMiddleware } from 'better-auth/api'
 
 import type { ApiEnv } from '../env'
-import { createAuthEmailSender } from './email'
+import { AUTH_LINK_TTL_MINUTES, createAuthEmailSender } from './email'
 
 type AuthEnvironment = Pick<
   ApiEnv,
@@ -104,7 +104,7 @@ export function createAuth(db: Database, env: AuthEnvironment) {
       // Better Auth itself, nothing custom needed on our side.
       requireEmailVerification: true,
       // 15 min (issue #92 decision) — Better Auth's own default is 1h.
-      resetPasswordTokenExpiresIn: 15 * 60,
+      resetPasswordTokenExpiresIn: AUTH_LINK_TTL_MINUTES * 60,
       // Old password stops working everywhere the moment a reset succeeds.
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
@@ -124,7 +124,7 @@ export function createAuth(db: Database, env: AuthEnvironment) {
       // sign in again right after proving they own the email.
       autoSignInAfterVerification: true,
       // 15 min (issue #92 decision) — Better Auth's own default is 1h.
-      expiresIn: 15 * 60,
+      expiresIn: AUTH_LINK_TTL_MINUTES * 60,
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
