@@ -40,14 +40,29 @@ type Point = { x: number; y: number }
 /* Draws the halftone dots on the canvas. They stay hidden until the pointer
    presses them: a dot under the pointer dents toward it, then springs back.
    Skipped under prefers-reduced-motion, and the loop stops when nothing moves. */
-export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
+export type DotPressOptions = {
+  /* colour token of the dots; the hero's violet-600 by default */
+  color?: string
+  /* a plain grid of dots instead of the halftone artwork, in px: a dot every
+     `spacing`, the first one at `offset`, drawn with `radius` */
+  grid?: { spacing: number; offset: number; radius: number }
+}
+
+export function useDotPress(
+  canvasRef: RefObject<HTMLCanvasElement | null>,
+  { color = '--color-violet-600', grid }: DotPressOptions = {},
+) {
+  const gridSpacing = grid?.spacing
+  const gridOffset = grid?.offset
+  const gridRadius = grid?.radius
   useEffect(() => {
     const canvas = canvasRef.current
-    const section = canvas?.closest('section')
+    /* the hero is a section, the auth showcase an aside */
+    const section = canvas?.closest<HTMLElement>('section, aside')
     if (!canvas || !section) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    const rgb = readTokenRgb(canvas, '--color-violet-600')
+    const rgb = readTokenRgb(canvas, color)
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     let dots: Dot[] = []
@@ -65,6 +80,8 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
         canvas.height = Math.round(h * dpr)
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      /* a grid is laid out in px as it is, the artwork is scaled to cover */
+      if (gridSpacing) return { w, h, base: 1, offsetX: 0, offsetY: 0 }
       const base = Math.max(w / DOT_FRAME.width, h / DOT_FRAME.height)
       return {
         w,
@@ -75,8 +92,33 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
       }
     }
 
+    /* the grid is rebuilt whenever the panel changes size */
+    let gridSize = ''
+    const buildGrid = (w: number, h: number) => {
+      const key = `${Math.round(w)}x${Math.round(h)}`
+      if (!gridSpacing || gridSize === key) return
+      gridSize = key
+      dots = []
+      for (let y = gridOffset ?? 0; y < h; y += gridSpacing) {
+        for (let x = gridOffset ?? 0; x < w; x += gridSpacing) {
+          dots.push({
+            x,
+            y,
+            r: (gridRadius ?? 1.5) / DOT_SCALE,
+            press: 0,
+            show: 0,
+            ox: 0,
+            oy: 0,
+            vx: 0,
+            vy: 0,
+          })
+        }
+      }
+    }
+
     const tick = (dt: number) => {
       const l = layout()
+      buildGrid(l.w, l.h)
       const radius2 = PRESS_RADIUS * PRESS_RADIUS
       let moving = false
 
@@ -160,10 +202,12 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
     section.addEventListener('pointermove', onMove)
     section.addEventListener('pointerleave', onLeave)
 
-    fetch(DOT_SRC)
-      .then((response) => response.text())
+    const artwork = gridSpacing
+      ? Promise.resolve(null)
+      : fetch(DOT_SRC).then((response) => response.text())
+    artwork
       .then((text) => {
-        if (dead) return
+        if (dead || text === null) return
         const doc = new DOMParser().parseFromString(text, 'image/svg+xml')
         dots = Array.from(doc.querySelectorAll('circle')).map((el) => ({
           x: Number(el.getAttribute('cx')),
@@ -187,5 +231,5 @@ export function useDotPress(canvasRef: RefObject<HTMLCanvasElement | null>) {
       section.removeEventListener('pointermove', onMove)
       section.removeEventListener('pointerleave', onLeave)
     }
-  }, [canvasRef])
+  }, [canvasRef, color, gridSpacing, gridOffset, gridRadius])
 }
