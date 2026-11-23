@@ -1,8 +1,14 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import {
+  CATEGORY_LABEL,
+  CATEGORY_VARIANT,
+  STATUS_LABEL,
+  TIER_LABEL,
+  tierVariant,
+} from '@/features/catalog/catalog-labels'
 import { getCatalogSource } from '@/features/catalog/catalog-source'
 
 interface ComponentDetailProps {
@@ -44,30 +50,18 @@ export default async function ComponentDetailPage({ params }: ComponentDetailPro
 
   return (
     <section className="flex flex-col gap-6">
-      <nav className="text-sm text-muted-foreground">
-        <Link
-          href="/components"
-          className="hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          ← Back to catalog
-        </Link>
-      </nav>
-
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{item.name}</h1>
           <p className="mt-1 font-mono text-sm text-muted-foreground">/{item.slug}</p>
+          <p className="mt-3 max-w-2xl text-base leading-6">{item.summary}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={item.category === 'animation' ? 'accent' : 'neutral'}>
-            {item.category}
-          </Badge>
+          <Badge variant={CATEGORY_VARIANT}>{CATEGORY_LABEL[item.category]}</Badge>
           {item.accessTier ? (
-            <Badge variant={item.accessTier === 'pro' ? 'accent' : 'success'}>
-              {item.accessTier === 'pro' ? 'Pro' : 'Free'}
-            </Badge>
+            <Badge variant={tierVariant(item.accessTier)}>{TIER_LABEL[item.accessTier]}</Badge>
           ) : null}
-          {item.isPublished ? <Badge variant="success">published</Badge> : null}
+          {item.isPublished ? <Badge variant="success">{STATUS_LABEL.published}</Badge> : null}
           <span className="font-mono text-xs text-muted-foreground">v{item.latestVersion}</span>
         </div>
       </header>

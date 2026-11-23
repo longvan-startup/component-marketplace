@@ -1,10 +1,14 @@
 /**
  * AuthShowcase — Figma "Showcase" (154:6097): dark panel with a seam fade,
- * three blurred primary blobs, a 40px dot grid, a fanned cluster of three
+ * moving blurred bubbles and a field of dots that dent under the mouse (both
+ * shared with the home hero), a fanned cluster of three
  * component cards and a headline. Purely decorative, so it is hidden from
  * assistive tech and below `lg`.
  */
 import Image from 'next/image'
+import { HeroBubbles } from '../home/hero-bubbles'
+import { HeroDotField } from '../home/hero-dot-field'
+import { ShowcaseCopy } from './showcase-copy'
 
 const CARDS = [
   {
@@ -27,19 +31,22 @@ const CARDS = [
   },
 ] as const
 
-const DOT_GRID = {
-  backgroundImage: 'radial-gradient(circle, rgb(255 255 255 / 0.08) 1.25px, transparent 1.25px)',
-  backgroundSize: '40px 40px',
-}
+/* As dense as the hero's halftone (a dot about every 13px, about 1.3px across), so
+   the mouse presses the same number of dots. Hidden until pressed, as in the hero. */
+const DOT_PRESS_GRID = { spacing: 13, offset: 6.5, radius: 1.3 }
 
-export function AuthShowcase({ title, subtitle }: { title: string; subtitle: string }) {
+export function AuthShowcase() {
   return (
     <aside aria-hidden="true" className="relative hidden overflow-hidden bg-foreground lg:block">
       <div className="absolute inset-y-0 left-0 w-[220px] bg-gradient-to-r from-white/[0.18] to-transparent" />
-      <div className="absolute left-[54px] top-5 size-[420px] rounded-full bg-primary opacity-35 blur-[70px]" />
-      <div className="absolute left-[480px] top-[418px] size-[360px] rounded-full bg-primary opacity-[0.22] blur-[60px]" />
-      <div className="absolute left-0.5 top-[606px] size-[260px] rounded-full bg-primary opacity-[0.16] blur-[50px]" />
-      <div className="absolute inset-0" style={DOT_GRID} />
+      {/* The same moving bubbles and pressable dots as the home hero: the dots stay
+          hidden until the mouse presses them. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-60">
+        <HeroBubbles />
+      </div>
+      <div className="pointer-events-none absolute inset-0">
+        <HeroDotField color="--color-violet-300" grid={DOT_PRESS_GRID} />
+      </div>
 
       <div className="relative flex h-full min-h-screen flex-col items-center justify-center gap-5">
         <div className="relative h-[420px] w-[560px] shrink-0 scale-75 xl:scale-100">
@@ -79,10 +86,7 @@ export function AuthShowcase({ title, subtitle }: { title: string; subtitle: str
             </div>
           ))}
         </div>
-        <div className="flex w-[420px] max-w-full flex-col items-center gap-3 px-4 text-center text-white">
-          <p className="text-3xl font-bold">{title}</p>
-          <p className="max-w-[380px] text-[15px] opacity-60">{subtitle}</p>
-        </div>
+        <ShowcaseCopy />
       </div>
     </aside>
   )

@@ -5,10 +5,13 @@
  */
 export const NAV_LINKS = [
   { href: '/components', label: 'Danh mục' },
-  { href: '/pricing', label: 'Bảng giá' },
+  { href: '/pricing', label: 'Gói thành viên' },
 ] as const
 
 export const NAV_ACTIONS = {
   login: { href: '/login', label: 'Đăng nhập' },
   register: { href: '/register', label: 'Đăng ký' },
 } as const
+
+/* Planned sections: shown in the navbar, not followable until their route exists. */
+export const NAV_SOON = [{ label: 'Cộng đồng' }] as const

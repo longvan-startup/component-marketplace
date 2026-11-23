@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AuthShell } from '@/components/auth/auth-shell'
+import { AuthHeading } from '@/components/auth/auth-shell'
 import { SignInForm } from '@/components/auth/sign-in-form'
 import { SocialButtons } from '@/components/auth/social-buttons'
 import { loadSocialProviders, resolveApiMode } from '@/features/auth/auth-source'
@@ -21,12 +21,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const apiMode = resolveApiMode()
   const providers = await loadSocialProviders(apiMode)
   return (
-    <AuthShell
-      title="Đăng nhập"
-      subtitle="Chào mừng quay lại Luva UI."
-      showcaseTitle="Chào mừng quay lại"
-      showcaseSubtitle="Tiếp tục khám phá các component UI trong thư viện."
-    >
+    <>
+      <AuthHeading title="Đăng nhập" subtitle="Chào mừng quay lại Luva UI." />
       <SocialButtons providers={providers} failed={isSocialSignInError(params.oauth)} />
       <SignInForm apiMode={apiMode} />
       <p className="text-center text-[13px] text-muted-foreground">
@@ -38,6 +34,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           Đăng ký
         </Link>
       </p>
-    </AuthShell>
+    </>
   )
 }
