@@ -36,9 +36,6 @@ export function NewsletterForm() {
             autoComplete="email"
             className="min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none"
           />
-          <kbd className="rounded-md bg-muted px-1.5 py-0.5 font-sans text-[11px] font-medium text-muted-foreground">
-            ⌘K
-          </kbd>
         </label>
         <button
           type="submit"
