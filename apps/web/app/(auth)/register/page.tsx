@@ -19,8 +19,8 @@ export default async function RegisterPage() {
         title="Tạo tài khoản miễn phí"
         subtitle="Khám phá và tải hàng trăm component UI, miễn phí."
       />
-      <SocialButtons providers={providers} />
       <SignUpForm apiMode={apiMode} />
+      <SocialButtons providers={providers} />
       <p className="text-center text-[13px] text-muted-foreground">
         Đã có tài khoản?{' '}
         <Link
