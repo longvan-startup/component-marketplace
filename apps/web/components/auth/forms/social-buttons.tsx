@@ -2,8 +2,8 @@
 
 import type { SocialProvider } from '@marketplace/shared'
 /**
- * Social sign-in row — Figma `Button/Social` (154:5832) ×2 + `Divider/Or`
- * (154:5837). Live mode starts Google or GitHub OAuth. Mock mode stays
+ * Social sign-in row — two icon-only buttons (GitHub first, then Google) and
+ * `Divider/Or`. Live mode starts Google or GitHub OAuth. Mock mode stays
  * disabled because there is no provider to redirect to. A successful new
  * account is a Free user (`role: user`); OAuth does not grant Pro.
  */
@@ -51,27 +51,30 @@ export function SocialButtons({
     }
   }
 
+  const labelFor = (provider: SocialProvider, name: string) =>
+    pending === provider ? `Đang chuyển tới ${name}…` : `Tiếp tục với ${name}`
+  const titleFor = (provider: SocialProvider, name: string) =>
+    enabled.has(provider) ? name : 'Chưa được cấu hình'
+
   return (
     <>
       {error && <AuthStatusBanner variant="error">{error}</AuthStatusBanner>}
-      <SocialButton
-        disabled={!enabled.has('google') || pending !== null}
-        title={enabled.has('google') ? undefined : 'Chưa được cấu hình'}
-        onClick={() => start('google')}
-        icon={
-          <Image src="/auth/google.svg" alt="" width={18} height={18} className="size-[18px]" />
-        }
-      >
-        {pending === 'google' ? 'Đang chuyển tới Google…' : 'Tiếp tục với Google'}
-      </SocialButton>
-      <SocialButton
-        disabled={!enabled.has('github') || pending !== null}
-        title={enabled.has('github') ? undefined : 'Chưa được cấu hình'}
-        onClick={() => start('github')}
-        icon={<IconSocialGitHub className="size-4" />}
-      >
-        {pending === 'github' ? 'Đang chuyển tới GitHub…' : 'Tiếp tục với GitHub'}
-      </SocialButton>
+      <div className="flex gap-3">
+        <SocialButton
+          disabled={!enabled.has('github') || pending !== null}
+          label={labelFor('github', 'GitHub')}
+          title={titleFor('github', 'GitHub')}
+          onClick={() => start('github')}
+          icon={<IconSocialGitHub className="size-5" />}
+        />
+        <SocialButton
+          disabled={!enabled.has('google') || pending !== null}
+          label={labelFor('google', 'Google')}
+          title={titleFor('google', 'Google')}
+          onClick={() => start('google')}
+          icon={<Image src="/auth/google.svg" alt="" width={20} height={20} className="size-5" />}
+        />
+      </div>
       <div className="flex h-2.5 items-center gap-3">
         <span className="h-px flex-1 bg-border" />
         <span className="text-xs text-muted-foreground">hoặc</span>

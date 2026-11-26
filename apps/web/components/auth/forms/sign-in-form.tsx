@@ -19,6 +19,7 @@ import { Button } from '../../ui/button'
 import { Field } from '../../ui/field'
 import { Input } from '../../ui/input'
 import { AuthStatusBanner } from '../auth-status-banner'
+import { PasswordInput } from '../password-input'
 import { focusFirstInvalid } from './focus-first-invalid'
 
 function signInErrorMessage(error: unknown): string {
@@ -83,9 +84,8 @@ export function SignInForm({ apiMode }: { apiMode: ApiMode }) {
         />
       </Field>
       <Field label="Mật khẩu" htmlFor={passwordId} error={errors.password}>
-        <Input
+        <PasswordInput
           id={passwordId}
-          type="password"
           autoComplete="current-password"
           aria-invalid={Boolean(errors.password)}
           value={password}
