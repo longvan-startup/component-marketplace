@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AuthHeading } from '@/components/auth/auth-shell'
-import { SignUpForm } from '@/components/auth/sign-up-form'
-import { SocialButtons } from '@/components/auth/social-buttons'
+import { SignUpForm } from '@/components/auth/forms/sign-up-form'
+import { SocialButtons } from '@/components/auth/forms/social-buttons'
 import { loadSocialProviders, resolveApiMode } from '@/features/auth/auth-source'
 
 export const metadata: Metadata = {

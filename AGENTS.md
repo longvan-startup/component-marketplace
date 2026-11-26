@@ -27,7 +27,7 @@ Audit và các ADR còn **PROPOSED** nằm ở [`docs/HARNESS_AUDIT.md`](docs/HA
 Chi tiết nhánh, commit, và PR ở `CONTRIBUTING.md`. Gates ở `docs/ENGINEERING.md`. Tóm tắt:
 
 1. Task có mục tiêu và giới hạn. Không tự diễn giải.
-2. Branch từ `main` mới nhất, đúng prefix `feat|fix|chore|docs/<tên>-<topic>`. Chỉ sửa file trong phạm vi.
+2. Branch từ `main` mới nhất, đúng prefix `feat|fix|chore|docs/<tên>-<topic>`. Chỉ sửa file trong phạm vi. Trước khi thêm file hoặc viết thêm vào file lớn, theo mục "Cấu trúc thư mục và kích thước file" ở `docs/ENGINEERING.md`.
 3. `bun run verify`. Thêm `--docker` khi đụng Docker hoặc compose.
 4. PR Conventional Commits, body có bằng chứng gate. Chờ CI trên commit cuối và review theo `CONTRIBUTING.md`.
 

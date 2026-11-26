@@ -4,9 +4,9 @@
  */
 import type { ReactNode } from 'react'
 import { resolveApiMode } from '../../features/auth/auth-source'
-import { Footer } from './footer'
-import { NavBar } from './nav-bar'
-import { NavSessionFeedback, NavSessionProvider } from './nav-session'
+import { Footer } from './footer/footer'
+import { NavBar } from './nav/nav-bar'
+import { NavSessionFeedback, NavSessionProvider } from './nav/nav-session'
 
 export function SiteShell({ children }: { children: ReactNode }) {
   return (

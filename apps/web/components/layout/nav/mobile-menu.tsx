@@ -1,0 +1,116 @@
+'use client'
+
+/**
+ * Mobile menu — client island (open/close state). Figma has no mobile frame,
+ * so this is derived from the desktop NavBar: same links and actions, stacked
+ * in a panel under the header. Closes on route change and on Escape.
+ */
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useEffect, useId, useState } from 'react'
+import { Button, buttonClasses } from '../../ui/button'
+import { IconButton } from '../../ui/icon-button'
+import { IconClose, IconMenu } from '../../ui/icons'
+import { NAV_ACTIONS, NAV_LINKS, NAV_SOON } from './nav-items'
+import { useNavSession } from './nav-session'
+import { SearchForm } from './search-form'
+
+export function MobileMenu() {
+  const panelId = useId()
+  const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+  const { user, signOut, pendingAction } = useNavSession()
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger — navigating closes the panel.
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
+
+  return (
+    <div className="md:hidden">
+      <IconButton
+        aria-expanded={open}
+        aria-controls={panelId}
+        label={open ? 'Đóng menu' : 'Mở menu'}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? <IconClose /> : <IconMenu />}
+      </IconButton>
+
+      <div
+        id={panelId}
+        hidden={!open}
+        className="absolute inset-x-0 top-full border-b border-border bg-card px-4 pb-4 pt-3"
+      >
+        <SearchForm />
+        <nav aria-label="Điều hướng chính" className="mt-3 flex flex-col">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {link.label}
+            </Link>
+          ))}
+          {NAV_SOON.map((item) => (
+            <span
+              key={item.label}
+              aria-disabled="true"
+              title="Sắp ra mắt"
+              className="inline-flex min-h-11 cursor-not-allowed items-center rounded-sm text-sm font-medium text-muted-foreground"
+            >
+              {item.label}
+            </span>
+          ))}
+        </nav>
+        {user ? (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+              {user.name || user.email}
+            </span>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/account/security"
+                className={buttonClasses({
+                  variant: 'ghost',
+                  size: 'md',
+                  className: 'min-h-11',
+                })}
+              >
+                Bảo mật
+              </Link>
+              <Button
+                variant="ghost"
+                size="md"
+                className="min-h-11"
+                onClick={() => void signOut()}
+                disabled={pendingAction !== null}
+              >
+                {pendingAction === 'signOut' ? 'Đang đăng xuất…' : 'Đăng xuất'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Link href={NAV_ACTIONS.login.href} className={buttonClasses({ variant: 'secondary' })}>
+              {NAV_ACTIONS.login.label}
+            </Link>
+            <Link href={NAV_ACTIONS.register.href} className={buttonClasses()}>
+              {NAV_ACTIONS.register.label}
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

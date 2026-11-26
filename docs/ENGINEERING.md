@@ -28,6 +28,19 @@ Việc bắt buộc review ở tầng GitHub được quản bằng **branch pro
 - **Environment**: không có secrets trong code hay trong image. Container dựng env nội bộ qua compose (ví dụ `DATABASE_URL` của api container được build từ `POSTGRES_*`, không interpolate từ `.env` của host — xem `compose.yaml`).
 - **Bun phiên bản**: pin chính xác ở 3 chỗ và phải khớp nhau — `.bun-version` (CI dùng qua `setup-bun`), và tag `oven/bun:<ver>` trong `docker/api.Dockerfile` + `docker/web.Dockerfile` (hiện là **1.4.3**). Đổi version = sửa đồng thời cả 3 trong 1 PR.
 
+## Cấu trúc thư mục và kích thước file
+
+Áp dụng cho mọi người và mọi AI agent, ở mọi domain.
+
+- **Chia theo chức năng**, không theo loại file. Thứ được từ hai vùng trở lên dùng thì đặt ở thư mục chung của domain (web: `components/ui/`, `components/effects/`), không để vùng này import ruột của vùng kia.
+- **File mới tối đa 200 dòng** (không tính test). File mới vượt thì tách theo trách nhiệm trước khi merge: giao diện, hook hoặc logic điều khiển, hàm thuần có test.
+- **File đang vượt 200 dòng được giữ nguyên, nhưng không được dài thêm.** Thêm hành vi vào file đó thì đặt phần mới ở file riêng. Chỉ tách file cũ khi đang sửa đúng phần đó hoặc có task tách riêng.
+- **Thư mục tối đa 10 file nguồn** (không tính test). Đầy thì chia thư mục con theo chức năng trước khi thêm file. Ngoại lệ: thư mục primitive phẳng như `components/ui/`.
+- **Không tạo thư mục chỉ để chứa một file**, và không đặt tên chung chung như `misc/`, `helpers/`, `common2/`.
+- **Tìm trước khi tạo:** có component hay hàm làm được việc đó thì dùng lại hoặc mở rộng.
+- **Di chuyển file là thay đổi riêng:** dùng `git mv`, chỉ sửa đường dẫn, không đổi hành vi trong cùng commit. Cập nhật bảng cấu trúc trong `AGENTS.md` của domain ở cùng PR.
+- Giữ một file vượt giới hạn thì ghi lý do trong PR.
+
 ## Test
 
 - Smoke test thật (bun:test), đặt cạnh module: `apps/api/src/index.test.ts`.

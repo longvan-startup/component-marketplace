@@ -40,11 +40,17 @@ describe('createAuthEmailSender', () => {
     expect(payload.from).toBe('Luva UI <accounts@example.test>')
     expect(payload.to).toEqual(['person@example.test'])
     expect(payload.subject).toBe('Xác minh email tài khoản Luva UI')
-    // The logo is an inline attachment that the HTML points at with cid:.
-    expect(payload.attachments).toHaveLength(1)
-    expect(payload.attachments[0]?.content_id).toBe('luva-logo')
-    expect(payload.attachments[0]?.content.startsWith('iVBORw0KGgo')).toBe(true)
-    expect(payload.html).toContain('src="cid:luva-logo"')
+    // The artwork travels inline and the HTML points at each picture with cid:.
+    expect(payload.attachments.map((file) => file.content_id)).toEqual([
+      'luva-wordmark',
+      'luva-hero',
+      'luva-team',
+      'luva-footer',
+    ])
+    for (const file of payload.attachments) {
+      expect(payload.html).toContain(`src="cid:${file.content_id}"`)
+      expect(file.content.length).toBeGreaterThan(100)
+    }
     // The long link is not printed in the email; the button and one text link carry it.
     expect(payload.html).not.toContain('>https://marketplace.test')
     expect(payload.text).toContain('Chào <A & B>,')
