@@ -23,8 +23,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <>
       <AuthHeading title="Đăng nhập" subtitle="Chào mừng quay lại Luva UI." />
-      <SocialButtons providers={providers} failed={isSocialSignInError(params.oauth)} />
       <SignInForm apiMode={apiMode} />
+      <SocialButtons providers={providers} failed={isSocialSignInError(params.oauth)} />
       <p className="text-center text-[13px] text-muted-foreground">
         Chưa có tài khoản?{' '}
         <Link

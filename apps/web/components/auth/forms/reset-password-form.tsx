@@ -11,8 +11,8 @@ import { type ApiMode, getAuthSource, ResetPasswordError } from '../../../featur
 import { MIN_PASSWORD_LENGTH, validateNewPassword } from '../../../features/auth/form-validation'
 import { Button } from '../../ui/button'
 import { Field } from '../../ui/field'
-import { Input } from '../../ui/input'
 import { AuthStatusBanner } from '../auth-status-banner'
+import { PasswordInput } from '../password-input'
 
 type FormState = { kind: 'idle' | 'submitting' | 'done' | 'error'; message?: string }
 
@@ -65,9 +65,8 @@ export function ResetPasswordForm({ token, apiMode }: { token: string; apiMode: 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       <Field label="Mật khẩu mới" htmlFor={passwordId} error={passwordError}>
-        <Input
+        <PasswordInput
           id={passwordId}
-          type="password"
           aria-invalid={Boolean(passwordError)}
           value={password}
           onChange={(event) => {

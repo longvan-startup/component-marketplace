@@ -59,14 +59,12 @@ export function SocialButtons({
   return (
     <>
       {error && <AuthStatusBanner variant="error">{error}</AuthStatusBanner>}
-      <div className="flex gap-3">
-        <SocialButton
-          disabled={!enabled.has('github') || pending !== null}
-          label={labelFor('github', 'GitHub')}
-          title={titleFor('github', 'GitHub')}
-          onClick={() => start('github')}
-          icon={<IconSocialGitHub className="size-5" />}
-        />
+      <div className="flex h-2.5 items-center gap-3">
+        <span className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted-foreground">hoặc</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <div className="flex justify-center gap-3">
         <SocialButton
           disabled={!enabled.has('google') || pending !== null}
           label={labelFor('google', 'Google')}
@@ -74,11 +72,13 @@ export function SocialButtons({
           onClick={() => start('google')}
           icon={<Image src="/auth/google.svg" alt="" width={20} height={20} className="size-5" />}
         />
-      </div>
-      <div className="flex h-2.5 items-center gap-3">
-        <span className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">hoặc</span>
-        <span className="h-px flex-1 bg-border" />
+        <SocialButton
+          disabled={!enabled.has('github') || pending !== null}
+          label={labelFor('github', 'GitHub')}
+          title={titleFor('github', 'GitHub')}
+          onClick={() => start('github')}
+          icon={<IconSocialGitHub className="size-5" />}
+        />
       </div>
     </>
   )

@@ -65,7 +65,7 @@ export function ShowcaseOrbit({ cards }: { cards: OrbitCard[] }) {
           <div
             key={card.id}
             data-orbit-card
-            className="absolute left-1/2 top-1/2 -ml-[140px] -mt-[135px] w-[280px] overflow-hidden will-change-transform rounded-card border border-border bg-card shadow-[0_24px_48px_-8px_rgba(0,0,0,0.4)]"
+            className="absolute left-1/2 top-1/2 -ml-[140px] -mt-[135px] w-[280px] overflow-hidden will-change-transform rounded-card bg-card shadow-[0_24px_48px_-8px_rgba(0,0,0,0.4)]"
             style={{
               transform: `translate(${tidy(pose.x)}px, ${tidy(pose.y)}px) scale(${tidy(pose.scale)})`,
               zIndex: pose.zIndex,
