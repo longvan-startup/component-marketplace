@@ -49,7 +49,7 @@ source file, 10 source files per folder; `components/ui/` stays flat):
 | `app/` | routes, layouts, pages (Server Components by default) |
 | `app/globals.css` | design tokens in the Tailwind v4 `@theme` block (single light theme) |
 | `components/ui/` | tiny presentational primitives (badge, card) |
-| `components/layout/` | site shell and logo; `nav/` header, search and session; `footer/` footer and newsletter |
+| `components/layout/` | site shell and logo; `nav/` header, search and session; `footer/` footer |
 | `components/home/` | home page only; `hero/` hero text and backdrop, `sections/` the sections below it |
 | `components/auth/` | auth layout pieces; `forms/` auth forms and social buttons, `showcase/` the dark panel |
 | `components/catalog/` | catalog card and skeleton; `demo/` live demo, popup bench and knobs |
