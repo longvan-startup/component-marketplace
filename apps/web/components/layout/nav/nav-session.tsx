@@ -3,8 +3,8 @@
 import type { AuthUser } from '@marketplace/shared'
 import { useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react'
-import { type ApiMode, getAuthSource } from '../../features/auth/auth-source'
-import { AuthStatusBanner } from '../auth/auth-status-banner'
+import { type ApiMode, getAuthSource } from '../../../features/auth/auth-source'
+import { AuthStatusBanner } from '../../auth/auth-status-banner'
 import {
   finishLogoutAction,
   initialNavSessionState,

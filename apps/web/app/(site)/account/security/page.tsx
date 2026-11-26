@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { SecuritySettings } from '@/components/auth/security-settings'
+import { SecuritySettings } from '@/components/auth/forms/security-settings'
 import { resolveApiMode } from '@/features/auth/auth-source'
 
 export const metadata: Metadata = {

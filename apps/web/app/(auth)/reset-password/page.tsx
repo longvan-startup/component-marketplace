@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AuthHeading } from '@/components/auth/auth-shell'
 import { AuthStatusBanner } from '@/components/auth/auth-status-banner'
-import { ResetPasswordForm } from '@/components/auth/reset-password-form'
+import { ResetPasswordForm } from '@/components/auth/forms/reset-password-form'
 import { resolveApiMode } from '@/features/auth/auth-source'
 
 export const metadata: Metadata = {

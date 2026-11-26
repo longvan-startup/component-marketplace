@@ -41,8 +41,11 @@ apps/web/
 │   └── components/[slug]/  # trang detail theo slug (khớp contract :slug)
 ├── components/
 │   ├── ui/                 # badge, card — primitives thuần
-│   ├── catalog/            # card and search (client)
-│   └── layout/             # shell/site-level layout
+│   ├── layout/             # shell, logo · nav/ · footer/
+│   ├── home/               # trang chủ · hero/ · sections/
+│   ├── auth/               # layout đăng nhập · forms/ · showcase/
+│   ├── catalog/            # card, skeleton · demo/
+│   └── effects/            # hiệu ứng dùng chung (bong bóng, chấm)
 ├── features/catalog/
 │   ├── catalog-source.ts   # ★ ĐIỂM TRUY DỮ LIỆU DUY NHẤT — mock | live
 │   └── catalog-source.test.ts

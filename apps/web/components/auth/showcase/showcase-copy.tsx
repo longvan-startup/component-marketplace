@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { RouteFade } from './route-fade'
+import { RouteFade } from '../route-fade'
 
 /* The headline under the showcase cards. The showcase itself stays mounted across
    the auth pages, so only this text changes with the route. */

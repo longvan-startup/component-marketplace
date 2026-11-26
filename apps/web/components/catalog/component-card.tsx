@@ -9,7 +9,7 @@ import type { CatalogItem } from '../../features/catalog/catalog-source'
 import type { DemoManifest } from '../../features/demo/demo-manifest'
 import { Badge } from '../ui/badge'
 import { Card } from '../ui/card'
-import { DemoPreview } from './demo-preview'
+import { DemoPreview } from './demo/demo-preview'
 
 export function ComponentCard({
   item,

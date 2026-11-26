@@ -11,8 +11,8 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { AuthRequestError, getAuthSource } from '@/features/auth/auth-source'
 import { socialCallbackUrl, socialErrorCallbackUrl } from '@/features/auth/safe-callback-url'
-import { IconSocialGitHub } from '../ui/icons'
-import { AuthStatusBanner } from './auth-status-banner'
+import { IconSocialGitHub } from '../../ui/icons'
+import { AuthStatusBanner } from '../auth-status-banner'
 import { SocialButton } from './social-button'
 
 function socialErrorMessage(error: unknown): string {

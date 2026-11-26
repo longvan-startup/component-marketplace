@@ -14,9 +14,9 @@ import {
   type GsapScopeApi,
   prefersReducedMotion,
   useGsapScope,
-} from '../../lib/gsap'
-import { IconButton } from '../ui/icon-button'
-import { IconChevronLeft, IconChevronRight } from '../ui/icons'
+} from '../../../lib/gsap'
+import { IconButton } from '../../ui/icon-button'
+import { IconChevronLeft, IconChevronRight } from '../../ui/icons'
 
 type Gsap = GsapScopeApi['gsap']
 

@@ -6,7 +6,7 @@
  * surface and the bottom border.
  */
 import { useEffect, useRef } from 'react'
-import { tweenOpacity } from '../../lib/gsap'
+import { tweenOpacity } from '../../../lib/gsap'
 
 const SOLID_AFTER_PX = 8
 const FADE_S = 0.35

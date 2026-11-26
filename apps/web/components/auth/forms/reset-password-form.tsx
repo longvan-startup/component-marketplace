@@ -7,12 +7,12 @@
  * apps/api/AUTH.md); this component only drives the POST submit + states.
  */
 import { useId, useState } from 'react'
-import { type ApiMode, getAuthSource, ResetPasswordError } from '../../features/auth/auth-source'
-import { MIN_PASSWORD_LENGTH, validateNewPassword } from '../../features/auth/form-validation'
-import { Button } from '../ui/button'
-import { Field } from '../ui/field'
-import { Input } from '../ui/input'
-import { AuthStatusBanner } from './auth-status-banner'
+import { type ApiMode, getAuthSource, ResetPasswordError } from '../../../features/auth/auth-source'
+import { MIN_PASSWORD_LENGTH, validateNewPassword } from '../../../features/auth/form-validation'
+import { Button } from '../../ui/button'
+import { Field } from '../../ui/field'
+import { Input } from '../../ui/input'
+import { AuthStatusBanner } from '../auth-status-banner'
 
 type FormState = { kind: 'idle' | 'submitting' | 'done' | 'error'; message?: string }
 

@@ -7,11 +7,11 @@
  * form is shown but does not save anything until its backend exists, and the
  * mail icon has no address yet.
  */
-import { IconSocialGitHub, IconSocialMail } from '../ui/icons'
-import { NAV_LINK_BASE, NavLink } from '../ui/nav-link'
+import { IconSocialGitHub, IconSocialMail } from '../../ui/icons'
+import { NAV_LINK_BASE, NavLink } from '../../ui/nav-link'
+import { BRAND_NAME, Logo } from '../logo'
+import { NAV_LINKS } from '../nav/nav-items'
 import { FooterDotField } from './footer-dot-field'
-import { BRAND_NAME, Logo } from './logo'
-import { NAV_LINKS } from './nav-items'
 import { NewsletterForm } from './newsletter-form'
 
 const REPO_URL = 'https://github.com/longvan-startup/component-marketplace'

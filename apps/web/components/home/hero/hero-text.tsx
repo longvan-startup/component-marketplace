@@ -1,8 +1,8 @@
 'use client'
 
 import { type ReactNode, useEffect, useRef } from 'react'
-import { createFrameLoop, prefersReducedMotion } from '../../lib/gsap'
-import { PRESS_RADIUS, SPRING_C, SPRING_K } from './use-dot-press'
+import { createFrameLoop, prefersReducedMotion } from '../../../lib/gsap'
+import { PRESS_RADIUS, SPRING_C, SPRING_K } from '../../effects/use-dot-press'
 
 /* How far a word is pulled toward the pointer and pushed down at the centre.
    The dots use 2.5 and 3 px; words are far bigger, so they move a little more,
