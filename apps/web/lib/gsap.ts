@@ -149,3 +149,16 @@ export function tweenOpacity(element: Element, opacity: number, duration: number
   }
   gsap.to(element, { opacity, duration, ease: 'power2.inOut', overwrite: 'auto' })
 }
+
+/**
+ * Slides an element vertically by `yPercent` of its own height (0 = in place,
+ * -100 = just above the viewport). Under prefers-reduced-motion the move is
+ * applied at once, with no tween.
+ */
+export function tweenSlide(element: Element, yPercent: number, duration: number): void {
+  if (prefersReducedMotion()) {
+    ;(element as HTMLElement).style.transform = yPercent === 0 ? '' : `translateY(${yPercent}%)`
+    return
+  }
+  gsap.to(element, { yPercent, duration, ease: 'power2.out', overwrite: 'auto' })
+}
