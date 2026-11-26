@@ -1,18 +1,17 @@
 /**
  * Footer — Figma `Footer` (134:3645, master 10:67). Built from components:
- * FooterBrand (logo, blurb, social row, newsletter), FooterColumn (heading plus
+ * FooterBrand (logo, blurb, social row, team chip), FooterColumn (heading plus
  * links), FooterDotField (the "Dot Mountain" band) and FooterLegal (copyright
  * and legal links). Links to routes not built yet use the same NavLink look
- * with the default cursor, so they never look like dead anchors. The newsletter
- * form is shown but does not save anything until its backend exists, and the
- * mail icon has no address yet.
+ * with the default cursor, so they never look like dead anchors. The mail icon
+ * has no address yet. There is no newsletter: sign-up already covers it.
  */
 import { IconSocialGitHub, IconSocialMail } from '../../ui/icons'
 import { NAV_LINK_BASE, NavLink } from '../../ui/nav-link'
 import { BRAND_NAME, Logo } from '../logo'
 import { NAV_LINKS } from '../nav/nav-items'
 import { FooterDotField } from './footer-dot-field'
-import { NewsletterForm } from './newsletter-form'
+import { TeamChip } from './team-chip'
 
 const REPO_URL = 'https://github.com/longvan-startup/component-marketplace'
 
@@ -54,8 +53,7 @@ function FooterBrand() {
         Khám phá các component UI trong thư viện cho dự án của bạn.
       </p>
       <SocialRow />
-      <p className="text-xs font-medium text-muted-foreground">Nhận component mới hàng tuần</p>
-      <NewsletterForm />
+      <TeamChip href={REPO_URL} />
     </div>
   )
 }
