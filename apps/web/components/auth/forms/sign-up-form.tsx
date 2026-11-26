@@ -24,6 +24,7 @@ import { Checkbox } from '../../ui/checkbox'
 import { Field } from '../../ui/field'
 import { Input } from '../../ui/input'
 import { AuthStatusBanner } from '../auth-status-banner'
+import { PasswordInput } from '../password-input'
 import { focusFirstInvalid } from './focus-first-invalid'
 
 function signUpErrorMessage(error: unknown): string {
@@ -163,9 +164,8 @@ export function SignUpForm({ apiMode }: { apiMode: ApiMode }) {
         />
       </Field>
       <Field label="Mật khẩu" htmlFor={passwordId} error={errors.password}>
-        <Input
+        <PasswordInput
           id={passwordId}
-          type="password"
           autoComplete="new-password"
           maxLength={128}
           aria-invalid={Boolean(errors.password)}
