@@ -62,6 +62,30 @@ db/host details never leave the server.
 auth errors. Do not wrap or translate those responses in the API; frontend code
 maps Better Auth error codes/messages to UI states.
 
+## Email layout
+
+Every email uses the same layout as the auth emails. A new email reuses it
+(`src/auth/email-template.ts` for layout, `email-copy.ts` for wording,
+`email-images.ts` for artwork); do not design a second one.
+
+Blocks, in order, on a white page at most 700px wide:
+
+1. Grey notice bar.
+2. Logo wordmark in solid colours, as the web `Logo` component draws it.
+3. Centred 466px column: 44px two-line heading, 16px light paragraph, violet
+   pill button, a small note, 466px hero picture.
+4. 20px section title and a two-column list with dark top rules (one column on
+   phones).
+5. Grey rounded thank-you block: round avatars and the solid wordmark.
+6. Grey footer with rounded top: legal lines and the large faded brand name,
+   the only place with a gradient.
+7. The design credit line.
+
+Rules: tables with inline styles; pictures are inline attachments referenced by
+`cid:`; hex colours are allowed here because mail clients ignore CSS variables;
+escape every user value; no links to pages that do not exist, no invented postal
+address, no photos or marks that are not ours.
+
 ## Quality gates (all required before declaring "done")
 
 - `bun run --cwd apps/api typecheck`
