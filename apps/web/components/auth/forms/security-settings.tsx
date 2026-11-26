@@ -3,18 +3,18 @@
 import { changePasswordRequestSchema } from '@marketplace/shared'
 import Link from 'next/link'
 import { useEffect, useId, useState } from 'react'
-import { type ApiMode, AuthRequestError, getAuthSource } from '../../features/auth/auth-source'
+import { type ApiMode, AuthRequestError, getAuthSource } from '../../../features/auth/auth-source'
 import {
   type FieldErrors,
   hasErrors,
   validateNewPassword,
-} from '../../features/auth/form-validation'
-import { useNavSession } from '../layout/nav-session'
-import { Button, buttonClasses } from '../ui/button'
-import { Card } from '../ui/card'
-import { Field } from '../ui/field'
-import { Input } from '../ui/input'
-import { AuthStatusBanner } from './auth-status-banner'
+} from '../../../features/auth/form-validation'
+import { useNavSession } from '../../layout/nav/nav-session'
+import { Button, buttonClasses } from '../../ui/button'
+import { Card } from '../../ui/card'
+import { Field } from '../../ui/field'
+import { Input } from '../../ui/input'
+import { AuthStatusBanner } from '../auth-status-banner'
 import { focusFirstInvalid } from './focus-first-invalid'
 
 type PasswordField = 'current' | 'new' | 'confirm'

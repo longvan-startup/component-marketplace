@@ -1,5 +1,5 @@
-import { HeroBubbles } from './hero-bubbles'
-import { HeroDotField } from './hero-dot-field'
+import { HeroBubbles } from '../../effects/hero-bubbles'
+import { HeroDotField } from '../../effects/hero-dot-field'
 
 /* Home hero backdrop: purple bubbles and the halftone dot field, behind the
    hero text. Both are decorative, so the whole layer is hidden from assistive

@@ -8,13 +8,13 @@
  * never has to decide what to hide.
  */
 import { useId, useState } from 'react'
-import { type ApiMode, getAuthSource } from '../../features/auth/auth-source'
-import { validateEmail } from '../../features/auth/form-validation'
-import { resetPasswordCallbackUrl } from '../../features/auth/safe-callback-url'
-import { Button } from '../ui/button'
-import { Field } from '../ui/field'
-import { Input } from '../ui/input'
-import { AuthStatusBanner } from './auth-status-banner'
+import { type ApiMode, getAuthSource } from '../../../features/auth/auth-source'
+import { validateEmail } from '../../../features/auth/form-validation'
+import { resetPasswordCallbackUrl } from '../../../features/auth/safe-callback-url'
+import { Button } from '../../ui/button'
+import { Field } from '../../ui/field'
+import { Input } from '../../ui/input'
+import { AuthStatusBanner } from '../auth-status-banner'
 
 type FormState = { kind: 'idle' | 'submitting' | 'done' | 'error'; message?: string }
 

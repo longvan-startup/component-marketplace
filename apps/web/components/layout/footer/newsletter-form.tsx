@@ -5,9 +5,9 @@
  * submitting checks the address and then says plainly that nothing was saved.
  */
 import { type FormEvent, useState } from 'react'
-import { Button } from '../ui/button'
-import { IconSearch } from '../ui/icons'
-import { Input } from '../ui/input'
+import { Button } from '../../ui/button'
+import { IconSearch } from '../../ui/icons'
+import { Input } from '../../ui/input'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

@@ -8,7 +8,7 @@
  * session resolves, so there is no layout jump for anonymous visitors.
  */
 import Link from 'next/link'
-import { Button, buttonClasses } from '../ui/button'
+import { Button, buttonClasses } from '../../ui/button'
 import { NAV_ACTIONS } from './nav-items'
 import { useNavSession } from './nav-session'
 

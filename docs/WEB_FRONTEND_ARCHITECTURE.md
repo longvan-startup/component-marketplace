@@ -19,8 +19,8 @@ Trang và component chính trên `main`:
 | Catalog | `app/(site)/components/page.tsx` | Dùng `ComponentCard`, có filter category **[có trong code]** |
 | Chi tiết | `app/(site)/components/[slug]/page.tsx` | Badge category hiển thị raw `item.category` **[có trong code]** |
 | Card catalog | `components/catalog/component-card.tsx` | Có version, summary, badge "preview" cho bản nháp **[có trong code]** |
-| Demo trên card | `components/catalog/demo-preview.tsx` | Client island: iframe lazy, tối đa 4 demo sống **[có trong code, #192]** |
-| Popup demo | `components/catalog/demo-bench.tsx` | Client island, mở và đóng bằng GSAP qua `useGsapScope` **[có trong code, #194 và #223]** |
+| Demo trên card | `components/catalog/demo/demo-preview.tsx` | Client island: iframe lazy, tối đa 4 demo sống **[có trong code, #192]** |
+| Popup demo | `components/catalog/demo/demo-bench.tsx` | Client island, mở và đóng bằng GSAP qua `useGsapScope` **[có trong code, #194 và #223]** |
 | Primitive | `components/ui/` | `Card`, `Badge`, `Chip`, `Button`, `Input`, `Field`, `NavLink` **[có trong code]** |
 | Skeleton | `components/catalog/catalog-skeleton.tsx` | Hình dạng không khớp card nào **[có trong code]** |
 
@@ -62,7 +62,7 @@ Ghi chú: một commit gom nhãn (`85af99f`, PR #196) đã đóng và chưa vào
 ### 5.1 Tầng
 
 1. **Page** (`app/`): Server Component. Lấy dữ liệu qua feature source, không gọi `lib/api-client` trực tiếp **[có trong code]**.
-2. **Feature component** (`components/catalog/`, `components/home/`): ghép card từ primitive và dữ liệu **[có trong code]**.
+2. **Feature component** (`components/catalog/`, `components/home/`, `components/auth/`; hiệu ứng dùng chung ở `components/effects/`): ghép card từ primitive và dữ liệu **[có trong code]**.
 3. **Primitive** (`components/ui/`): không có logic nghiệp vụ **[có trong code]**.
 
 ### 5.2 Quy tắc đặt tên, thư mục, props **[đề xuất]**

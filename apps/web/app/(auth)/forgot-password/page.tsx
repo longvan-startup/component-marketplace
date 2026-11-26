@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AuthHeading } from '@/components/auth/auth-shell'
-import { ForgotPasswordForm } from '@/components/auth/forgot-password-form'
+import { ForgotPasswordForm } from '@/components/auth/forms/forgot-password-form'
 import { resolveApiMode } from '@/features/auth/auth-source'
 
 export const metadata: Metadata = {

@@ -3,8 +3,8 @@
  * catalog (`/components?q=…`), so it works without client JavaScript and
  * stays a Server Component.
  */
-import { IconSearch } from '../ui/icons'
-import { Input } from '../ui/input'
+import { IconSearch } from '../../ui/icons'
+import { Input } from '../../ui/input'
 
 export function SearchForm({ className = '' }: { className?: string }) {
   return (

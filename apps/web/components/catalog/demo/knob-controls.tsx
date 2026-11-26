@@ -3,8 +3,8 @@
  * chip group. Each control is labelled and reports the new value upward; the
  * bench decides how to send it to the demo.
  */
-import type { DemoKnob, DemoValues } from '../../features/demo/demo-manifest'
-import { Chip } from '../ui/chip'
+import type { DemoKnob, DemoValues } from '../../../features/demo/demo-manifest'
+import { Chip } from '../../ui/chip'
 
 export function KnobControls({
   knobs,

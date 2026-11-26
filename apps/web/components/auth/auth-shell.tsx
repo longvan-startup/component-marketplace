@@ -11,8 +11,8 @@
  */
 import type { ReactNode } from 'react'
 import { Logo } from '../layout/logo'
-import { AuthShowcase } from './auth-showcase'
 import { RouteFade } from './route-fade'
+import { AuthShowcase } from './showcase/auth-showcase'
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (

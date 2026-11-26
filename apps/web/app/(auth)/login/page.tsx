@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AuthHeading } from '@/components/auth/auth-shell'
-import { SignInForm } from '@/components/auth/sign-in-form'
-import { SocialButtons } from '@/components/auth/social-buttons'
+import { SignInForm } from '@/components/auth/forms/sign-in-form'
+import { SocialButtons } from '@/components/auth/forms/social-buttons'
 import { loadSocialProviders, resolveApiMode } from '@/features/auth/auth-source'
 import { isSocialSignInError } from '@/features/auth/safe-callback-url'
 

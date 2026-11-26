@@ -9,7 +9,7 @@ import { useEffect, useId, useState } from 'react'
 
 const RESEND_COOLDOWN_SECONDS = 30
 
-import { type ApiMode, AuthRequestError, getAuthSource } from '../../features/auth/auth-source'
+import { type ApiMode, AuthRequestError, getAuthSource } from '../../../features/auth/auth-source'
 import {
   type FieldErrors,
   hasErrors,
@@ -17,13 +17,13 @@ import {
   validateEmail,
   validateName,
   validateNewPassword,
-} from '../../features/auth/form-validation'
-import { verifyEmailCallbackUrl } from '../../features/auth/safe-callback-url'
-import { Button } from '../ui/button'
-import { Checkbox } from '../ui/checkbox'
-import { Field } from '../ui/field'
-import { Input } from '../ui/input'
-import { AuthStatusBanner } from './auth-status-banner'
+} from '../../../features/auth/form-validation'
+import { verifyEmailCallbackUrl } from '../../../features/auth/safe-callback-url'
+import { Button } from '../../ui/button'
+import { Checkbox } from '../../ui/checkbox'
+import { Field } from '../../ui/field'
+import { Input } from '../../ui/input'
+import { AuthStatusBanner } from '../auth-status-banner'
 import { focusFirstInvalid } from './focus-first-invalid'
 
 function signUpErrorMessage(error: unknown): string {

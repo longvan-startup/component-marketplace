@@ -3,8 +3,8 @@
  * 1440. Server Component; the only client part is the mobile menu island.
  * Below `md` the links, search and actions collapse into that menu.
  */
-import { ComingSoonLink, NavLink } from '../ui/nav-link'
-import { Logo } from './logo'
+import { ComingSoonLink, NavLink } from '../../ui/nav-link'
+import { Logo } from '../logo'
 import { MobileMenu } from './mobile-menu'
 import { NavAuth } from './nav-auth'
 import { NavBackdrop } from './nav-backdrop'

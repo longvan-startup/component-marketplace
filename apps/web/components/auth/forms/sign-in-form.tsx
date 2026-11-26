@@ -8,17 +8,17 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useId, useState } from 'react'
-import { type ApiMode, AuthRequestError, getAuthSource } from '../../features/auth/auth-source'
+import { type ApiMode, AuthRequestError, getAuthSource } from '../../../features/auth/auth-source'
 import {
   type FieldErrors,
   hasErrors,
   validateCurrentPassword,
   validateEmail,
-} from '../../features/auth/form-validation'
-import { Button } from '../ui/button'
-import { Field } from '../ui/field'
-import { Input } from '../ui/input'
-import { AuthStatusBanner } from './auth-status-banner'
+} from '../../../features/auth/form-validation'
+import { Button } from '../../ui/button'
+import { Field } from '../../ui/field'
+import { Input } from '../../ui/input'
+import { AuthStatusBanner } from '../auth-status-banner'
 import { focusFirstInvalid } from './focus-first-invalid'
 
 function signInErrorMessage(error: unknown): string {

@@ -1,7 +1,7 @@
 'use client'
 
 import { Children, isValidElement, type ReactNode, useEffect, useRef } from 'react'
-import { type GsapScopeApi, useGsapScope } from '../../lib/gsap'
+import { type GsapScopeApi, useGsapScope } from '../../../lib/gsap'
 
 type Gsap = GsapScopeApi['gsap']
 

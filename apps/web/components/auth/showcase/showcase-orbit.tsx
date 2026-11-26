@@ -2,8 +2,8 @@
 
 import Image from 'next/image'
 import { useRef } from 'react'
-import { useGsapScope } from '../../lib/gsap'
-import { Badge } from '../ui/badge'
+import { useGsapScope } from '../../../lib/gsap'
+import { Badge } from '../../ui/badge'
 import { orbitPose } from './showcase-orbit-pose'
 
 /* One full turn of the ring, in seconds. Slow, so the cards stay readable. */

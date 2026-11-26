@@ -7,9 +7,9 @@
  * catalog. Reduced motion skips the tween and switches at once.
  */
 import { type FormEvent, useLayoutEffect, useRef, useState } from 'react'
-import { type GsapScopeApi, prefersReducedMotion, useGsapScope } from '../../lib/gsap'
-import { IconButton } from '../ui/icon-button'
-import { IconSearch } from '../ui/icons'
+import { type GsapScopeApi, prefersReducedMotion, useGsapScope } from '../../../lib/gsap'
+import { IconButton } from '../../ui/icon-button'
+import { IconSearch } from '../../ui/icons'
 
 const ICON_WIDTH = 44
 const OPEN_WIDTH = 360

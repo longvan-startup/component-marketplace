@@ -6,7 +6,7 @@
  * Clicking the area opens the bench, which is loaded on first use.
  */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import type { DemoManifest } from '../../features/demo/demo-manifest'
+import type { DemoManifest } from '../../../features/demo/demo-manifest'
 import { acquireDemoSlot, releaseDemoSlot, subscribeDemoSlots } from './demo-pool'
 
 const DemoBench = lazy(() => import('./demo-bench').then((m) => ({ default: m.DemoBench })))

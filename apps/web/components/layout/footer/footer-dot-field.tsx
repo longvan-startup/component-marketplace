@@ -14,8 +14,8 @@
  * nothing is warm.
  */
 import { useEffect, useRef } from 'react'
-import { readTokenRgb } from '../../lib/color'
-import { createFrameLoop } from '../../lib/gsap'
+import { readTokenRgb } from '../../../lib/color'
+import { createFrameLoop } from '../../../lib/gsap'
 
 const VIEW_W = 1440
 const VIEW_H = 350

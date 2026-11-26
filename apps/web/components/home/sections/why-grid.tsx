@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { type GsapScopeApi, useGsapScope } from '../../lib/gsap'
-import { Card } from '../ui/card'
+import { type GsapScopeApi, useGsapScope } from '../../../lib/gsap'
+import { Card } from '../../ui/card'
 
 type Gsap = GsapScopeApi['gsap']
 

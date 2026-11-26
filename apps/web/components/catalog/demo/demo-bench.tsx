@@ -8,15 +8,15 @@
  */
 import Link from 'next/link'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
-import { createKnobsMessage, parseDemoMessage } from '../../features/demo/demo-bridge'
+import { createKnobsMessage, parseDemoMessage } from '../../../features/demo/demo-bridge'
 import {
   type DemoManifest,
   type DemoValues,
   defaultValues,
-} from '../../features/demo/demo-manifest'
-import { type GsapScopeApi, prefersReducedMotion, useGsapScope } from '../../lib/gsap'
-import { buttonClasses } from '../ui/button'
-import { IconButton } from '../ui/icon-button'
+} from '../../../features/demo/demo-manifest'
+import { type GsapScopeApi, prefersReducedMotion, useGsapScope } from '../../../lib/gsap'
+import { buttonClasses } from '../../ui/button'
+import { IconButton } from '../../ui/icon-button'
 import { KnobControls } from './knob-controls'
 
 /* Ease-in-out on both ways. An ease-out front-loads the motion, so the bench

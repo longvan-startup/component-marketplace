@@ -181,7 +181,7 @@ sequenceDiagram
 
 ### AU-05 — Quên / đặt lại mật khẩu
 
-Nguồn: `apps/web/features/auth/auth-source.ts`, `apps/web/components/auth/{forgot-password-form,reset-password-form}.tsx`, `apps/api/src/auth/config.ts` (`resetPasswordTokenExpiresIn`, `revokeSessionsOnPasswordReset`).
+Nguồn: `apps/web/features/auth/auth-source.ts`, `apps/web/components/auth/forms/{forgot-password-form,reset-password-form}.tsx`, `apps/api/src/auth/config.ts` (`resetPasswordTokenExpiresIn`, `revokeSessionsOnPasswordReset`).
 
 ```mermaid
 sequenceDiagram

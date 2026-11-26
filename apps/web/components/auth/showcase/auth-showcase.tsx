@@ -5,14 +5,14 @@
  * centre, and a headline. Purely decorative, so it is hidden from assistive tech,
  * ignores the pointer (apart from the dots) and is dropped below `lg`.
  */
-import { CATEGORY_LABEL, TIER_LABEL, tierVariant } from '../../features/catalog/catalog-labels'
+import { CATEGORY_LABEL, TIER_LABEL, tierVariant } from '../../../features/catalog/catalog-labels'
 import {
   type CatalogItem,
   createMockCatalogSource,
   getCatalogSource,
-} from '../../features/catalog/catalog-source'
-import { HeroBubbles } from '../home/hero-bubbles'
-import { HeroDotField } from '../home/hero-dot-field'
+} from '../../../features/catalog/catalog-source'
+import { HeroBubbles } from '../../effects/hero-bubbles'
+import { HeroDotField } from '../../effects/hero-dot-field'
 import { ShowcaseCopy } from './showcase-copy'
 import { type OrbitCard, ShowcaseOrbit } from './showcase-orbit'
 import { ORBIT_CARD_COUNT } from './showcase-orbit-pose'
