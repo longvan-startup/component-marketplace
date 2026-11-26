@@ -70,16 +70,14 @@ Every email uses the same layout as the auth emails. A new email reuses it
 
 Blocks, in order, on a white page at most 700px wide:
 
-1. Grey notice bar.
-2. Logo wordmark in solid colours, as the web `Logo` component draws it.
-3. Centred 466px column: 44px two-line heading, 16px light paragraph, violet
+1. Logo wordmark in solid colours, as the web `Logo` component draws it.
+2. Centred 466px column: 44px two-line heading, 16px light paragraph, violet
    pill button, a small note, 466px hero picture.
-4. 20px section title and a two-column list with dark top rules (one column on
+3. 20px section title and a two-column list with dark top rules (one column on
    phones).
-5. Grey rounded thank-you block: round avatars and the solid wordmark.
-6. Grey footer with rounded top: legal lines and the large faded brand name,
+4. Grey rounded thank-you block: two round team photos and the solid wordmark.
+5. Grey footer with rounded top: legal lines and the large faded brand name,
    the only place with a gradient.
-7. The design credit line.
 
 Rules: tables with inline styles; pictures are inline attachments referenced by
 `cid:`; hex colours are allowed here because mail clients ignore CSS variables;

@@ -96,7 +96,6 @@ export function renderAuthEmail({ kind, user, url }: Input) {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#ffffff;">${copy.intro}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:700px;">
-<tr><td style="padding:8px 8px 0;"><div style="background:#f9f9fb;border-radius:8px;padding:12px;text-align:center;${FONT}font-size:13px;color:${INK};">Nếu không thấy hình ảnh, hãy bấm vào nút bên dưới.</div></td></tr>
 <tr><td align="center" style="padding:24px 24px 8px;">${image('luva-wordmark', 120, BRAND_NAME)}</td></tr>
 ${column(
   466,
@@ -110,14 +109,13 @@ ${column(
 )}
 ${column(
   503,
-  `<tr><td align="center" style="background:${GREY};border-radius:24px;padding:32px 24px;">${image('luva-team', 158, '')}<div style="padding:12px 0 8px;${FONT}font-size:20px;line-height:24px;font-weight:300;letter-spacing:-1px;color:${INK};">Cảm ơn từ đội ngũ @</div>${image('luva-wordmark', 108, BRAND_NAME)}</td></tr>`,
+  `<tr><td align="center" style="background:${GREY};border-radius:24px;padding:32px 24px;">${image('luva-team', 110, 'Đội ngũ Luva UI')}<div style="padding:12px 0 8px;${FONT}font-size:20px;line-height:24px;font-weight:300;letter-spacing:-1px;color:${INK};">Cảm ơn từ đội ngũ @</div>${image('luva-wordmark', 108, BRAND_NAME)}</td></tr>`,
   '32px 24px',
 )}
 <tr><td style="padding-top:8px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${GREY};border-radius:24px 24px 0 0;">
 <tr><td align="center" style="padding:44px 16px;${small}">${reason}<br><br>${BRAND_NAME}<br>Thư viện component UI sẵn dùng<br><br>Đây là email tự động về tài khoản của bạn, vui lòng không trả lời.<br><strong>Bảo mật &#124; Điều khoản</strong><br>© ${new Date().getFullYear()} ${BRAND_NAME}. Bảo lưu mọi quyền.</td></tr>
 <tr><td>${image('luva-footer', 700, BRAND_NAME)}</td></tr>
 </table></td></tr>
-<tr><td align="center" style="padding:16px;${FONT}font-size:14px;color:#140231;">Designed with RGE Studio</td></tr>
 </table>
 </td></tr></table>
 </body>
