@@ -40,15 +40,20 @@ file adds Frontend-specific scope only. Frontend owner: @DaoDungVan.
 
 ## Project structure & data architecture (added 2026-10-24)
 
-Feature-based layout (keep it this flat; no extra layers without a task):
+Feature-based layout. Group by feature and follow the size limits in
+`docs/ENGINEERING.md` § "Cấu trúc thư mục và kích thước file" (200 lines per
+source file, 10 source files per folder; `components/ui/` stays flat):
 
 | Path | Holds |
 |---|---|
 | `app/` | routes, layouts, pages (Server Components by default) |
 | `app/globals.css` | design tokens in the Tailwind v4 `@theme` block (single light theme) |
 | `components/ui/` | tiny presentational primitives (badge, card) |
-| `components/layout/` | shared site shell (header/footer) |
-| `components/catalog/` | catalog presentation pieces, incl. the only `'use client'` islands (search, preview) |
+| `components/layout/` | site shell and logo; `nav/` header, search and session; `footer/` footer and newsletter |
+| `components/home/` | home page only; `hero/` hero text and backdrop, `sections/` the sections below it |
+| `components/auth/` | auth layout pieces; `forms/` auth forms and social buttons, `showcase/` the dark panel |
+| `components/catalog/` | catalog card and skeleton; `demo/` live demo, popup bench and knobs |
+| `components/effects/` | decorative effects shared by more than one area (bubbles, pressable dots) |
 | `features/<name>/` | feature data layer — `<name>-source.ts` = the ONLY data access point of a feature |
 | `lib/api-client.ts` | typed HTTP client + per-runtime base URL (`API_URL_INTERNAL` binding on the server, `NEXT_PUBLIC_API_URL` in the browser, same-origin `/api` default per root `vercel.json` rewrites) |
 | `lib/gsap.ts` | GSAP entry `useGsapScope` — client islands only, scoped `gsap.context` auto-revert cleanup, reduced-motion enforced; onboarding guide: `apps/web/README.md` |
@@ -75,7 +80,7 @@ without a task that proves the use case.
 - When two or more client components need the same data (for example, the
   session for the desktop and mobile nav), fetch it once in a `'use client'`
   provider placed in the nearest shared parent, and expose it through a hook.
-  Reference: `components/layout/nav-session.tsx`.
+  Reference: `components/layout/nav/nav-session.tsx`.
 - Do not let sibling components each call the same data source on mount.
 - The hook must throw when used outside its provider. Fail loudly instead of
   returning empty data.
