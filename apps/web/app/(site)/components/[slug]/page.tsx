@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { ImageAccordionPlayground } from '@/components/catalog/image-accordion-playground'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import {
@@ -9,15 +10,16 @@ import {
   TIER_LABEL,
   tierVariant,
 } from '@/features/catalog/catalog-labels'
-import { getCatalogSource } from '@/features/catalog/catalog-source'
+import { getCatalogRegistryRelease } from '@/features/catalog/catalog-registry-release'
+import { getCatalogSource, resolveApiMode } from '@/features/catalog/catalog-source'
+import { getImageAccordionSamples } from '@/features/demo/image-accordion-data'
 
 interface ComponentDetailProps {
   params: Promise<{ slug: string }>
 }
 
 async function loadComponent(slug: string) {
-  const source = getCatalogSource()
-  return source.detail(slug)
+  return getCatalogSource().detail(slug)
 }
 
 export async function generateMetadata({ params }: ComponentDetailProps): Promise<Metadata> {
@@ -30,12 +32,6 @@ export async function generateMetadata({ params }: ComponentDetailProps): Promis
   }
 }
 
-/* Component detail — Server Component. Unknown/unpublished slugs → 404 via
-   notFound(); renders mock data until API_MODE=live flips the data source.
-   Live fetches happen per request; the API is not reachable at build time. */
-/* Static per slug and regenerated every 60 seconds. generateStaticParams
-   (empty on purpose) makes unseen slugs render on demand and be cached. A
-   missing component (404) can be cached for up to a minute before it is retried. */
 export const revalidate = 60
 export const dynamicParams = true
 
@@ -47,6 +43,12 @@ export default async function ComponentDetailPage({ params }: ComponentDetailPro
   const { slug } = await params
   const item = await loadComponent(slug)
   if (!item) notFound()
+
+  const isImageAccordion = item.slug === 'image-accordion'
+  const sourceMode = resolveApiMode()
+  const useNarutoSamples =
+    isImageAccordion && process.env.NODE_ENV !== 'production' && sourceMode === 'mock'
+  const release = isImageAccordion ? await getCatalogRegistryRelease(item) : null
 
   return (
     <section className="flex flex-col gap-6">
@@ -65,6 +67,16 @@ export default async function ComponentDetailPage({ params }: ComponentDetailPro
           <span className="font-mono text-xs text-muted-foreground">v{item.latestVersion}</span>
         </div>
       </header>
+
+      {isImageAccordion ? (
+        <ImageAccordionPlayground
+          samples={getImageAccordionSamples(useNarutoSamples)}
+          release={release}
+          version={item.latestVersion}
+          sourceMode={sourceMode}
+          useNarutoSamples={useNarutoSamples}
+        />
+      ) : null}
 
       <Card className="flex flex-col gap-4 p-6">
         <p className="text-sm leading-6">{item.description}</p>

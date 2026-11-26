@@ -28,4 +28,14 @@ export const MOCK_DEMOS: DemoManifest[] = [
       },
     ],
   },
+  {
+    slug: 'image-accordion',
+    src: '/runtime/image-accordion',
+    knobs: [
+      { key: 'open', label: 'Open', type: 'range', min: 20, max: 80, step: 1, default: 50 },
+      { key: 'reach', label: 'Reach', type: 'range', min: 0, max: 100, step: 1, default: 35 },
+      { key: 'bounce', label: 'Bounce', type: 'range', min: 0, max: 20, step: 1, default: 10 },
+      { key: 'gap', label: 'Gap (px)', type: 'range', min: 0, max: 20, step: 1, default: 8 },
+    ],
+  },
 ]
