@@ -48,7 +48,7 @@ function SocialRow() {
 function FooterBrand() {
   return (
     <div className="flex w-full max-w-[400px] shrink-0 flex-col items-start gap-3">
-      <Logo className="text-[15px] font-bold" />
+      <Logo size="large" />
       <p className="text-[13px] text-muted-foreground">
         Khám phá các component UI trong thư viện cho dự án của bạn.
       </p>
