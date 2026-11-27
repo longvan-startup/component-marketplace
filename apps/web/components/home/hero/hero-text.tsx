@@ -4,19 +4,19 @@ import { type ReactNode, useEffect, useRef } from 'react'
 import { createFrameLoop, prefersReducedMotion } from '../../../lib/gsap'
 import { PRESS_RADIUS, SPRING_C, SPRING_K } from '../../effects/use-dot-press'
 
-/* How far a word is pulled toward the pointer and pushed down at the centre.
-   The dots use 2.5 and 3 px; words are far bigger, so they move a little more,
+/* How far a letter is pulled toward the pointer and pushed down at the centre.
+   The dots use 2.5 and 3 px; letters are far bigger, so they move a little more,
    scaled down for small text. Same radius and spring as the dots. */
 const PULL = 4
 const SINK = 5
 const REF_FONT = 64
 
-type Word = { el: HTMLElement; amp: number; ox: number; oy: number; vx: number; vy: number }
+type Letter = { el: HTMLElement; amp: number; ox: number; oy: number; vx: number; vy: number }
 
-/* Wraps the hero heading and subtitle. Each word (a `data-word` span, see
+/* Wraps the hero heading and subtitle. Each letter (a `data-letter` span, see
    Words) dents like a dot does: the pointer pulls it a little and presses it
    down, then it springs back. Skipped under prefers-reduced-motion, and the
-   loop sleeps when no word is moving. */
+   loop sleeps when no letter is moving. */
 export function HeroText({ children }: { children: ReactNode }) {
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -25,7 +25,7 @@ export function HeroText({ children }: { children: ReactNode }) {
     const section = wrap?.closest('section')
     if (!wrap || !section || prefersReducedMotion()) return
 
-    const words: Word[] = Array.from(wrap.querySelectorAll<HTMLElement>('[data-word]')).map(
+    const letters: Letter[] = Array.from(wrap.querySelectorAll<HTMLElement>('[data-letter]')).map(
       (el) => ({
         el,
         amp: Math.min(
@@ -43,7 +43,7 @@ export function HeroText({ children }: { children: ReactNode }) {
 
     const tick = (dt: number) => {
       /* read every position first, then write, so the frame does one layout */
-      const rests = words.map((w) => {
+      const rests = letters.map((w) => {
         const rect = w.el.getBoundingClientRect()
         return {
           left: rect.left - w.ox,
@@ -53,12 +53,12 @@ export function HeroText({ children }: { children: ReactNode }) {
         }
       })
       let moving = false
-      words.forEach((w, index) => {
+      letters.forEach((w, index) => {
         const rest = rests[index]
         let tx = 0
         let ty = 0
         if (pointer && rest) {
-          /* distance from the pointer to the word's box; 0 when it is over it */
+          /* distance from the pointer to the letter's box; 0 when it is over it */
           const nx = Math.min(Math.max(pointer.x, rest.left), rest.right)
           const ny = Math.min(Math.max(pointer.y, rest.top), rest.bottom)
           const d2 = (pointer.x - nx) ** 2 + (pointer.y - ny) ** 2
@@ -107,7 +107,7 @@ export function HeroText({ children }: { children: ReactNode }) {
       loop.sleep()
       section.removeEventListener('pointermove', onMove)
       section.removeEventListener('pointerleave', onLeave)
-      for (const w of words) w.el.style.transform = ''
+      for (const w of letters) w.el.style.transform = ''
     }
   }, [])
 
