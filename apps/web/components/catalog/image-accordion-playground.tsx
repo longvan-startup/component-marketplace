@@ -17,13 +17,11 @@ export function ImageAccordionPlayground({
   release,
   version,
   sourceMode,
-  useNarutoSamples,
 }: {
   samples: readonly ImageAccordionItem[]
   release: RegistryResponse['item'] | null
   version: string
   sourceMode: 'mock' | 'live'
-  useNarutoSamples: boolean
 }) {
   const [tab, setTab] = useState<'preview' | 'code'>('preview')
   const [values, setValues] = useState<AccordionSettings>(DEFAULT_ACCORDION_SETTINGS)
@@ -91,7 +89,6 @@ export function ImageAccordionPlayground({
           version={version}
           releaseAvailable={release !== null}
           sourceMode={sourceMode}
-          useNarutoSamples={useNarutoSamples}
         />
       </div>
     </section>

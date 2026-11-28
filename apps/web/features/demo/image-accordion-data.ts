@@ -1,34 +1,6 @@
 import type { ImageAccordionItem } from '../../components/catalog/image-accordion'
 
-const NARUTO_SAMPLES: readonly ImageAccordionItem[] = [
-  {
-    name: 'Itachi Uchiha',
-    src: 'https://naruto-official.com/special/wallpaper_gallery/wallpaper/en/123_260609_en.jpg',
-    alt: 'Itachi Uchiha in the official Naruto wallpaper gallery',
-  },
-  {
-    name: 'Deidara',
-    src: 'https://naruto-official.com/special/wallpaper_gallery/wallpaper/en/118_260505_en.jpg',
-    alt: 'Deidara in the official Naruto wallpaper gallery',
-  },
-  {
-    name: 'Hidan',
-    src: 'https://naruto-official.com/special/wallpaper_gallery/wallpaper/en/115_260402_en.jpg',
-    alt: 'Hidan in the official Naruto wallpaper gallery',
-  },
-  {
-    name: 'Kisame Hoshigaki',
-    src: 'https://naruto-official.com/special/wallpaper_gallery/wallpaper/en/64_250318.jpg',
-    alt: 'Kisame Hoshigaki in the official Naruto wallpaper gallery',
-  },
-  {
-    name: 'Obito Uchiha',
-    src: 'https://naruto-official.com/special/wallpaper_gallery/wallpaper/en/107_260210_en.jpg',
-    alt: 'Obito Uchiha in the official Naruto wallpaper gallery',
-  },
-]
-
-const PUBLIC_SAMPLES: readonly ImageAccordionItem[] = [
+export const IMAGE_ACCORDION_SAMPLES: readonly ImageAccordionItem[] = [
   {
     name: 'Violet Dunes',
     src: '/demo/image-accordion/violet-dunes.svg',
@@ -56,6 +28,6 @@ const PUBLIC_SAMPLES: readonly ImageAccordionItem[] = [
   },
 ]
 
-export function getImageAccordionSamples(useNarutoSamples: boolean): readonly ImageAccordionItem[] {
-  return useNarutoSamples ? NARUTO_SAMPLES : PUBLIC_SAMPLES
+export function getImageAccordionSamples(): readonly ImageAccordionItem[] {
+  return IMAGE_ACCORDION_SAMPLES
 }

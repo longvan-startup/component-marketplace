@@ -46,8 +46,6 @@ export default async function ComponentDetailPage({ params }: ComponentDetailPro
 
   const isImageAccordion = item.slug === 'image-accordion'
   const sourceMode = resolveApiMode()
-  const useNarutoSamples =
-    isImageAccordion && process.env.NODE_ENV !== 'production' && sourceMode === 'mock'
   const release = isImageAccordion ? await getCatalogRegistryRelease(item) : null
 
   return (
@@ -70,11 +68,10 @@ export default async function ComponentDetailPage({ params }: ComponentDetailPro
 
       {isImageAccordion ? (
         <ImageAccordionPlayground
-          samples={getImageAccordionSamples(useNarutoSamples)}
+          samples={getImageAccordionSamples()}
           release={release}
           version={item.latestVersion}
           sourceMode={sourceMode}
-          useNarutoSamples={useNarutoSamples}
         />
       ) : null}
 

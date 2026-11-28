@@ -50,7 +50,6 @@ export function ImageAccordionSettings({
   version,
   releaseAvailable,
   sourceMode,
-  useNarutoSamples,
 }: {
   values: AccordionSettings
   onChange: (key: keyof AccordionSettings, value: number) => void
@@ -58,7 +57,6 @@ export function ImageAccordionSettings({
   version: string
   releaseAvailable: boolean
   sourceMode: 'mock' | 'live'
-  useNarutoSamples: boolean
 }) {
   return (
     <aside className="flex flex-col gap-6 border-t border-border bg-card p-5 lg:border-l lg:border-t-0">
@@ -132,23 +130,7 @@ export function ImageAccordionSettings({
           >
             Mở trang tham chiếu Bencho
           </Link>
-          {useNarutoSamples ? (
-            <a
-              href="https://naruto-official.com/en/special/wallpaper"
-              target="_blank"
-              rel="noreferrer"
-              className="min-h-11 inline-flex items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              Nguồn ảnh Naruto
-            </a>
-          ) : null}
         </div>
-        {useNarutoSamples ? (
-          <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            Ảnh Naruto chỉ dùng trong preview phát triển, không nằm trong release. Preview
-            production dùng ảnh mẫu gốc của marketplace.
-          </p>
-        ) : null}
       </div>
     </aside>
   )

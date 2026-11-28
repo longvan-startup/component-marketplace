@@ -7,9 +7,46 @@
  */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { DemoManifest } from '../../../features/demo/demo-manifest'
+import { getImageAccordionSamples } from '../../../features/demo/image-accordion-data'
 import { acquireDemoSlot, releaseDemoSlot, subscribeDemoSlots } from './demo-pool'
 
 const DemoBench = lazy(() => import('./demo-bench').then((m) => ({ default: m.DemoBench })))
+const IMAGE_ACCORDION_POSTER_ITEMS = getImageAccordionSamples()
+
+export function shouldLoadCardDemoIframe(
+  slug: string | null,
+  inView: boolean,
+  reducedMotion: boolean,
+): boolean {
+  return Boolean(slug) && slug !== 'image-accordion' && inView && !reducedMotion
+}
+
+function ImageAccordionCardPoster() {
+  return (
+    <div aria-hidden="true" className="absolute inset-0 bg-zinc-950 p-2">
+      <div className="flex h-full gap-1.5">
+        {IMAGE_ACCORDION_POSTER_ITEMS.map((item, index) => (
+          <div
+            key={item.name}
+            className={`relative min-w-0 overflow-hidden rounded-md border border-white/15 ${index === 0 ? 'flex-[4]' : 'flex-1'}`}
+            style={{
+              backgroundImage: `linear-gradient(to top, rgb(9 9 11 / 0.55), transparent 55%), url(${item.src})`,
+              backgroundPosition: 'center',
+              backgroundSize: 'cover',
+            }}
+          >
+            <span className="absolute left-1.5 top-1.5 font-mono text-[9px] text-white/85">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+          </div>
+        ))}
+      </div>
+      <span className="absolute bottom-2 left-2 rounded-full bg-zinc-950/80 px-2 py-1 text-[10px] font-medium text-white">
+        5 ảnh · mở demo để tương tác
+      </span>
+    </div>
+  )
+}
 
 export function DemoPreview({
   demo,
@@ -48,7 +85,7 @@ export function DemoPreview({
   }, [])
 
   useEffect(() => {
-    if (!demo || !inView || reducedMotion) {
+    if (!shouldLoadCardDemoIframe(demo?.slug ?? null, inView, reducedMotion)) {
       setLive(false)
       return
     }
@@ -78,7 +115,9 @@ export function DemoPreview({
 
   return (
     <div ref={containerRef} className="relative h-48 overflow-hidden bg-muted">
-      {live ? (
+      {demo.slug === 'image-accordion' ? (
+        <ImageAccordionCardPoster />
+      ) : live ? (
         <iframe
           src={demo.src}
           title={`Demo ${name}`}

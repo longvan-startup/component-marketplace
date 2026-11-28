@@ -16,6 +16,7 @@ test('the current Image Accordion release ships the same portable source as the 
     expect(await release.exists()).toBe(true)
     const source = await release.text()
     expect(source).toBe(await preview.text())
-    expect(source).not.toMatch(/naruto-official|from ['"]next\//)
+    expect(source).not.toMatch(/https?:\/\//)
+    expect(source).not.toMatch(/from ['"]next\//)
   }
 })

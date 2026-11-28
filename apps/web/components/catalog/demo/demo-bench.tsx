@@ -199,7 +199,7 @@ export function DemoBench({
         ref={contentRef}
         className="flex flex-col gap-3 md:h-[min(600px,calc(100vh-48px))] md:flex-row md:gap-4"
       >
-        <div className="relative min-h-[320px] overflow-hidden rounded-card bg-muted md:min-h-0 md:flex-1">
+        <div className="relative h-[320px] overflow-hidden rounded-card bg-muted md:h-full md:min-h-0 md:flex-1">
           {showFrame ? (
             <iframe
               ref={frameRef}

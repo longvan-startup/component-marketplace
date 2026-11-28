@@ -121,9 +121,9 @@ GSAP chạy trực tiếp trong RSC. Bundle cost giảm dần theo thứ tự tr
 
 ## Image Accordion
 
-Open `/components/image-accordion` to adjust the gallery and replace each card image with a local JPEG, PNG, or WebP up to 5 MB. Edits stay in browser memory and clear when the page reloads. With `API_MODE=mock` in development, the preview uses five Naruto wallpaper URLs for visual checks; production and live mode use original marketplace landscape artwork. Naruto images are not included in the component release.
+Open `/components/image-accordion` to adjust the gallery and replace each card image with a local JPEG, PNG, or WebP up to 5 MB. Edits stay in browser memory and clear when the page reloads. The Catalog card uses a lightweight poster; the Bench modal runs the interactive demo with five distinct local SVG scenes from `public/demo/image-accordion/`. Demo artwork is separate from the versioned component release.
 
-The Free 1.0.0 source lives at `apps/api/registry/image-accordion/1.0.0/`. The web preview imports the same TSX and CSS as that release. In `API_MODE=live`, the Code tab reads files through `GET /registry/image-accordion`; the API validates the release ledger's SHA-256 values before returning them. The normalized `components`, `component_releases`, and `component_release_files` tables store metadata, versions, and file paths/checksums. See [the registry README](../api/registry/README.md) for the local database registration command.
+The Free 1.0.0 source lives at `apps/api/registry/image-accordion/1.0.0/`. The component detail preview imports the same TSX and CSS as that release. The Bench sandbox adds inline runtime styles and a measured 420 ms preview transition; the versioned release files stay unchanged. In `API_MODE=live`, the Code tab reads files through `GET /registry/image-accordion`; the API validates the release ledger's SHA-256 values before returning them. The normalized `components`, `component_releases`, and `component_release_files` tables store metadata, versions, and file paths/checksums. See [the registry README](../api/registry/README.md) for the local database registration command.
 
 
 ## Responsive
