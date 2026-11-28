@@ -3,21 +3,29 @@
  * NavBar (18:93) and Footer (64:109). Links home.
  */
 import Link from 'next/link'
+import { LogoLockup } from './logo-lockup'
 
 export const BRAND_NAME = 'Luva UI'
 
-export function Logo({ className = '' }: { className?: string }) {
+/* The mark is sized in em, so the whole lockup grows with the font size. */
+const SIZES = {
+  default: 'text-xl font-semibold leading-7',
+  large: 'text-[22px] font-bold leading-8',
+} as const
+
+export function Logo({
+  className = '',
+  size = 'default',
+}: {
+  className?: string
+  size?: keyof typeof SIZES
+}) {
   return (
     <Link
       href="/"
-      className={`inline-flex items-center gap-2 rounded-sm text-lg font-semibold leading-6 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+      className={`inline-flex items-center gap-2 rounded-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${SIZES[size]} ${className}`}
     >
-      <span aria-hidden="true" className="relative block size-6 shrink-0">
-        <span className="absolute left-px top-3 size-2.5 rounded-[3px] bg-primary-light" />
-        <span className="absolute left-[7px] top-1.5 size-2.5 rounded-[3px] bg-primary" />
-        <span className="absolute left-[13px] top-0 size-2.5 rounded-[3px] bg-primary-dark" />
-      </span>
-      {BRAND_NAME}
+      <LogoLockup name={BRAND_NAME} />
     </Link>
   )
 }
