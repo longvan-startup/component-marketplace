@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 960" fill="none" role="img" aria-label="Rose canyon landscape">
+  <title>Rose canyon landscape</title>
+  <defs>
+    <linearGradient id="sky" x1="360" y1="0" x2="360" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f7c7b0"/>
+      <stop offset=".58" stop-color="#dc806f"/>
+      <stop offset="1" stop-color="#552c54"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0" cy="0" r="1" gradientTransform="matrix(0 302 -302 0 536 267)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff9e7" stop-opacity=".92"/>
+      <stop offset="1" stop-color="#fff9e7" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h720v960H0z"/>
+  <path fill="url(#sun)" d="M0 0h720v960H0z"/>
+  <circle cx="523" cy="267" r="52" fill="#fff4d8" fill-opacity=".8"/>
+  <path d="M0 566 147 424l91 96 122-180 180 217 74-96 106 101v398H0V566Z" fill="#a24756" fill-opacity=".66"/>
+  <path d="M0 650 144 546l115 104 126-171 143 169 81-94 111 93v313H0V650Z" fill="#552c54" fill-opacity=".86"/>
+  <path d="M0 770c113-58 176-51 277-9 98 40 160 45 249-7 75-45 129-42 194 3v203H0V770Z" fill="#171d35" fill-opacity=".43"/>
+  <path d="M0 860c121-34 200-25 303 17 111 45 192 37 276-9 48-26 92-35 141-17v109H0V860Z" fill="#171d35" fill-opacity=".55"/>
+</svg>

@@ -53,15 +53,17 @@ tiếp**, hỗ trợ **mobile responsive**.
   lệnh cài kiểu CLI copy-paste (`npx luva-ui add <slug>`), không phải tải
   file nén hay giao qua email. Lệnh này chép mã nguồn vào dự án của người
   dùng.
-- **Dữ liệu một component (chốt 2026-11-18).** Một dòng `components` chỉ là
-  thẻ catalog: `slug`, tên, mô tả, category, tags, `is_published`,
-  `access_tier` (`free` | `pro`), `latest_version`, `author_id`. Không nhét
-  source, JSON registry, playground, hay license vào dòng đó. License là MIT
-  cho mọi component, không phải cột. `latest_version` chỉ là số bản đang
-  chào; file cài được nằm trong git cho tới khi có task phát hành riêng
-  (`component_releases` + đường dẫn/checksum). Không có bảng ai đã cài bản
-  nào: code đã copy thuộc project của người dùng. Bốn cột giá cũ không quyết
-  định quyền cài.
+- **Dữ liệu một component (chốt 2026-11-18; release flow bổ sung 2026-11-26).**
+  Một dòng `components` chỉ là thẻ catalog: `slug`, tên, mô tả, category, tags,
+  `is_published`, `access_tier` (`free` | `pro`), `latest_version`, `author_id`.
+  Không nhét source, JSON registry, playground, hay license vào dòng đó.
+  License là MIT cho mọi component, không phải cột. `latest_version` trỏ tới
+  bản đang chào; source version hóa nằm trong Git, `component_releases` lưu
+  version, và `component_release_files` lưu đường dẫn tương đối cùng SHA-256.
+  Image Accordion 1.0.0 là release dev đầu tiên cho #261; thay đổi này không
+  đăng ký hay seed dữ liệu production. Không có
+  bảng ai đã cài bản nào: code đã copy thuộc project của người dùng. Bốn cột
+  giá cũ không quyết định quyền cài.
 - **Tài khoản Free.** Đăng ký bằng email, Google hoặc GitHub đều tạo
   `users.role = user`. Đó là gói Free. Google và GitHub không bán quyền Pro.
 

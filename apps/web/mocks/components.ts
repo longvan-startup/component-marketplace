@@ -17,6 +17,20 @@ export const MOCK_COMPONENTS: CatalogItem[] = [
     isPublished: true,
   },
   {
+    id: 'a8b32562-8a8a-4c39-9c3a-f540dcb8cdb7',
+    slug: 'image-accordion',
+    name: 'Image Accordion',
+    summary: 'Gallery ảnh mở rộng theo hover, click hoặc bàn phím.',
+    description:
+      'Component React có thể cài bằng source Free 1.0.0 trong registry. Mỗi card nhận ảnh riêng qua prop items, hỗ trợ chuột, cảm ứng và bàn phím.',
+    category: 'animation',
+    tags: ['gallery', 'image', 'interaction', 'responsive'],
+    latestVersion: '1.0.0',
+    author: 'luva',
+    isPublished: true,
+    accessTier: 'free',
+  },
+  {
     id: '88b3a2f1-2a77-4d28-a4b0-24b5f6a7ba44',
     slug: 'badge-row',
     name: 'Badge Row',
