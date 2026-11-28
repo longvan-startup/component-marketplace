@@ -1,5 +1,8 @@
 import { createDbHandle } from '@marketplace/db'
-import { registerImageAccordion } from '../src/catalog/register-image-accordion'
+import {
+  ImageAccordionRegistrationConflictError,
+  registerImageAccordion,
+} from '../src/catalog/register-image-accordion'
 
 const databaseUrl = process.env.IMAGE_ACCORDION_DEV_DATABASE_URL
 const allowedHosts = new Set(['localhost', '127.0.0.1', '[::1]'])
@@ -20,11 +23,13 @@ if (process.env.NODE_ENV === 'production' || !databaseUrl || !isLocalPostgres(da
 
 const handle = createDbHandle(databaseUrl, { connectTimeout: 5 })
 try {
-  await registerImageAccordion(handle.db)
-  console.log('Image Accordion 1.0.0 registered.')
-} catch {
+  const result = await registerImageAccordion(handle.db)
+  console.log(`Image Accordion ${result.version} registered.`)
+} catch (error) {
   console.error(
-    'Registry setup failed. Check migrations and existing Image Accordion metadata and release files.',
+    error instanceof ImageAccordionRegistrationConflictError
+      ? error.message
+      : 'Registry setup failed. Check migrations and checked-in release files.',
   )
   process.exitCode = 1
 } finally {

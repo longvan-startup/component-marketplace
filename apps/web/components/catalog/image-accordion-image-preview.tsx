@@ -10,6 +10,12 @@ import {
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
+export function validateImageFile(file: Pick<File, 'type' | 'size'>): string | null {
+  if (!IMAGE_TYPES.includes(file.type)) return 'Chọn ảnh JPG, PNG hoặc WebP.'
+  if (file.size > MAX_IMAGE_BYTES) return 'Ảnh vượt quá 5 MB.'
+  return null
+}
+
 interface CardImage {
   src: string
   name: string
@@ -57,12 +63,9 @@ export function ImageAccordionImagePreview({
     const pending = pendingUrls.current
     revokeImage(pending, index)
 
-    if (!IMAGE_TYPES.includes(file.type)) {
-      showMessage(index, 'Chọn ảnh JPG, PNG hoặc WebP.', true)
-      return
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      showMessage(index, 'Ảnh vượt quá 5 MB.', true)
+    const validationError = validateImageFile(file)
+    if (validationError) {
+      showMessage(index, validationError, true)
       return
     }
 
